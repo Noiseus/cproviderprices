@@ -1,0 +1,23 @@
+{
+  "name": "cproviderprices",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "generate:api": "openapi-typescript packages/api-contracts/openapi.yaml -o packages/generated-api-client/src/schema.d.ts",
+    "lint": "npm run lint --workspace @cproviderprices/web",
+    "test": "npm run test --workspace @cproviderprices/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.10.1",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=11.0.0"
+  }
+}

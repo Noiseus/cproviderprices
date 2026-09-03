@@ -1,0 +1,6 @@
+fastapi
+httpx
+mypy
+pytest
+ruff
+uvicorn[standard]

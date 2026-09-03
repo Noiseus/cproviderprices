@@ -37,7 +37,7 @@ Do not substitute another core framework, database, backend, or architecture wit
 - `docs`: product, architecture, data, design, security, integration, deployment, roadmap, and ADR documentation.
 - `infra`: Docker, deployment, and operational scripts.
 
-See `docs/architecture/repository-structure.md` before creating these directories. Prompt 00 establishes documentation only; application scaffolding begins later.
+See `docs/architecture/repository-structure.md` before changing these boundaries. Prompt 01 established the web, API, ingestion, shared-package, and local infrastructure foundations. `apps/mobile` remains intentionally absent until the mobile-readiness phase.
 
 ## Engineering rules
 
