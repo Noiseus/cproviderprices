@@ -1,0 +1,75 @@
+# Environment and secrets (safe examples remain tracked)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+.npm/
+.yarn/
+.pnpm-store/
+*.tsbuildinfo
+
+# PHP / Laravel
+vendor/
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+storage/*.key
+auth.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Tests and coverage
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+playwright-report/
+
+# Logs and runtime files
+*.log
+*.pid
+*.seed
+*.sqlite
+*.sqlite3
+tmp/
+temp/
+.docker-data/
+docker-data/
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local tool state
+.phpunit.result.cache
+.php-cs-fixer.cache
