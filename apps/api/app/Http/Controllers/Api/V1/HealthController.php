@@ -42,13 +42,23 @@ final class HealthController extends Controller
 
             $currentCheck = 'object_storage';
             $payload = 'cproviderprices-readiness';
-            Storage::disk('s3')->put($objectKey, $payload);
+            $disk = Storage::disk('s3');
+
+            if (! $disk->put($objectKey, $payload)) {
+                throw new \RuntimeException('Object storage write failed.');
+            }
+
             $objectWritten = true;
 
-            if (Storage::disk('s3')->get($objectKey) !== $payload) {
+            if ($disk->get($objectKey) !== $payload) {
                 throw new \RuntimeException('Object storage verification failed.');
             }
 
+            if (! $disk->delete($objectKey)) {
+                throw new \RuntimeException('Object storage cleanup failed.');
+            }
+
+            $objectWritten = false;
             $checks['object_storage'] = 'ok';
 
             return response()->json([

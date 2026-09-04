@@ -16,6 +16,10 @@ copy_example services/ingestion/.env services/ingestion/.env.example
 
 docker compose config --quiet
 docker compose build
-docker compose run --rm --no-deps api php artisan key:generate --force
+if grep -Eq '^APP_KEY=.+$' apps/api/.env; then
+  echo "Application key already configured."
+else
+  docker compose run --rm --no-deps api php artisan key:generate --force
+fi
 
 echo "Setup complete. Run 'make up' to start the local stack."

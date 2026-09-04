@@ -9,7 +9,9 @@ WORKDIR /app
 COPY services/ingestion/requirements.lock ./requirements.lock
 RUN python -m pip install --no-cache-dir --require-hashes -r requirements.lock
 
-COPY services/ingestion ./
+COPY services/ingestion/pyproject.toml ./pyproject.toml
+COPY services/ingestion/src ./src
+COPY services/ingestion/tests ./tests
 
 EXPOSE 8001
 

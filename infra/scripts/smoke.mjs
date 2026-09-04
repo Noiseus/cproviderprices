@@ -1,22 +1,28 @@
 const checks = [
   {
     name: "web health",
-    url: "http://localhost:3000/api/health",
+    url: process.env.WEB_HEALTH_URL ?? "http://localhost:3000/api/health",
     expectedStatus: "ok",
   },
   {
     name: "API health",
-    url: "http://localhost:8080/api/v1/health",
+    url:
+      process.env.API_HEALTH_URL ??
+      "http://localhost:8080/api/v1/health",
     expectedStatus: "ok",
   },
   {
     name: "API readiness",
-    url: "http://localhost:8080/api/v1/readiness",
+    url:
+      process.env.API_READINESS_URL ??
+      "http://localhost:8080/api/v1/readiness",
     expectedStatus: "ready",
   },
   {
     name: "ingestion health",
-    url: "http://localhost:8001/health",
+    url:
+      process.env.INGESTION_HEALTH_URL ??
+      "http://localhost:8001/health",
     expectedStatus: "ok",
   },
 ];
@@ -38,7 +44,9 @@ for (const check of checks) {
 }
 
 try {
-  const response = await fetch("http://localhost:8025/");
+  const response = await fetch(
+    process.env.MAILPIT_URL ?? "http://localhost:8025/",
+  );
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }

@@ -24,7 +24,13 @@ test:
 	docker compose run --rm --no-deps ingestion pytest
 
 e2e:
-	node infra/scripts/smoke.mjs
+	docker compose exec \
+		-e WEB_HEALTH_URL=http://localhost:3000/api/health \
+		-e API_HEALTH_URL=http://api:8080/api/v1/health \
+		-e API_READINESS_URL=http://api:8080/api/v1/readiness \
+		-e INGESTION_HEALTH_URL=http://ingestion:8001/health \
+		-e MAILPIT_URL=http://mailpit:8025/ \
+		web node infra/scripts/smoke.mjs
 
 migrate:
 	docker compose exec api php artisan migrate --force

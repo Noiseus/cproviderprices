@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
 use Tests\TestCase;
 
 final class HealthTest extends TestCase
@@ -35,6 +37,8 @@ final class HealthTest extends TestCase
             ->assertJsonPath('checks.redis', 'ok')
             ->assertJsonPath('checks.object_storage', 'ok')
             ->assertJsonStructure(['timestamp']);
+
+        Storage::disk('s3')->assertDirectoryEmpty('health');
     }
 
     public function test_readiness_returns_service_unavailable_when_a_dependency_fails(): void
@@ -48,5 +52,24 @@ final class HealthTest extends TestCase
             ->assertServiceUnavailable()
             ->assertJsonPath('status', 'not_ready')
             ->assertJsonPath('checks.database', 'failed');
+    }
+
+    public function test_readiness_requires_object_storage_cleanup_to_succeed(): void
+    {
+        DB::shouldReceive('select')->once()->with('select 1')->andReturn([['result' => 1]]);
+        Redis::shouldReceive('connection->ping')->once()->andReturn('PONG');
+
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('put')->once()->andReturnTrue();
+        $disk->shouldReceive('get')->once()->andReturn('cproviderprices-readiness');
+        $disk->shouldReceive('delete')->twice()->andReturn(false, true);
+        Storage::shouldReceive('disk')->twice()->with('s3')->andReturn($disk);
+
+        $response = $this->getJson('/api/v1/readiness');
+
+        $response
+            ->assertServiceUnavailable()
+            ->assertJsonPath('status', 'not_ready')
+            ->assertJsonPath('checks.object_storage', 'failed');
     }
 }

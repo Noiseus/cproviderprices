@@ -11,7 +11,10 @@ COPY packages/domain-types/package.json packages/domain-types/package.json
 COPY packages/i18n/package.json packages/i18n/package.json
 RUN npm ci
 
-COPY . .
+COPY tsconfig.base.json ./
+COPY apps/web ./apps/web
+COPY packages ./packages
+COPY infra/scripts/smoke.mjs ./infra/scripts/smoke.mjs
 
 EXPOSE 3000
 

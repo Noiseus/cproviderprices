@@ -3,4 +3,4 @@ httpx
 mypy
 pytest
 ruff
-uvicorn[standard]
+uvicorn
