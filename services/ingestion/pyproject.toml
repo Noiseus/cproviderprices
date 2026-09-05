@@ -1,0 +1,21 @@
+[project]
+name = "cproviderprices-ingestion"
+version = "0.1.0"
+description = "Internal CProviderPrices supplier ingestion service foundation."
+requires-python = ">=3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src", "tests"]

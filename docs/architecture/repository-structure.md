@@ -1,6 +1,6 @@
 # Repository Structure
 
-The intended monorepo layout is shown below. Prompt 00 creates only documentation and repository-policy files; implementation directories should be created when their scoped prompt begins.
+The monorepo foundation below was established in Prompt 01. Directories should continue to be populated only by their scoped prompts.
 
 ```text
 /
@@ -12,7 +12,7 @@ The intended monorepo layout is shown below. Prompt 00 creates only documentatio
 |-- apps/
 |   |-- web/
 |   |-- api/
-|   `-- mobile/
+|   `-- mobile/                    # future; intentionally absent
 |-- services/
 |   `-- ingestion/
 |-- packages/
@@ -41,7 +41,7 @@ The intended monorepo layout is shown below. Prompt 00 creates only documentatio
 
 - `apps/web`: Next.js and TypeScript web application, including public and authenticated browser experiences.
 - `apps/api`: Laravel application and versioned `/api/v1` endpoints.
-- `apps/mobile`: reserved for a future Expo React Native client; not part of initial scaffolding unless requested.
+- `apps/mobile`: reserved for a future Expo React Native client; intentionally absent until the mobile-readiness phase.
 - `services/ingestion`: internal Python ingestion, validation, normalization, and supplier adapters.
 - `packages/api-contracts`: OpenAPI source contracts and related contract documentation.
 - `packages/generated-api-client`: generated consumers of OpenAPI; generated files must not be hand-maintained.

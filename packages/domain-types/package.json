@@ -1,0 +1,9 @@
+{
+  "name": "@cproviderprices/domain-types",
+  "version": "0.1.0",
+  "private": true,
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

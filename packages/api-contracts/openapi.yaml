@@ -1,0 +1,81 @@
+openapi: 3.1.0
+info:
+  title: CProviderPrices API
+  version: 0.1.0
+  description: Versioned API contract for the Prompt 01 operational endpoints.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Report API liveness
+      responses:
+        "200":
+          description: API process is running.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /readiness:
+    get:
+      operationId: getReadiness
+      summary: Verify API dependencies
+      responses:
+        "200":
+          description: Required dependencies are available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+        "503":
+          description: At least one required dependency is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, service, timestamp]
+      properties:
+        status:
+          type: string
+          const: ok
+        service:
+          type: string
+          const: api
+        timestamp:
+          type: string
+          format: date-time
+    ReadinessResponse:
+      type: object
+      additionalProperties: false
+      required: [status, service, checks, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        service:
+          type: string
+          const: api
+        checks:
+          type: object
+          additionalProperties: false
+          required: [database, redis, object_storage]
+          properties:
+            database:
+              $ref: "#/components/schemas/CheckStatus"
+            redis:
+              $ref: "#/components/schemas/CheckStatus"
+            object_storage:
+              $ref: "#/components/schemas/CheckStatus"
+        timestamp:
+          type: string
+          format: date-time
+    CheckStatus:
+      type: string
+      enum: [pending, ok, failed]

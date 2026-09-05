@@ -1,0 +1,208 @@
+name: cproviderprices
+
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Copy .env.example to .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Copy .env.example to .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+      TZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:8.2.1-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Copy .env.example to .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Copy .env.example to .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env}
+      MINIO_BUCKET: ${MINIO_BUCKET:?Copy .env.example to .env}
+    entrypoint: >-
+      /bin/sh -c '
+      mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
+      mc mb --ignore-existing "local/$${MINIO_BUCKET}"
+      '
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    env_file:
+      - apps/api/.env
+    environment:
+      DB_HOST: postgres
+      DB_DATABASE: ${POSTGRES_DB:?Copy .env.example to .env}
+      DB_USERNAME: ${POSTGRES_USER:?Copy .env.example to .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+      REDIS_HOST: redis
+      MAIL_HOST: mailpit
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Copy .env.example to .env}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env}
+      AWS_BUCKET: ${MINIO_BUCKET:?Copy .env.example to .env}
+      AWS_ENDPOINT: http://minio:9000
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - ./apps/api:/var/www/html
+      - api-vendor:/var/www/html/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/readiness"]
+      interval: 10s
+      timeout: 8s
+      retries: 20
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    command: >-
+      sh -c "php artisan app:validate-environment &&
+      php artisan queue:work redis --sleep=1 --tries=3 --timeout=90"
+    env_file:
+      - apps/api/.env
+    environment:
+      DB_HOST: postgres
+      DB_DATABASE: ${POSTGRES_DB:?Copy .env.example to .env}
+      DB_USERNAME: ${POSTGRES_USER:?Copy .env.example to .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+      REDIS_HOST: redis
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Copy .env.example to .env}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env}
+      AWS_BUCKET: ${MINIO_BUCKET:?Copy .env.example to .env}
+      AWS_ENDPOINT: http://minio:9000
+    volumes:
+      - ./apps/api:/var/www/html
+      - api-vendor:/var/www/html/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: infra/docker/ingestion.Dockerfile
+    env_file:
+      - services/ingestion/.env
+    ports:
+      - "${INGESTION_PORT:-8001}:8001"
+    volumes:
+      - ./services/ingestion:/app
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    env_file:
+      - apps/web/.env
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - .:/workspace
+      - web-node-modules:/workspace/node_modules
+      - web-next:/workspace/apps/web/.next
+    depends_on:
+      api:
+        condition: service_healthy
+      ingestion:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  api-vendor:
+  minio-data:
+  postgres-data:
+  redis-data:
+  web-next:
+  web-node-modules:

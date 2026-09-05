@@ -4,6 +4,8 @@
 
 CProviderPrices uses a monorepo so applications, internal services, contracts, shared packages, documentation, and infrastructure changes can evolve together with explicit ownership. Monorepo placement does not erase service boundaries: each component keeps its own runtime responsibilities and may be deployed independently.
 
+Prompt 01 implements this foundation with Docker Compose for local development. It provides operational health contracts only; authentication and product/domain behavior remain deferred.
+
 ## Components
 
 - **Web:** Next.js with TypeScript provides the public and authenticated browser experiences.
@@ -14,6 +16,8 @@ CProviderPrices uses a monorepo so applications, internal services, contracts, s
 - **Object storage:** S3-compatible storage holds source files or other objects that should not live directly in the relational database.
 - **Contracts:** OpenAPI defines the API contract and supports generated clients.
 - **Mobile:** a future Expo React Native client consumes the same stable API contracts; it does not dictate the initial MVP UI.
+
+The mobile application is intentionally not present in the repository yet.
 
 ## High-level flow
 

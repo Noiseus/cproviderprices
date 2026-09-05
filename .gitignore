@@ -37,6 +37,7 @@ env/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.pip-tools-cache/
 .coverage
 htmlcov/
 *.egg-info/
