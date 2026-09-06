@@ -4,7 +4,7 @@ CProviderPrices is a commercial, multi-tenant B2B SaaS platform for supplier pri
 
 ## Project status
 
-Prompt 01 establishes the monorepo and reproducible local-development foundation. The repository currently contains operational health/readiness behavior only. Authentication, tenants, users, supplier integrations, product data, purchasing workflows, billing, and deployment are not implemented.
+Prompt 01 established the monorepo and reproducible local-development foundation. Prompt 02 adds repository-wide quality gates, CI, an OpenAPI contract workflow, and request correlation. The repository still contains operational health/readiness behavior only. Authentication, tenants, users, supplier integrations, product data, purchasing workflows, billing, and deployment are not implemented.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ Prompt 01 establishes the monorepo and reproducible local-development foundation
 
 - Docker Desktop or another Docker Engine with Docker Compose v2.
 - GNU Make for the documented root commands.
-- Node.js 22 or newer only when running the smoke script outside Docker.
+- Node.js 22 or newer only when running JavaScript quality gates outside Docker.
 
 Windows users without GNU Make can run `powershell -ExecutionPolicy Bypass -File infra/scripts/setup.ps1` for setup, then use the corresponding `docker compose` commands from the Makefile. Docker is still required.
 
@@ -37,6 +37,16 @@ make e2e
 ```
 
 `make setup` copies safe example environment files when local files are missing, validates Compose configuration, builds pinned application images from lockfiles, and generates a local Laravel application key. It never overwrites existing local environment files.
+
+On a fresh Windows clone without GNU Make:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File infra/scripts/setup.ps1
+docker compose up -d --wait
+docker compose exec api php artisan migrate --force
+docker compose exec api php artisan db:seed --force
+docker compose run --rm --no-deps web npm run smoke
+```
 
 ## Local URLs
 
@@ -60,8 +70,9 @@ The ingestion port is published only for local smoke testing. The intended produ
 - `make up`: start services and wait for health checks.
 - `make down`: stop services without deleting persistent volumes.
 - `make lint`: lint TypeScript, PHP, and Python.
-- `make typecheck`: run strict TypeScript and Python type checks.
+- `make typecheck`: run strict TypeScript, PHP, and Python static checks.
 - `make test`: run web, API, and ingestion tests.
+- `make contract`: validate OpenAPI and verify generated TypeScript client reproducibility.
 - `make e2e`: smoke-test all HTTP endpoints and the Mailpit UI.
 - `make migrate`: run Laravel migrations against PostgreSQL.
 - `make seed`: run the intentionally empty Laravel seeder.
@@ -77,7 +88,9 @@ All API timestamps use ISO 8601 and UTC. Example files contain local-only placeh
 
 - [Agent contract](AGENTS.md)
 - [Architecture](docs/architecture/architecture.md)
+- [API guidelines](docs/architecture/api-guidelines.md)
 - [Repository structure](docs/architecture/repository-structure.md)
+- [Testing strategy](docs/architecture/testing-strategy.md)
 - [Product scope](docs/product/product-scope.md)
 - [Data principles](docs/data/data-principles.md)
 - [Security baseline](docs/security/security-baseline.md)
@@ -85,4 +98,4 @@ All API timestamps use ISO 8601 and UTC. Example files contain local-only placeh
 - [Deployment context](docs/deployment/deployment-context.md)
 - [Prompt roadmap](docs/roadmap/prompt-sequence.md)
 
-Read `AGENTS.md` and relevant documentation before changing a subsystem. Architectural deviations require an explicit ADR; implementation should not begin Prompt 02 until requested.
+Read `AGENTS.md` and relevant documentation before changing a subsystem. Architectural deviations require an explicit ADR; implementation should not begin later prompts until requested.

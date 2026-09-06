@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Symfony\Component\Console\Command\Command;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -37,7 +38,7 @@ Artisan::command('app:validate-environment', function (): int {
     if ($missing !== []) {
         $this->error('Missing required environment values: '.implode(', ', $missing));
 
-        return self::FAILURE;
+        return Command::FAILURE;
     }
 
     $invalid = array_keys(array_filter(
@@ -48,10 +49,10 @@ Artisan::command('app:validate-environment', function (): int {
     if ($invalid !== []) {
         $this->error('Invalid local service drivers: '.implode(', ', $invalid));
 
-        return self::FAILURE;
+        return Command::FAILURE;
     }
 
     $this->info('Environment configuration is valid.');
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Validate required API runtime configuration');

@@ -1,4 +1,4 @@
-.PHONY: setup up down lint typecheck test e2e migrate seed logs
+.PHONY: setup up down lint typecheck test contract e2e migrate seed logs
 
 setup:
 	sh infra/scripts/setup.sh
@@ -12,16 +12,22 @@ down:
 lint:
 	docker compose run --rm --no-deps web npm run lint
 	docker compose run --rm --no-deps api ./vendor/bin/pint --test
+	docker compose run --rm --no-deps ingestion ruff format --check src tests
 	docker compose run --rm --no-deps ingestion ruff check src tests
 
 typecheck:
 	docker compose run --rm --no-deps web npm run typecheck
+	docker compose run --rm --no-deps api ./vendor/bin/phpstan analyse --memory-limit=512M
 	docker compose run --rm --no-deps ingestion mypy src tests
 
 test:
 	docker compose run --rm --no-deps web npm run test
 	docker compose run --rm --no-deps api php artisan test
 	docker compose run --rm --no-deps ingestion pytest
+
+contract:
+	docker compose run --rm --no-deps web npm run contract:lint
+	docker compose run --rm --no-deps web npm run check:api-client
 
 e2e:
 	docker compose exec \
@@ -30,7 +36,7 @@ e2e:
 		-e API_READINESS_URL=http://api:8080/api/v1/readiness \
 		-e INGESTION_HEALTH_URL=http://ingestion:8001/health \
 		-e MAILPIT_URL=http://mailpit:8025/ \
-		web node infra/scripts/smoke.mjs
+		web npm run smoke
 
 migrate:
 	docker compose exec api php artisan migrate --force

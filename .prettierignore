@@ -1,0 +1,2 @@
+apps/web/next-env.d.ts
+packages/generated-api-client/src/schema.d.ts

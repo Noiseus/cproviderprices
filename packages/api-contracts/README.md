@@ -1,3 +1,5 @@
 # API Contracts
 
-OpenAPI is the source of truth for CProviderPrices application API contracts. The initial specification contains only Prompt 01 health and readiness operations.
+OpenAPI 3.1 is the source of truth for CProviderPrices application API contracts. The current specification contains only the health/readiness operations and shared error/request-ID conventions.
+
+Run `npm run contract:lint` from the repository root to validate the contract. Run `npm run generate:api` to regenerate the tracked TypeScript schema types. Run `npm run check:api-client` to compare the tracked client with a fresh temporary generation and fail on drift.

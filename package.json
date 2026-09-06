@@ -7,14 +7,24 @@
     "packages/*"
   ],
   "scripts": {
+    "check:api-client": "node infra/scripts/check-generated-client.mjs",
+    "contract:lint": "redocly lint packages/api-contracts/openapi.yaml --extends=minimal",
+    "format": "prettier --write \"apps/web/**/*.{ts,tsx,mjs}\" \"packages/*/src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"apps/web/**/*.{ts,tsx,mjs}\" \"packages/*/src/**/*.{ts,tsx}\"",
     "generate:api": "openapi-typescript packages/api-contracts/openapi.yaml -o packages/generated-api-client/src/schema.d.ts",
-    "lint": "npm run lint --workspace @cproviderprices/web",
+    "lint": "eslint apps/web packages/domain-types/src packages/generated-api-client/src && npm run format:check",
+    "smoke": "npm run test:smoke --workspace @cproviderprices/web",
     "test": "npm run test --workspace @cproviderprices/web",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "^16.3.4",
+    "@redocly/cli": "^2.51.2",
+    "eslint": "^9.39.5",
     "openapi-typescript": "^7.10.1",
-    "typescript": "^5.9.2"
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.69.0"
   },
   "engines": {
     "node": ">=22.0.0",

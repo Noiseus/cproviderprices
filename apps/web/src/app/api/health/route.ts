@@ -6,7 +6,9 @@ export type WebHealthResponse = {
   timestamp: string;
 };
 
-export function createHealthResponse(now: Date = new Date()): WebHealthResponse {
+export function createHealthResponse(
+  now: Date = new Date(),
+): WebHealthResponse {
   return {
     status: "ok",
     service: "web",
