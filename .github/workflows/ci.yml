@@ -159,4 +159,7 @@ jobs:
       - if: failure()
         run: docker compose logs --tail=200
       - if: always()
-        run: docker compose down -v
+        run: |
+          if [ -f .env ] && [ -f apps/web/.env ] && [ -f apps/api/.env ] && [ -f services/ingestion/.env ]; then
+            docker compose down -v
+          fi
