@@ -180,6 +180,7 @@ services:
     volumes:
       - .:/workspace
       - web-node-modules:/workspace/node_modules
+      - web-app-node-modules:/workspace/apps/web/node_modules
       - web-next:/workspace/apps/web/.next
     depends_on:
       api:
@@ -204,5 +205,6 @@ volumes:
   minio-data:
   postgres-data:
   redis-data:
+  web-app-node-modules:
   web-next:
   web-node-modules:
