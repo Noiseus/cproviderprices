@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\AssignRequestId;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
@@ -12,17 +14,19 @@ use Throwable;
 
 final class HealthController extends Controller
 {
-    public function health(): JsonResponse
+    public function health(Request $request): JsonResponse
     {
         return response()->json([
             'status' => 'ok',
             'service' => 'api',
+            'request_id' => AssignRequestId::for($request),
             'timestamp' => now('UTC')->toIso8601String(),
         ]);
     }
 
-    public function readiness(): JsonResponse
+    public function readiness(Request $request): JsonResponse
     {
+        $requestId = AssignRequestId::for($request);
         $checks = [
             'database' => 'pending',
             'redis' => 'pending',
@@ -64,6 +68,7 @@ final class HealthController extends Controller
             return response()->json([
                 'status' => 'ready',
                 'service' => 'api',
+                'request_id' => $requestId,
                 'checks' => $checks,
                 'timestamp' => now('UTC')->toIso8601String(),
             ]);
@@ -73,6 +78,7 @@ final class HealthController extends Controller
             return response()->json([
                 'status' => 'not_ready',
                 'service' => 'api',
+                'request_id' => $requestId,
                 'checks' => $checks,
                 'timestamp' => now('UTC')->toIso8601String(),
             ], 503);

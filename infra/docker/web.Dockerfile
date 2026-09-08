@@ -14,7 +14,6 @@ RUN npm ci
 COPY tsconfig.base.json ./
 COPY apps/web ./apps/web
 COPY packages ./packages
-COPY infra/scripts/smoke.mjs ./infra/scripts/smoke.mjs
 
 EXPOSE 3000
 

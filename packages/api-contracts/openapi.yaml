@@ -1,46 +1,93 @@
 openapi: 3.1.0
 info:
   title: CProviderPrices API
-  version: 0.1.0
-  description: Versioned API contract for the Prompt 01 operational endpoints.
+  version: 0.2.0
+  description: Versioned API contract for operational endpoints and shared API conventions.
+security: []
 servers:
-  - url: http://localhost:8080/api/v1
-    description: Local development
+  - url: /api/v1
+    description: Versioned API base path
 paths:
   /health:
     get:
       operationId: getHealth
       summary: Report API liveness
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       responses:
         "200":
           description: API process is running.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /readiness:
     get:
       operationId: getReadiness
       summary: Verify API dependencies
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       responses:
         "200":
           description: Required dependencies are available.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReadinessResponse"
         "503":
           description: At least one required dependency is unavailable.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReadinessResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
 components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Optional caller-provided correlation ID. Invalid values are replaced server-side.
+      schema:
+        $ref: "#/components/schemas/RequestId"
+  headers:
+    RequestId:
+      description: Correlation ID assigned to the request.
+      schema:
+        $ref: "#/components/schemas/RequestId"
+  responses:
+    ErrorResponse:
+      description: Request failed using the standard API error envelope.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
+    RequestId:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+      examples: ["550e8400-e29b-41d4-a716-446655440000"]
     HealthResponse:
       type: object
       additionalProperties: false
-      required: [status, service, timestamp]
+      required: [status, service, request_id, timestamp]
       properties:
         status:
           type: string
@@ -48,13 +95,15 @@ components:
         service:
           type: string
           const: api
+        request_id:
+          $ref: "#/components/schemas/RequestId"
         timestamp:
           type: string
           format: date-time
     ReadinessResponse:
       type: object
       additionalProperties: false
-      required: [status, service, checks, timestamp]
+      required: [status, service, request_id, checks, timestamp]
       properties:
         status:
           type: string
@@ -62,6 +111,8 @@ components:
         service:
           type: string
           const: api
+        request_id:
+          $ref: "#/components/schemas/RequestId"
         checks:
           type: object
           additionalProperties: false
@@ -79,3 +130,26 @@ components:
     CheckStatus:
       type: string
       enum: [pending, ok, failed]
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ApiError"
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, request_id]
+      properties:
+        code:
+          type: string
+          pattern: "^[a-z][a-z0-9_]*$"
+          examples: ["validation_failed"]
+        message:
+          type: string
+        request_id:
+          $ref: "#/components/schemas/RequestId"
+        details:
+          type: object
+          additionalProperties: true

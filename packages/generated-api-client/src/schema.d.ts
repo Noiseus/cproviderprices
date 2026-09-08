@@ -42,11 +42,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @example 550e8400-e29b-41d4-a716-446655440000 */
+        RequestId: string;
         HealthResponse: {
             /** @constant */
             status: "ok";
             /** @constant */
             service: "api";
+            request_id: components["schemas"]["RequestId"];
             /** Format: date-time */
             timestamp: string;
         };
@@ -55,6 +58,7 @@ export interface components {
             status: "ready" | "not_ready";
             /** @constant */
             service: "api";
+            request_id: components["schemas"]["RequestId"];
             checks: {
                 database: components["schemas"]["CheckStatus"];
                 redis: components["schemas"]["CheckStatus"];
@@ -65,11 +69,40 @@ export interface components {
         };
         /** @enum {string} */
         CheckStatus: "pending" | "ok" | "failed";
+        ErrorEnvelope: {
+            error: components["schemas"]["ApiError"];
+        };
+        ApiError: {
+            /** @example validation_failed */
+            code: string;
+            message: string;
+            request_id: components["schemas"]["RequestId"];
+            details?: {
+                [key: string]: unknown;
+            };
+        };
     };
-    responses: never;
-    parameters: never;
+    responses: {
+        /** @description Request failed using the standard API error envelope. */
+        ErrorResponse: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+    };
+    parameters: {
+        /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+        RequestId: components["schemas"]["RequestId"];
+    };
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description Correlation ID assigned to the request. */
+        RequestId: components["schemas"]["RequestId"];
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;
@@ -77,7 +110,10 @@ export interface operations {
     getHealth: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -86,18 +122,23 @@ export interface operations {
             /** @description API process is running. */
             200: {
                 headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
             };
+            default: components["responses"]["ErrorResponse"];
         };
     };
     getReadiness: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -106,6 +147,7 @@ export interface operations {
             /** @description Required dependencies are available. */
             200: {
                 headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -115,12 +157,14 @@ export interface operations {
             /** @description At least one required dependency is unavailable. */
             503: {
                 headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ReadinessResponse"];
                 };
             };
+            default: components["responses"]["ErrorResponse"];
         };
     };
 }

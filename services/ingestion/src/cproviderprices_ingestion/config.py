@@ -17,9 +17,7 @@ class Settings:
         allowed_environments = {"local", "test", "staging", "production"}
 
         if environment not in allowed_environments:
-            raise RuntimeError(
-                "INGESTION_ENV must be one of: local, test, staging, production."
-            )
+            raise RuntimeError("INGESTION_ENV must be one of: local, test, staging, production.")
         if not service_name:
             raise RuntimeError("INGESTION_SERVICE_NAME is required.")
 
