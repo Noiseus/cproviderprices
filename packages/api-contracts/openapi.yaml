@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: CProviderPrices API
-  version: 0.2.0
-  description: Versioned API contract for operational endpoints and shared API conventions.
+  version: 0.5.0
+  description: Versioned API contract for operational, invite-only authentication, and tenant-context endpoints.
 security: []
 servers:
   - url: /api/v1
@@ -53,7 +53,358 @@ paths:
                 $ref: "#/components/schemas/ReadinessResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /auth/csrf-cookie:
+    get:
+      operationId: initializeCsrfCookie
+      summary: Initialize the browser session and readable CSRF cookie
+      responses:
+        "200":
+          description: CSRF state initialized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /auth/login:
+    post:
+      operationId: login
+      summary: Start an invite-only browser session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/session:
+    get:
+      operationId: getCurrentSession
+      summary: Get the authenticated user and authorized organizations
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Current authenticated session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: logout
+      summary: Invalidate the current browser session
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Session invalidated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/forgot-password:
+    post:
+      operationId: requestPasswordReset
+      summary: Request reset instructions without disclosing account existence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailRequest"
+      responses:
+        "200":
+          description: Generic reset-request acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      summary: Reset a password using a valid reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Password reset.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/invitations/{token}:
+    parameters:
+      - $ref: "#/components/parameters/InvitationToken"
+    get:
+      operationId: getInvitation
+      summary: Inspect an invitation's authoritative public acceptance context
+      responses:
+        "200":
+          description: Active invitation context.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      summary: Atomically activate an invited account and membership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptInvitationRequest"
+      responses:
+        "200":
+          description: Invitation accepted and browser session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DestinationResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/email/verification-notification:
+    post:
+      operationId: sendEmailVerification
+      summary: Send a verification link when the authenticated email is unverified
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Generic verification notification acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /auth/verify-email/{id}/{hash}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: hash
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: expires
+        in: query
+        required: true
+        schema:
+          type: integer
+      - name: signature
+        in: query
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: verifyEmail
+      summary: Verify the authenticated user's email with a signed link
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Email verified.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/context:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      operationId: getOrganizationContext
+      summary: Resolve the active authenticated tenant context
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Server-authorized active tenant context.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationContextResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/status:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      operationId: getOrganizationStatus
+      summary: Read limited lifecycle status for an authorized organization
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Limited organization lifecycle status, including suspended tenants.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationStatusResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/switch:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      operationId: switchOrganization
+      summary: Select another active organization membership
+      security:
+        - cookieSession: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                intended_destination:
+                  type: string
+      responses:
+        "200":
+          description: Organization context selected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DestinationResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/restaurant-locations/{restaurantLocation}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RestaurantLocationId"
+    get:
+      operationId: getRestaurantLocation
+      summary: Get a restaurant location through its authoritative organization
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Tenant-scoped restaurant location.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantLocationResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    patch:
+      operationId: updateRestaurantLocation
+      summary: Update an owner-authorized restaurant location
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRestaurantLocationRequest"
+      responses:
+        "200":
+          description: Restaurant location updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantLocationResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: deleteRestaurantLocation
+      summary: Delete an owner-authorized restaurant location
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Restaurant location deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/memberships/{membership}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/MembershipId"
+    patch:
+      operationId: updateOrganizationMembership
+      summary: Change an owner-authorized organization membership role
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role:
+                  $ref: "#/components/schemas/OrganizationRole"
+      responses:
+        "200":
+          description: Organization membership role updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /platform/context:
+    get:
+      operationId: getPlatformContext
+      summary: Enter the explicit audited platform-administration scope
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Explicit platform scope established for this request.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [scope]
+                properties:
+                  scope:
+                    type: string
+                    const: platform
+        default:
+          $ref: "#/components/responses/ErrorResponse"
 components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: cproviderprices_session
+      description: HttpOnly Laravel browser session. State-changing requests also require the X-XSRF-TOKEN header.
   parameters:
     RequestId:
       name: X-Request-ID
@@ -62,6 +413,36 @@ components:
       description: Optional caller-provided correlation ID. Invalid values are replaced server-side.
       schema:
         $ref: "#/components/schemas/RequestId"
+    OrganizationId:
+      name: organization
+      in: path
+      required: true
+      description: Route-authoritative organization UUID, still validated against authenticated membership.
+      schema:
+        type: string
+        format: uuid
+    RestaurantLocationId:
+      name: restaurantLocation
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MembershipId:
+      name: membership
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationToken:
+      name: token
+      in: path
+      required: true
+      description: One-time invitation bearer token; only its keyed digest is persisted.
+      schema:
+        type: string
+        minLength: 32
   headers:
     RequestId:
       description: Correlation ID assigned to the request.
@@ -153,3 +534,274 @@ components:
         details:
           type: object
           additionalProperties: true
+    MessageResponse:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+    DestinationResponse:
+      type: object
+      additionalProperties: false
+      required: [destination]
+      properties:
+        message:
+          type: string
+        destination:
+          type: string
+          pattern: "^/"
+    EmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        intended_destination:
+          type: string
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [email, token, password, password_confirmation]
+      properties:
+        email:
+          type: string
+          format: email
+        token:
+          type: string
+        password:
+          type: string
+          format: password
+        password_confirmation:
+          type: string
+          format: password
+    AcceptInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [token, name, password, password_confirmation]
+      properties:
+        token:
+          type: string
+          minLength: 32
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        password_confirmation:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [session, destination]
+      properties:
+        session:
+          $ref: "#/components/schemas/Session"
+        destination:
+          type: string
+          pattern: "^/"
+    SessionResponse:
+      type: object
+      additionalProperties: false
+      required: [session]
+      properties:
+        session:
+          $ref: "#/components/schemas/Session"
+    Session:
+      type: object
+      additionalProperties: false
+      required: [user, organizations]
+      properties:
+        user:
+          $ref: "#/components/schemas/SessionUser"
+        organizations:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionOrganization"
+    SessionUser:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, email_verified, platform_role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        platform_role:
+          type: [string, "null"]
+          enum: [platform_admin, null]
+    SessionOrganization:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug, status, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrganizationStatus"
+        role:
+          $ref: "#/components/schemas/OrganizationRole"
+    InvitationResponse:
+      type: object
+      additionalProperties: false
+      required: [invitation]
+      properties:
+        invitation:
+          type: object
+          additionalProperties: false
+          required: [intended_email, intended_role, expires_at, organization]
+          properties:
+            intended_email:
+              type: string
+              format: email
+            intended_role:
+              $ref: "#/components/schemas/OrganizationRole"
+            expires_at:
+              type: string
+              format: date-time
+            organization:
+              $ref: "#/components/schemas/OrganizationSummary"
+    OrganizationSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+    OrganizationRole:
+      type: string
+      enum: [organization_owner, buyer, viewer]
+    OrganizationStatus:
+      type: string
+      enum: [active, suspended, closed]
+    MembershipStatus:
+      type: string
+      enum: [invited, active, suspended, left]
+    OrganizationContextResponse:
+      type: object
+      additionalProperties: false
+      required: [organization_context]
+      properties:
+        organization_context:
+          type: object
+          additionalProperties: false
+          required: [organization, membership]
+          properties:
+            organization:
+              allOf:
+                - $ref: "#/components/schemas/OrganizationSummary"
+                - type: object
+                  required: [status]
+                  properties:
+                    status:
+                      $ref: "#/components/schemas/OrganizationStatus"
+            membership:
+              $ref: "#/components/schemas/Membership"
+    OrganizationStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [organization_status]
+      properties:
+        organization_status:
+          type: object
+          additionalProperties: false
+          required: [name, slug, status, normal_access_available]
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            status:
+              $ref: "#/components/schemas/OrganizationStatus"
+            normal_access_available:
+              type: boolean
+    Membership:
+      type: object
+      additionalProperties: false
+      required: [id, role, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/OrganizationRole"
+        status:
+          $ref: "#/components/schemas/MembershipStatus"
+    MembershipResponse:
+      type: object
+      additionalProperties: false
+      required: [membership]
+      properties:
+        membership:
+          $ref: "#/components/schemas/Membership"
+    RestaurantLocationResponse:
+      type: object
+      additionalProperties: false
+      required: [restaurant_location]
+      properties:
+        restaurant_location:
+          $ref: "#/components/schemas/RestaurantLocation"
+    RestaurantLocation:
+      type: object
+      additionalProperties: false
+      required: [id, organization_id, name, code, status, timezone]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        timezone:
+          type: string
+    UpdateRestaurantLocationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        timezone:
+          type: string

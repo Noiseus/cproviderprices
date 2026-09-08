@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/** @property OrganizationStatus $status */
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */

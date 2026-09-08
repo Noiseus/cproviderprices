@@ -176,6 +176,7 @@ jobs:
       - run: docker compose up -d --wait
       - run: docker compose exec api php artisan migrate --force
       - run: docker compose exec api php artisan db:seed --force
+      - run: docker compose exec -e APP_ENV=testing api php artisan app:prepare-auth-e2e
       - run: docker compose exec -e WEB_HEALTH_URL=http://localhost:3000/api/health -e API_HEALTH_URL=http://api:8080/api/v1/health -e API_READINESS_URL=http://api:8080/api/v1/readiness -e INGESTION_HEALTH_URL=http://ingestion:8001/health -e MAILPIT_URL=http://mailpit:8025/ web npm run smoke
       - if: failure()
         run: docker compose logs --tail=200

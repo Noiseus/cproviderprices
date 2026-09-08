@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\Role;
+use App\Enums\UserStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -22,6 +23,8 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'platform_role' => null,
+            'status' => UserStatus::Active,
+            'auth_version' => 1,
             'remember_token' => Str::random(10),
         ];
     }
@@ -29,5 +32,10 @@ class UserFactory extends Factory
     public function platformAdmin(): static
     {
         return $this->state(fn (): array => ['platform_role' => Role::PlatformAdmin]);
+    }
+
+    public function unverified(): static
+    {
+        return $this->state(fn (): array => ['email_verified_at' => null]);
     }
 }

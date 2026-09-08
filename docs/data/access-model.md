@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This access model establishes the private, multi-tenant account foundation for CProviderPrices. It represents identities, tenant organizations, organization-scoped access, invitations, restaurant locations, provider-neutral commercial plans and subscriptions, and immutable audit history. It deliberately does not add authentication flows, authorization policies, supplier data, product data, or pricing data.
+This access model establishes the private, multi-tenant account foundation for CProviderPrices. It represents identities, tenant organizations, organization-scoped access, invitations, restaurant locations, provider-neutral commercial plans and subscriptions, and immutable audit history. Prompt 03 established these entities without behavior; Prompts 04 and 05 now add invite-only authentication, tenant context, and authorization policies while supplier, product, and pricing data remain deferred.
 
 ## Entities and responsibilities
 
-- `users` holds a person's application identity. A nullable `platform_role` may contain only `platform_admin`; platform privilege is not an organization membership role.
+- `users` holds a person's application identity, active/suspended lifecycle, and session invalidation version. A nullable `platform_role` may contain only `platform_admin`; platform privilege is not an organization membership role.
 - `organizations` is the tenant/business account and owns an explicit lifecycle status.
 - `organization_memberships` is the sole user-to-organization access relationship. It records one current membership lifecycle per user and organization.
 - `restaurant_locations` represents an organization's restaurant or business locations.
@@ -90,4 +90,4 @@ Audit rows record an event name, UTC occurrence time, optional organization and 
 
 ## Tenant isolation considerations
 
-Customer-owned records have an explicit organization owner or an unambiguous ownership chain. Membership is the authorization join and must be checked server-side for every tenant operation. Platform administrators are represented separately from organization memberships and require explicit privileged paths and auditing. No model exposes a cross-tenant convenience relationship, and audit entries carry organization context where applicable. Policies and request-level authorization are deferred until the prompt that introduces protected application behavior.
+Customer-owned records have an explicit organization owner or an unambiguous ownership chain. Membership is the authorization join and must be checked server-side for every tenant operation. Platform administrators are represented separately from organization memberships and require explicit privileged paths and auditing. No model exposes a cross-tenant convenience relationship, and audit entries carry organization context where applicable. Policies and request-level authorization use the pattern documented in `docs/security/tenant-authorization.md`.
