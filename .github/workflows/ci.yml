@@ -86,6 +86,27 @@ jobs:
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: cproviderprices_test
+          POSTGRES_USER: cproviderprices
+          POSTGRES_PASSWORD: test-postgres-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cproviderprices -d cproviderprices_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: cproviderprices_test
+      DB_USERNAME: cproviderprices
+      DB_PASSWORD: test-postgres-password
     defaults:
       run:
         working-directory: apps/api
