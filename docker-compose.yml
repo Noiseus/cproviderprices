@@ -175,6 +175,10 @@ services:
       dockerfile: infra/docker/web.Dockerfile
     env_file:
       - apps/web/.env
+    environment:
+      API_INTERNAL_URL: http://api:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${WEB_PORT:-3000}:3000"
     volumes:

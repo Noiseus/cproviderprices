@@ -11,6 +11,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Domain seed data is intentionally deferred to a later prompt.
+        $this->call(PlanSeeder::class);
     }
 }

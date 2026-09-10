@@ -270,6 +270,23 @@ paths:
                 $ref: "#/components/schemas/OrganizationStatusResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/subscription:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      operationId: getOrganizationSubscriptionStatus
+      summary: Read the effective plan, subscription lifecycle, capabilities, limits, and usage
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Provider-neutral subscription and entitlement status for the authorized tenant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionStatusResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /organizations/{organization}/switch:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -348,6 +365,33 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/restaurant-locations:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      operationId: createRestaurantLocation
+      summary: Create a tenant location when role authorization and the plan limit allow it
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRestaurantLocationRequest"
+      responses:
+        "201":
+          description: Restaurant location created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantLocationResponse"
+        "403":
+          $ref: "#/components/responses/FeatureDisabled"
+        "409":
+          $ref: "#/components/responses/LimitReached"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /organizations/{organization}/memberships/{membership}:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -396,6 +440,30 @@ paths:
                   scope:
                     type: string
                     const: platform
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+  /platform/organizations/{organization}/subscription:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    patch:
+      operationId: updatePlatformOrganizationSubscription
+      summary: Perform an audited manual provider-neutral subscription transition
+      description: Explicit platform-admin scope only. No payment-provider operation is performed.
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformSubscriptionActionRequest"
+      responses:
+        "200":
+          description: Subscription state updated and entitlement authorization changed immediately.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionStatusResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
 components:
@@ -458,6 +526,44 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
+    FeatureDisabled:
+      description: Role authorization succeeded, but the effective plan does not enable the capability. Uses HTTP 403.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            disabled:
+              value:
+                error:
+                  code: feature_disabled
+                  message: This feature is not available for the current plan.
+                  request_id: 550e8400-e29b-41d4-a716-446655440000
+                  details:
+                    entitlement_key: automatic_sync_enabled
+    LimitReached:
+      description: Role authorization succeeded, but creating another resource conflicts with the effective numeric limit. Uses HTTP 409.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            reached:
+              value:
+                error:
+                  code: limit_reached
+                  message: The current plan limit has been reached.
+                  request_id: 550e8400-e29b-41d4-a716-446655440000
+                  details:
+                    entitlement_key: max_locations
+                    limit: 1
+                    current_usage: 1
   schemas:
     RequestId:
       type: string
@@ -710,6 +816,19 @@ components:
     MembershipStatus:
       type: string
       enum: [invited, active, suspended, left]
+    SubscriptionStatus:
+      type: string
+      enum: [trialing, active, past_due, suspended, canceled, expired]
+    EntitlementKey:
+      type: string
+      enum:
+        - max_locations
+        - max_users
+        - max_supplier_accounts
+        - manual_imports_enabled
+        - automatic_sync_enabled
+        - price_history_enabled
+        - basket_optimizer_enabled
     OrganizationContextResponse:
       type: object
       additionalProperties: false
@@ -794,6 +913,29 @@ components:
           enum: [active, inactive]
         timezone:
           type: string
+    CreateRestaurantLocationRequest:
+      type: object
+      additionalProperties: false
+      required: [name, code, timezone]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        timezone:
+          type: string
+        address_line_1:
+          type: [string, "null"]
+        address_line_2:
+          type: [string, "null"]
+        city:
+          type: [string, "null"]
+        region:
+          type: [string, "null"]
+        postal_code:
+          type: [string, "null"]
+        country_code:
+          type: [string, "null"]
     UpdateRestaurantLocationRequest:
       type: object
       additionalProperties: false
@@ -805,3 +947,90 @@ components:
           enum: [active, inactive]
         timezone:
           type: string
+    SubscriptionStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [subscription_status]
+      properties:
+        subscription_status:
+          $ref: "#/components/schemas/SubscriptionStatusDetail"
+    SubscriptionStatusDetail:
+      type: object
+      additionalProperties: false
+      required: [plan, subscription, capabilities, limits]
+      properties:
+        plan:
+          oneOf:
+            - $ref: "#/components/schemas/PlanSummary"
+            - type: "null"
+        subscription:
+          oneOf:
+            - $ref: "#/components/schemas/SubscriptionSummary"
+            - type: "null"
+        capabilities:
+          type: object
+          propertyNames:
+            $ref: "#/components/schemas/EntitlementKey"
+          additionalProperties:
+            type: boolean
+        limits:
+          type: object
+          propertyNames:
+            $ref: "#/components/schemas/EntitlementKey"
+          additionalProperties:
+            $ref: "#/components/schemas/EntitlementLimit"
+    PlanSummary:
+      type: object
+      additionalProperties: false
+      required: [code, name]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    SubscriptionSummary:
+      type: object
+      additionalProperties: false
+      required: [status, recorded_status, starts_at, trial_ends_at, current_period_ends_at, access_available]
+      properties:
+        status:
+          $ref: "#/components/schemas/SubscriptionStatus"
+        recorded_status:
+          $ref: "#/components/schemas/SubscriptionStatus"
+        starts_at:
+          type: string
+          format: date-time
+        trial_ends_at:
+          type: [string, "null"]
+          format: date-time
+        current_period_ends_at:
+          type: [string, "null"]
+          format: date-time
+        access_available:
+          type: boolean
+    EntitlementLimit:
+      type: object
+      additionalProperties: false
+      required: [limit, current_usage, reached]
+      properties:
+        limit:
+          type: [integer, "null"]
+          minimum: 0
+        current_usage:
+          type: [integer, "null"]
+          minimum: 0
+        reached:
+          type: [boolean, "null"]
+    PlatformSubscriptionActionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [start_trial, extend_trial, activate, mark_past_due, suspend, cancel, restore]
+        plan_code:
+          type: string
+        trial_ends_at:
+          type: string
+          format: date-time

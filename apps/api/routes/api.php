@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\OrganizationContextController;
 use App\Http\Controllers\Api\V1\OrganizationMembershipController;
 use App\Http\Controllers\Api\V1\PlatformContextController;
+use App\Http\Controllers\Api\V1\PlatformSubscriptionController;
 use App\Http\Controllers\Api\V1\RestaurantLocationController;
+use App\Http\Controllers\Api\V1\SubscriptionStatusController;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Route;
 
@@ -37,10 +39,12 @@ Route::prefix('v1')->group(function (): void {
 
             Route::prefix('organizations/{organization}')->scopeBindings()->group(function (): void {
                 Route::get('/status', [OrganizationContextController::class, 'status'])->middleware('tenant:true');
+                Route::get('/subscription', [SubscriptionStatusController::class, 'show'])->middleware('tenant:true');
                 Route::middleware('tenant')->group(function (): void {
                     Route::get('/context', [OrganizationContextController::class, 'show']);
                     Route::post('/switch', [OrganizationContextController::class, 'switch']);
                     Route::get('/restaurant-locations/{restaurantLocation}', [RestaurantLocationController::class, 'show']);
+                    Route::post('/restaurant-locations', [RestaurantLocationController::class, 'store']);
                     Route::patch('/restaurant-locations/{restaurantLocation}', [RestaurantLocationController::class, 'update']);
                     Route::delete('/restaurant-locations/{restaurantLocation}', [RestaurantLocationController::class, 'destroy']);
                     Route::patch('/memberships/{membership}', [OrganizationMembershipController::class, 'update']);
@@ -49,6 +53,8 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('/platform/context', [PlatformContextController::class, 'show'])
                 ->middleware('platform.scope')->name('platform.context');
+            Route::patch('/platform/organizations/{organization}/subscription', [PlatformSubscriptionController::class, 'update'])
+                ->middleware('platform.scope')->name('platform.organizations.subscription.update');
         });
     });
 });

@@ -10,6 +10,7 @@ COPY packages/design-tokens/package.json packages/design-tokens/package.json
 COPY packages/domain-types/package.json packages/domain-types/package.json
 COPY packages/i18n/package.json packages/i18n/package.json
 RUN npm ci
+RUN npx playwright install --with-deps chromium
 
 COPY tsconfig.base.json ./
 COPY apps/web ./apps/web

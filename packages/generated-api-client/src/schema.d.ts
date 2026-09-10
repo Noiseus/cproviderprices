@@ -241,6 +241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{organization}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Read the effective plan, subscription lifecycle, capabilities, limits, and usage */
+        get: operations["getOrganizationSubscriptionStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{organization}/switch": {
         parameters: {
             query?: never;
@@ -284,6 +304,26 @@ export interface paths {
         patch: operations["updateRestaurantLocation"];
         trace?: never;
     };
+    "/organizations/{organization}/restaurant-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a tenant location when role authorization and the plan limit allow it */
+        post: operations["createRestaurantLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{organization}/memberships/{membership}": {
         parameters: {
             query?: never;
@@ -320,6 +360,29 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/platform/organizations/{organization}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Perform an audited manual provider-neutral subscription transition
+         * @description Explicit platform-admin scope only. No payment-provider operation is performed.
+         */
+        patch: operations["updatePlatformOrganizationSubscription"];
         trace?: never;
     };
 }
@@ -453,6 +516,10 @@ export interface components {
         OrganizationStatus: "active" | "suspended" | "closed";
         /** @enum {string} */
         MembershipStatus: "invited" | "active" | "suspended" | "left";
+        /** @enum {string} */
+        SubscriptionStatus: "trialing" | "active" | "past_due" | "suspended" | "canceled" | "expired";
+        /** @enum {string} */
+        EntitlementKey: "max_locations" | "max_users" | "max_supplier_accounts" | "manual_imports_enabled" | "automatic_sync_enabled" | "price_history_enabled" | "basket_optimizer_enabled";
         OrganizationContextResponse: {
             organization_context: {
                 organization: components["schemas"]["OrganizationSummary"] & {
@@ -492,16 +559,87 @@ export interface components {
             status: "active" | "inactive";
             timezone: string;
         };
+        CreateRestaurantLocationRequest: {
+            name: string;
+            code: string;
+            timezone: string;
+            address_line_1?: string | null;
+            address_line_2?: string | null;
+            city?: string | null;
+            region?: string | null;
+            postal_code?: string | null;
+            country_code?: string | null;
+        };
         UpdateRestaurantLocationRequest: {
             name?: string;
             /** @enum {string} */
             status?: "active" | "inactive";
             timezone?: string;
         };
+        SubscriptionStatusResponse: {
+            subscription_status: components["schemas"]["SubscriptionStatusDetail"];
+        };
+        SubscriptionStatusDetail: {
+            plan: components["schemas"]["PlanSummary"] | null;
+            subscription: components["schemas"]["SubscriptionSummary"] | null;
+            capabilities: {
+                [key: string]: boolean;
+            };
+            limits: {
+                [key: string]: components["schemas"]["EntitlementLimit"];
+            };
+        };
+        PlanSummary: {
+            code: string;
+            name: string;
+        };
+        SubscriptionSummary: {
+            status: components["schemas"]["SubscriptionStatus"];
+            recorded_status: components["schemas"]["SubscriptionStatus"];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            trial_ends_at: string | null;
+            /** Format: date-time */
+            current_period_ends_at: string | null;
+            access_available: boolean;
+        };
+        EntitlementLimit: {
+            limit: number | null;
+            current_usage: number | null;
+            reached: boolean | null;
+        };
+        PlatformSubscriptionActionRequest: {
+            /** @enum {string} */
+            action: "start_trial" | "extend_trial" | "activate" | "mark_past_due" | "suspend" | "cancel" | "restore";
+            plan_code?: string;
+            /** Format: date-time */
+            trial_ends_at?: string;
+        };
     };
     responses: {
         /** @description Request failed using the standard API error envelope. */
         ErrorResponse: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description Role authorization succeeded, but the effective plan does not enable the capability. Uses HTTP 403. */
+        FeatureDisabled: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description Role authorization succeeded, but creating another resource conflicts with the effective numeric limit. Uses HTTP 409. */
+        LimitReached: {
             headers: {
                 "X-Request-ID": components["headers"]["RequestId"];
                 [name: string]: unknown;
@@ -872,6 +1010,30 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
+    getOrganizationSubscriptionStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider-neutral subscription and entitlement status for the authorized tenant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionStatusResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
     switchOrganization: {
         parameters: {
             query?: never;
@@ -981,6 +1143,36 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
+    createRestaurantLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRestaurantLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Restaurant location created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestaurantLocationResponse"];
+                };
+            };
+            403: components["responses"]["FeatureDisabled"];
+            409: components["responses"]["LimitReached"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
     updateOrganizationMembership: {
         parameters: {
             query?: never;
@@ -1031,6 +1223,34 @@ export interface operations {
                         /** @constant */
                         scope: "platform";
                     };
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updatePlatformOrganizationSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformSubscriptionActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subscription state updated and entitlement authorization changed immediately. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionStatusResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

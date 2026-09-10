@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This access model establishes the private, multi-tenant account foundation for CProviderPrices. It represents identities, tenant organizations, organization-scoped access, invitations, restaurant locations, provider-neutral commercial plans and subscriptions, and immutable audit history. Prompt 03 established these entities without behavior; Prompts 04 and 05 now add invite-only authentication, tenant context, and authorization policies while supplier, product, and pricing data remain deferred.
+This access model establishes the private, multi-tenant account foundation for CProviderPrices. It represents identities, tenant organizations, organization-scoped access, invitations, restaurant locations, provider-neutral commercial plans and subscriptions, and immutable audit history. Prompt 03 established these entities; Prompts 04 and 05 added invite-only authentication, tenant context, and authorization policies; Prompt 06 adds provider-neutral entitlement and subscription lifecycle enforcement while supplier, product, and pricing data remain deferred.
 
 ## Entities and responsibilities
 
@@ -64,7 +64,7 @@ Plaintext invitation tokens are never persisted. The stored lookup value is an H
 
 ## Organization and subscription lifecycles
 
-Organization lifecycle values are `active`, `suspended`, and `closed`. Subscription lifecycle values are `trialing`, `active`, `past_due`, `paused`, `canceled`, and `expired`. They are independent columns on independent entities: changing or ending a subscription never changes, deletes, enables, or disables the organization. Multiple subscriptions may be retained as history; callers must select the applicable record explicitly rather than relying on an ambiguous convenience relationship.
+Organization lifecycle values are `active`, `suspended`, and `closed`. Subscription lifecycle values are `trialing`, `active`, `past_due`, `suspended`, `canceled`, and `expired`. They are independent columns on independent entities: changing or ending a subscription never changes or deletes the organization. Multiple subscriptions may be retained as history; the entitlement service selects the latest by start and creation time instead of relying on an ambiguous convenience relationship. An elapsed trial is treated as effectively expired from its explicit timestamp without coupling that transition to organization lifecycle.
 
 ## Identifier and time strategy
 

@@ -36,3 +36,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .form-message { padding: 0.75rem; border-radius: 0.35rem; background: #e7f4ec; }
 .form-message.error { background: #fce9e7; color: #7a2119; }
 .switcher { display: grid; gap: 0.35rem; max-width: 22rem; margin-block: 1.5rem; }
+.status-card, .entitlement-notice { margin-block: 1.5rem; padding: 1rem; border: 1px solid #c7d4cb; border-radius: 0.5rem; background: white; }
+.entitlement-notice h2, .status-card h2 { margin-top: 0; }
+.entitlement-notice.limit, .entitlement-notice.suspended { border-color: #c97b70; background: #fff6f4; }
+.entitlement-notice.unavailable { border-color: #d5ad63; background: #fffaf0; }
+.capability-list { display: grid; gap: 0.6rem; padding: 0; list-style: none; }
+.capability-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; padding: 0.75rem; border: 1px solid #d7e1da; border-radius: 0.35rem; background: white; }
+.limit-text { flex-basis: 100%; color: #8a2c22; }
+dl div { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr; gap: 1rem; }
+dt { font-weight: 700; }
+dd { margin: 0; }

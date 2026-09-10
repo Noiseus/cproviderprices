@@ -8,6 +8,8 @@ Normal tenant routes deny suspended organizations with `organization_suspended`.
 
 Tenant-owned direct identifiers must be queried through the context organization relationship, as `RestaurantLocationController` does. Future code should start from `$context->organization` or an equivalently constrained query and must not expose an unscoped tenant-record lookup as its default service/repository method. A body or query `organization_id`, localStorage value, slug, role, or membership selection is never authorization evidence.
 
+Entitlement-gated mutations add subscription and entitlement checks only after tenant membership and role authorization. The server derives plan, limit, and current usage from tenant-scoped database records. A denied role must not receive plan or usage details, and frontend visibility never substitutes for this server sequence.
+
 ## Policies and roles
 
 Laravel policies cover organizations, memberships, invitations, and restaurant locations. Viewer access is read-only. Buyers receive normal tenant read access but cannot change owner-level membership or organization administration. Organization owners can administer their organization but do not receive platform privilege.

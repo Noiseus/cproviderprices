@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\EntitlementKey;
 use App\Enums\InvitationStatus;
 use App\Enums\MembershipStatus;
 use App\Enums\OrganizationStatus;
@@ -10,10 +11,16 @@ use App\Enums\UserStatus;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationMembership;
+use App\Models\Plan;
+use App\Models\PlanEntitlement;
+use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
@@ -30,6 +37,7 @@ final class AuthenticationTest extends TestCase
         $token = Str::random(64);
         $password = Str::random(24);
         $organization = Organization::factory()->create(['slug' => 'intended-restaurant']);
+        $this->enableMembershipActivation($organization);
         $otherOrganization = Organization::factory()->create();
         $invitation = Invitation::factory()->for($organization)->withPlaintextToken($token)->create([
             'intended_email' => 'invited-owner@example.test',
@@ -58,13 +66,18 @@ final class AuthenticationTest extends TestCase
         $this->assertDatabaseMissing('organization_memberships', ['organization_id' => $otherOrganization->id]);
         $this->assertSame(InvitationStatus::Accepted, $invitation->refresh()->status);
         $response->assertCookieNotExpired((string) config('session.cookie'));
+        $this->getJson('/api/v1/auth/session')
+            ->assertOk()
+            ->assertJsonPath('session.user.id', $user->id)
+            ->assertJsonPath('session.organizations.0.id', $organization->id);
     }
 
     public function test_reused_invitation_token_is_rejected(): void
     {
         $token = Str::random(64);
         $password = Str::random(24);
-        Invitation::factory()->withPlaintextToken($token)->create();
+        $invitation = Invitation::factory()->withPlaintextToken($token)->create();
+        $this->enableMembershipActivation($invitation->organization);
         $payload = ['token' => $token, 'name' => 'New User', 'password' => $password, 'password_confirmation' => $password];
 
         $this->postJson('/api/v1/auth/invitations/accept', $payload)->assertOk();
@@ -213,9 +226,33 @@ final class AuthenticationTest extends TestCase
 
     public function test_cookie_authenticated_state_changes_require_csrf_outside_testing(): void
     {
-        config(['app.env' => 'production']);
+        $route = app('router')->getRoutes()->match(Request::create('/api/v1/auth/login', 'POST'));
+        $this->assertContains('web', $route->gatherMiddleware());
 
-        $this->postJson('/api/v1/auth/login', ['email' => 'person@example.test', 'password' => Str::random(24)])
-            ->assertStatus(419);
+        $request = Request::create('/api/v1/auth/login', 'POST');
+        $session = app('session')->driver('array');
+        $session->start();
+        $session->regenerateToken();
+        $request->setLaravelSession($session);
+        $middleware = new class(app(), app('encrypter')) extends VerifyCsrfToken
+        {
+            protected function runningUnitTests(): bool
+            {
+                return false;
+            }
+        };
+
+        $this->expectException(TokenMismatchException::class);
+        $middleware->handle($request, fn () => response()->noContent());
+    }
+
+    private function enableMembershipActivation(Organization $organization): void
+    {
+        $plan = Plan::factory()->create();
+        PlanEntitlement::factory()->for($plan)->create([
+            'key' => EntitlementKey::MaxUsers,
+            'value' => ['limit' => 10],
+        ]);
+        Subscription::factory()->for($organization)->for($plan)->create();
     }
 }

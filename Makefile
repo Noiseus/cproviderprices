@@ -32,6 +32,7 @@ contract:
 e2e:
 	docker compose exec -e APP_ENV=testing api php artisan app:prepare-auth-e2e
 	docker compose exec \
+		-e PLAYWRIGHT_DOCKER=true \
 		-e WEB_URL=http://localhost:3000 \
 		-e WEB_HEALTH_URL=http://localhost:3000/api/health \
 		-e API_HEALTH_URL=http://api:8080/api/v1/health \

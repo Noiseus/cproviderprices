@@ -43,6 +43,16 @@ test("login and logout", async ({ page }) => {
   await page.getByLabel("Password").fill(fixture.login.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(`${webUrl}/o/${fixture.login.slug}/dashboard`);
+  await page
+    .getByRole("link", { name: "View subscription and capabilities" })
+    .click();
+
+  await expect(page.getByRole("heading", { name: "Plan" })).toBeVisible();
+  await expect(page.getByText("E2E Plan")).toBeVisible();
+  await expect(page.getByText("Manual imports")).toBeVisible();
+  await expect(
+    page.getByText("Online checkout is not available."),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(`${webUrl}/login`);
 });

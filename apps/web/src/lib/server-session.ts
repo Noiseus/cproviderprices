@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { apiBaseUrl } from "./api";
+import { apiServerBaseUrl } from "./server-api";
 
 export type OrganizationSession = {
   id: string;
@@ -24,7 +24,7 @@ export type SessionPayload = {
 
 export async function currentSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
-  const response = await fetch(`${apiBaseUrl}/api/v1/auth/session`, {
+  const response = await fetch(`${apiServerBaseUrl}/api/v1/auth/session`, {
     headers: { Accept: "application/json", Cookie: cookieStore.toString() },
     cache: "no-store",
   });

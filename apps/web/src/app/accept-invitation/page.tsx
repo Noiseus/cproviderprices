@@ -1,5 +1,6 @@
 import { AuthShell } from "@/components/AuthShell";
-import { apiBaseUrl, type ApiErrorBody } from "@/lib/api";
+import type { ApiErrorBody } from "@/lib/api";
+import { apiServerBaseUrl } from "@/lib/server-api";
 import { InvitationForm } from "./InvitationForm";
 
 type InvitationResponse = {
@@ -34,7 +35,7 @@ export default async function AcceptInvitationPage({
     );
 
   const response = await fetch(
-    `${apiBaseUrl}/api/v1/auth/invitations/${encodeURIComponent(token)}`,
+    `${apiServerBaseUrl}/api/v1/auth/invitations/${encodeURIComponent(token)}`,
     { cache: "no-store", headers: { Accept: "application/json" } },
   );
   if (!response.ok) {

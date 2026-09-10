@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { LogoutButton } from "@/components/LogoutButton";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 import { currentSession } from "@/lib/server-session";
@@ -62,6 +63,11 @@ export default async function DashboardPage({
       <p>
         This protected placeholder confirms the organization access boundary.
         Dashboard features are intentionally deferred.
+      </p>
+      <p>
+        <Link href={`/o/${organization.slug}/subscription`}>
+          View subscription and capabilities
+        </Link>
       </p>
       <OrganizationSwitcher
         current={organization}

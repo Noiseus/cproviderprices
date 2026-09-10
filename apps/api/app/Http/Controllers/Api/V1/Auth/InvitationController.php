@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Enums\EntitlementKey;
 use App\Enums\InvitationStatus;
 use App\Enums\MembershipStatus;
 use App\Enums\OrganizationStatus;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
+use App\Models\Organization;
 use App\Models\OrganizationMembership;
 use App\Models\User;
+use App\Services\EntitlementService;
 use App\Support\ApiProblem;
 use App\Support\AuthSession;
 use App\Support\SafeDestination;
@@ -21,6 +24,8 @@ use Illuminate\Validation\Rules\Password;
 
 final class InvitationController extends Controller
 {
+    public function __construct(private readonly EntitlementService $entitlements) {}
+
     public function show(string $token): JsonResponse
     {
         $invitation = $this->find($token);
@@ -101,6 +106,9 @@ final class InvitationController extends Controller
                 throw new ApiProblem('invitation_already_used', 'This invitation has already been used.', 409);
             }
 
+            Organization::query()->whereKey($invitation->organization_id)->lockForUpdate()->firstOrFail();
+            $this->entitlements->assertWithinLimit($invitation->organization, EntitlementKey::MaxUsers);
+
             if ($membership === null) {
                 $membership = new OrganizationMembership([
                     'organization_id' => $invitation->organization_id,
@@ -124,6 +132,7 @@ final class InvitationController extends Controller
         });
 
         [$user, $organization] = $result;
+        $user->refresh();
         AuthSession::start($request, $user);
 
         return response()->json([

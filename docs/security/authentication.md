@@ -12,6 +12,8 @@ Forgot-password acknowledgements are identical for known and unknown accounts. I
 
 The API uses Laravel's `web` session guard. The session cookie is HttpOnly. Before a state-changing request, the web client requests `GET /api/v1/auth/csrf-cookie`, reads Laravel's separate `XSRF-TOKEN` cookie, and returns it in `X-XSRF-TOKEN`. Laravel's CSRF middleware remains enabled on all stateful API routes. CORS allows credentials only from explicitly configured web origins.
 
+The web application keeps browser and server-side routing explicit: `NEXT_PUBLIC_API_URL` is the browser-reachable API origin, while `API_INTERNAL_URL` may point server-rendered requests at a private service address. Docker Compose uses `http://api:8080` internally without exposing that hostname to browser code.
+
 Safe local settings are:
 
 ```dotenv

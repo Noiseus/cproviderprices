@@ -1,10 +1,14 @@
 <?php
 
+use App\Enums\EntitlementKey;
 use App\Enums\InvitationStatus;
 use App\Enums\Role;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationMembership;
+use App\Models\Plan;
+use App\Models\PlanEntitlement;
+use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -21,10 +25,25 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
     $loginUser = User::factory()->create(['password' => Hash::make($loginPassword)]);
     $loginOrganization = Organization::factory()->create();
     OrganizationMembership::factory()->for($loginUser)->for($loginOrganization)->create();
+    $plan = Plan::factory()->create(['name' => 'E2E Plan']);
+    $entitlements = [
+        EntitlementKey::MaxLocations->value => ['limit' => 2],
+        EntitlementKey::MaxUsers->value => ['limit' => 5],
+        EntitlementKey::MaxSupplierAccounts->value => ['limit' => 1],
+        EntitlementKey::ManualImportsEnabled->value => ['enabled' => true],
+        EntitlementKey::AutomaticSyncEnabled->value => ['enabled' => false],
+        EntitlementKey::PriceHistoryEnabled->value => ['enabled' => true],
+        EntitlementKey::BasketOptimizerEnabled->value => ['enabled' => false],
+    ];
+    foreach ($entitlements as $key => $value) {
+        PlanEntitlement::factory()->for($plan)->create(['key' => $key, 'value' => $value]);
+    }
+    Subscription::factory()->for($loginOrganization)->for($plan)->create();
 
     $invitationToken = Str::random(64);
     $invitationPassword = Str::password(24);
     $invitationOrganization = Organization::factory()->create();
+    Subscription::factory()->for($invitationOrganization)->for($plan)->create();
     Invitation::factory()->for($invitationOrganization)->withPlaintextToken($invitationToken)->create([
         'intended_role' => Role::OrganizationOwner,
     ]);
