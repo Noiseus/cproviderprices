@@ -24,7 +24,7 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
     $loginPassword = Str::password(24);
     $loginUser = User::factory()->create(['password' => Hash::make($loginPassword)]);
     $loginOrganization = Organization::factory()->create();
-    OrganizationMembership::factory()->for($loginUser)->for($loginOrganization)->create();
+    OrganizationMembership::factory()->for($loginUser)->for($loginOrganization)->create(['role' => Role::OrganizationOwner]);
     $plan = Plan::factory()->create(['name' => 'E2E Plan']);
     $entitlements = [
         EntitlementKey::MaxLocations->value => ['limit' => 2],
@@ -39,6 +39,29 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
         PlanEntitlement::factory()->for($plan)->create(['key' => $key, 'value' => $value]);
     }
     Subscription::factory()->for($loginOrganization)->for($plan)->create();
+
+    $switchOrganization = Organization::factory()->create();
+    OrganizationMembership::factory()->for($loginUser)->for($switchOrganization)->create(['role' => Role::OrganizationOwner]);
+    Subscription::factory()->for($switchOrganization)->for($plan)->create();
+
+    $viewerPassword = Str::password(24);
+    $viewerUser = User::factory()->create(['password' => Hash::make($viewerPassword)]);
+    $viewerOrganization = Organization::factory()->create();
+    OrganizationMembership::factory()->for($viewerUser)->for($viewerOrganization)->create(['role' => Role::Viewer]);
+    $viewerPlan = Plan::factory()->create(['name' => 'Viewer E2E Plan']);
+    foreach ($entitlements as $key => $value) {
+        PlanEntitlement::factory()->for($viewerPlan)->create([
+            'key' => $key,
+            'value' => $key === EntitlementKey::PriceHistoryEnabled->value ? ['enabled' => false] : $value,
+        ]);
+    }
+    Subscription::factory()->for($viewerOrganization)->for($viewerPlan)->create();
+
+    $suspendedPassword = Str::password(24);
+    $suspendedUser = User::factory()->create(['password' => Hash::make($suspendedPassword)]);
+    $suspendedOrganization = Organization::factory()->create(['status' => \App\Enums\OrganizationStatus::Suspended]);
+    OrganizationMembership::factory()->for($suspendedUser)->for($suspendedOrganization)->create();
+    Subscription::factory()->for($suspendedOrganization)->for($plan)->create();
 
     $invitationToken = Str::random(64);
     $invitationPassword = Str::password(24);
@@ -56,7 +79,9 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
 
     $path = storage_path('app/private/auth-e2e.json');
     file_put_contents($path, json_encode([
-        'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug],
+        'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug, 'switch_slug' => $switchOrganization->slug, 'switch_id' => $switchOrganization->id],
+        'viewer' => ['email' => $viewerUser->email, 'password' => $viewerPassword, 'slug' => $viewerOrganization->slug],
+        'suspended' => ['email' => $suspendedUser->email, 'password' => $suspendedPassword, 'slug' => $suspendedOrganization->slug, 'name' => $suspendedOrganization->name],
         'invitation' => ['token' => $invitationToken, 'password' => $invitationPassword, 'slug' => $invitationOrganization->slug],
         'expired_token' => $expiredToken,
     ], JSON_THROW_ON_ERROR));

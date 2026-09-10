@@ -7,13 +7,18 @@ export const metadata: Metadata = {
   description: "Supplier price comparison and purchasing optimization.",
 };
 
+const themeBootstrap = `(() => { try { const saved = localStorage.getItem('cproviderprices-theme'); const dark = saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches); const theme = dark ? 'dark' : 'light'; document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; } catch (_) {} })();`;
+
 type RootLayoutProps = Readonly<{
   children: ReactNode;
 }>;
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body>{children}</body>
     </html>
   );

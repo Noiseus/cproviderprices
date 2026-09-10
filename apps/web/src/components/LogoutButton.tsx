@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiRequest } from "@/lib/api";
+import { Button } from "./ui";
 
 export function LogoutButton() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   return (
-    <button
+    <Button
       type="button"
       disabled={loading}
       onClick={async () => {
@@ -22,6 +23,6 @@ export function LogoutButton() {
       }}
     >
       {loading ? "Signing out…" : "Sign out"}
-    </button>
+    </Button>
   );
 }

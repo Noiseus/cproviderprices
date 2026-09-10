@@ -1,10 +1,8 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useWorkspace } from "@/components/app-shell/AppShellContext";
 import { EntitlementNotice } from "@/components/EntitlementNotice";
-import { LogoutButton } from "@/components/LogoutButton";
-import { entitlementErrorState } from "@/lib/entitlement-state";
-import { currentSession } from "@/lib/server-session";
-import { organizationSubscription } from "@/lib/server-subscription";
+import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 
 const capabilityLabels: Record<string, string> = {
   manual_imports_enabled: "Manual imports",
@@ -12,72 +10,35 @@ const capabilityLabels: Record<string, string> = {
   price_history_enabled: "Price history",
   basket_optimizer_enabled: "Basket optimizer",
 };
-
 const limitLabels: Record<string, string> = {
   max_locations: "Restaurant locations",
   max_users: "Users",
   max_supplier_accounts: "Supplier accounts",
 };
 
-export default async function SubscriptionPage({
-  params,
-}: {
-  params: Promise<{ organizationSlug: string }>;
-}) {
-  const { organizationSlug } = await params;
-  const session = await currentSession();
-  if (!session)
-    redirect(
-      `/login?next=${encodeURIComponent(`/o/${organizationSlug}/subscription`)}`,
-    );
-
-  const organization = session.session.organizations.find(
-    (item) => item.slug === organizationSlug,
-  );
-  if (!organization || organization.status === "closed") {
+export default function SubscriptionPage() {
+  const { organization, subscription: status } = useWorkspace();
+  if (!status)
     return (
-      <main>
-        <h1>Organization unavailable</h1>
-        <p>You do not have access to this organization.</p>
-        <LogoutButton />
-      </main>
+      <EmptyState
+        title="Subscription status unavailable"
+        description="Plan information could not be loaded. The workspace remains safely restricted."
+      />
     );
-  }
-
-  const result = await organizationSubscription(organization.id);
-  if (result.error) {
-    const state = entitlementErrorState(result.error);
-    return (
-      <main>
-        <h1>Subscription status</h1>
-        <EntitlementNotice kind={state.kind} title={state.message}>
-          <p>{state.detail}</p>
-          <small>Request ID: {state.requestId}</small>
-        </EntitlementNotice>
-        <LogoutButton />
-      </main>
-    );
-  }
-
-  const status = result.data;
   const subscription = status.subscription;
-  return (
-    <main>
-      <p className="eyebrow">Subscription status</p>
-      <h1>{organization.name}</h1>
-      <p>
-        <Link href={`/o/${organization.slug}/dashboard`}>
-          Back to dashboard
-        </Link>
-      </p>
 
-      {organization.status === "suspended" && (
-        <EntitlementNotice kind="suspended" title="Organization suspended">
-          <p>
-            Normal private functionality is unavailable. Your data is preserved.
-          </p>
-        </EntitlementNotice>
-      )}
+  return (
+    <div className="route-placeholder">
+      <PageHeader
+        eyebrow="Account"
+        title="Subscription"
+        description={`Plan status and capabilities for ${organization.name}.`}
+        actions={
+          <Badge tone={subscription?.access_available ? "success" : "warning"}>
+            {subscription?.status.replaceAll("_", " ") ?? "not configured"}
+          </Badge>
+        }
+      />
       {subscription?.status === "past_due" && (
         <EntitlementNotice kind="unavailable" title="Subscription past due">
           <p>
@@ -109,7 +70,7 @@ export default async function SubscriptionPage({
         </EntitlementNotice>
       )}
 
-      <section className="status-card">
+      <Card>
         <h2>Plan</h2>
         <p>{status.plan?.name ?? "Not configured"}</p>
         <dl>
@@ -131,20 +92,20 @@ export default async function SubscriptionPage({
               </div>
             )}
         </dl>
-      </section>
-
+      </Card>
       <section>
         <h2>Capabilities</h2>
         <ul className="capability-list">
           {Object.entries(status.capabilities).map(([key, enabled]) => (
             <li key={key}>
               <span>{capabilityLabels[key] ?? key.replaceAll("_", " ")}</span>
-              <strong>{enabled ? "Enabled" : "Unavailable"}</strong>
+              <Badge tone={enabled ? "success" : "neutral"}>
+                {enabled ? "Enabled" : "Unavailable"}
+              </Badge>
             </li>
           ))}
         </ul>
       </section>
-
       <section>
         <h2>Limits and usage</h2>
         <ul className="capability-list">
@@ -163,7 +124,6 @@ export default async function SubscriptionPage({
           ))}
         </ul>
       </section>
-
       <EntitlementNotice
         kind="unavailable"
         title="Need a different capability or limit?"
@@ -173,7 +133,6 @@ export default async function SubscriptionPage({
           checkout is not available.
         </p>
       </EntitlementNotice>
-      <LogoutButton />
-    </main>
+    </div>
   );
 }

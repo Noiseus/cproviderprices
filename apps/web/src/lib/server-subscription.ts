@@ -31,28 +31,39 @@ export async function organizationSubscription(
   | { data: SubscriptionStatusPayload; error: null }
   | { data: null; error: ApiError }
 > {
-  const cookieStore = await cookies();
-  const response = await fetch(
-    `${apiServerBaseUrl}/api/v1/organizations/${encodeURIComponent(organizationId)}/subscription`,
-    {
-      headers: { Accept: "application/json", Cookie: cookieStore.toString() },
-      cache: "no-store",
-    },
-  );
-  const body = (await response.json()) as
-    { subscription_status: SubscriptionStatusPayload } | { error: ApiError };
+  try {
+    const cookieStore = await cookies();
+    const response = await fetch(
+      `${apiServerBaseUrl}/api/v1/organizations/${encodeURIComponent(organizationId)}/subscription`,
+      {
+        headers: { Accept: "application/json", Cookie: cookieStore.toString() },
+        cache: "no-store",
+      },
+    );
+    const body = (await response.json()) as
+      { subscription_status: SubscriptionStatusPayload } | { error: ApiError };
 
-  if (!response.ok || !("subscription_status" in body)) {
-    const error = "error" in body ? body.error : null;
+    if (!response.ok || !("subscription_status" in body)) {
+      const error = "error" in body ? body.error : null;
+      return {
+        data: null,
+        error: error ?? {
+          code: "subscription_status_unavailable",
+          message: "Subscription status is temporarily unavailable.",
+          request_id: response.headers.get("X-Request-ID") ?? "unavailable",
+        },
+      };
+    }
+
+    return { data: body.subscription_status, error: null };
+  } catch {
     return {
       data: null,
-      error: error ?? {
-        code: "subscription_status_unavailable",
-        message: "Subscription status is temporarily unavailable.",
-        request_id: response.headers.get("X-Request-ID") ?? "unavailable",
+      error: {
+        code: "offline",
+        message: "The subscription service could not be reached.",
+        request_id: "unavailable",
       },
     };
   }
-
-  return { data: body.subscription_status, error: null };
 }
