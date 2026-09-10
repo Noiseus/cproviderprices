@@ -10,6 +10,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property Role $role
+ * @property MembershipStatus $status
+ */
 class OrganizationMembership extends Model
 {
     /** @use HasFactory<OrganizationMembershipFactory> */

@@ -26,7 +26,13 @@ API errors use this JSON structure:
 - `request_id` matches the response `X-Request-ID` header.
 - `details` is optional structured context, such as validation errors.
 
-Unhandled exceptions must be rendered with a generic message outside local debug output. Authentication and authorization errors will follow this envelope when those capabilities are introduced.
+Unhandled exceptions must be rendered with a generic message outside local debug output. Authentication, authorization, suspended-account, suspended-organization, and invitation lifecycle errors follow this envelope with stable codes.
+
+Entitlement failures use the same envelope. `feature_disabled` uses HTTP 403 after role authorization succeeds. `limit_reached` uses HTTP 409 because the requested resource creation conflicts with the effective plan limit; safe details include the entitlement key, configured limit, and current usage. `subscription_suspended` uses HTTP 423. All include the response correlation ID.
+
+## Stateful private APIs
+
+Browser authentication uses Laravel's cookie session and CSRF middleware. Private tenant paths follow `/api/v1/organizations/{organization}/...`; the route UUID is authorized server-side and is the authoritative tenant selector. See `docs/security/authentication.md` and `docs/security/tenant-authorization.md`.
 
 ## Request correlation
 

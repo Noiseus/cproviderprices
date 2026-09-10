@@ -14,9 +14,10 @@ Repository quality gates are deterministic and runnable locally and in CI:
 
 - **Unit tests** cover isolated behavior without network services.
 - **Integration tests** cover framework behavior and real adapters where their dependencies matter.
-- **Policy and authorization tests** prove server-side access decisions and tenant boundaries independently of UI behavior. They are mandatory when authentication and tenancy are introduced and intentionally absent now.
+- **Policy and authorization tests** prove server-side access decisions and tenant boundaries independently of UI behavior. The PostgreSQL feature suite includes reusable tenant setup plus adversarial UUID, direct-ID, role, lifecycle, platform-scope, and audit checks.
 - **Contract tests** verify public API shapes and deterministic generation without inventing domain behavior.
 - **End-to-end tests** prove that composed services can start and communicate. Initial smoke coverage stays intentionally small and does not replace feature-level tests.
+- **Authentication end-to-end tests** generate short-lived credentials and invitation tokens into ignored private storage at runtime. CI never prints those values; Playwright removes the fixture after the flow.
 
 ## Local execution
 

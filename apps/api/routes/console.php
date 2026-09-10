@@ -1,8 +1,68 @@
 <?php
 
+use App\Enums\EntitlementKey;
+use App\Enums\InvitationStatus;
+use App\Enums\Role;
+use App\Models\Invitation;
+use App\Models\Organization;
+use App\Models\OrganizationMembership;
+use App\Models\Plan;
+use App\Models\PlanEntitlement;
+use App\Models\Subscription;
+use App\Models\User;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\Command;
+
+Artisan::command('app:prepare-auth-e2e', function (): void {
+    if (! app()->environment(['local', 'testing'])) {
+        throw new RuntimeException('Authentication E2E fixtures are restricted to local and testing environments.');
+    }
+
+    $loginPassword = Str::password(24);
+    $loginUser = User::factory()->create(['password' => Hash::make($loginPassword)]);
+    $loginOrganization = Organization::factory()->create();
+    OrganizationMembership::factory()->for($loginUser)->for($loginOrganization)->create();
+    $plan = Plan::factory()->create(['name' => 'E2E Plan']);
+    $entitlements = [
+        EntitlementKey::MaxLocations->value => ['limit' => 2],
+        EntitlementKey::MaxUsers->value => ['limit' => 5],
+        EntitlementKey::MaxSupplierAccounts->value => ['limit' => 1],
+        EntitlementKey::ManualImportsEnabled->value => ['enabled' => true],
+        EntitlementKey::AutomaticSyncEnabled->value => ['enabled' => false],
+        EntitlementKey::PriceHistoryEnabled->value => ['enabled' => true],
+        EntitlementKey::BasketOptimizerEnabled->value => ['enabled' => false],
+    ];
+    foreach ($entitlements as $key => $value) {
+        PlanEntitlement::factory()->for($plan)->create(['key' => $key, 'value' => $value]);
+    }
+    Subscription::factory()->for($loginOrganization)->for($plan)->create();
+
+    $invitationToken = Str::random(64);
+    $invitationPassword = Str::password(24);
+    $invitationOrganization = Organization::factory()->create();
+    Subscription::factory()->for($invitationOrganization)->for($plan)->create();
+    Invitation::factory()->for($invitationOrganization)->withPlaintextToken($invitationToken)->create([
+        'intended_role' => Role::OrganizationOwner,
+    ]);
+
+    $expiredToken = Str::random(64);
+    Invitation::factory()->withPlaintextToken($expiredToken)->create([
+        'status' => InvitationStatus::Expired,
+        'expires_at' => now()->subMinute(),
+    ]);
+
+    $path = storage_path('app/private/auth-e2e.json');
+    file_put_contents($path, json_encode([
+        'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug],
+        'invitation' => ['token' => $invitationToken, 'password' => $invitationPassword, 'slug' => $invitationOrganization->slug],
+        'expired_token' => $expiredToken,
+    ], JSON_THROW_ON_ERROR));
+
+    $this->info('Authentication E2E fixture created in ignored private storage.');
+})->purpose('Create short-lived local authentication E2E data without logging credentials');
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

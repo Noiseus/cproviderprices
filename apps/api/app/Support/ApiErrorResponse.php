@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Http\Middleware\AssignRequestId;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -18,9 +20,13 @@ final class ApiErrorResponse
             return null;
         }
 
-        $status = $exception instanceof HttpExceptionInterface
-            ? $exception->getStatusCode()
-            : Response::HTTP_INTERNAL_SERVER_ERROR;
+        $status = match (true) {
+            $exception instanceof ApiProblem => $exception->status,
+            $exception instanceof AuthenticationException => Response::HTTP_UNAUTHORIZED,
+            $exception instanceof AuthorizationException => Response::HTTP_FORBIDDEN,
+            $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
+            default => Response::HTTP_INTERNAL_SERVER_ERROR,
+        };
         $code = self::codeFor($status);
         $message = $status >= Response::HTTP_INTERNAL_SERVER_ERROR
             ? 'An unexpected error occurred.'
@@ -31,6 +37,15 @@ final class ApiErrorResponse
             'message' => $message,
             'request_id' => $requestId,
         ];
+
+        if ($exception instanceof ApiProblem) {
+            $error['code'] = $exception->problemCode;
+            $error['message'] = $exception->getMessage();
+
+            if ($exception->details !== []) {
+                $error['details'] = $exception->details;
+            }
+        }
 
         if ($exception instanceof ValidationException) {
             $status = Response::HTTP_UNPROCESSABLE_ENTITY;

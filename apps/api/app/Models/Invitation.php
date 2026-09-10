@@ -14,7 +14,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property InvitationStatus $status
+ * @property Role $intended_role
  * @property CarbonImmutable $expires_at
+ * @property Organization $organization
  */
 class Invitation extends Model
 {

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/** @property LocationStatus $status */
 class RestaurantLocation extends Model
 {
     /** @use HasFactory<RestaurantLocationFactory> */

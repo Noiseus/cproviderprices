@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This access model establishes the private, multi-tenant account foundation for CProviderPrices. It represents identities, tenant organizations, organization-scoped access, invitations, restaurant locations, provider-neutral commercial plans and subscriptions, and immutable audit history. It deliberately does not add authentication flows, authorization policies, supplier data, product data, or pricing data.
+This access model establishes the private, multi-tenant account foundation for CProviderPrices. It represents identities, tenant organizations, organization-scoped access, invitations, restaurant locations, provider-neutral commercial plans and subscriptions, and immutable audit history. Prompt 03 established these entities; Prompts 04 and 05 added invite-only authentication, tenant context, and authorization policies; Prompt 06 adds provider-neutral entitlement and subscription lifecycle enforcement while supplier, product, and pricing data remain deferred.
 
 ## Entities and responsibilities
 
-- `users` holds a person's application identity. A nullable `platform_role` may contain only `platform_admin`; platform privilege is not an organization membership role.
+- `users` holds a person's application identity, active/suspended lifecycle, and session invalidation version. A nullable `platform_role` may contain only `platform_admin`; platform privilege is not an organization membership role.
 - `organizations` is the tenant/business account and owns an explicit lifecycle status.
 - `organization_memberships` is the sole user-to-organization access relationship. It records one current membership lifecycle per user and organization.
 - `restaurant_locations` represents an organization's restaurant or business locations.
@@ -64,7 +64,7 @@ Plaintext invitation tokens are never persisted. The stored lookup value is an H
 
 ## Organization and subscription lifecycles
 
-Organization lifecycle values are `active`, `suspended`, and `closed`. Subscription lifecycle values are `trialing`, `active`, `past_due`, `paused`, `canceled`, and `expired`. They are independent columns on independent entities: changing or ending a subscription never changes, deletes, enables, or disables the organization. Multiple subscriptions may be retained as history; callers must select the applicable record explicitly rather than relying on an ambiguous convenience relationship.
+Organization lifecycle values are `active`, `suspended`, and `closed`. Subscription lifecycle values are `trialing`, `active`, `past_due`, `suspended`, `canceled`, and `expired`. They are independent columns on independent entities: changing or ending a subscription never changes or deletes the organization. Multiple subscriptions may be retained as history; the entitlement service selects the latest by start and creation time instead of relying on an ambiguous convenience relationship. An elapsed trial is treated as effectively expired from its explicit timestamp without coupling that transition to organization lifecycle.
 
 ## Identifier and time strategy
 
@@ -90,4 +90,4 @@ Audit rows record an event name, UTC occurrence time, optional organization and 
 
 ## Tenant isolation considerations
 
-Customer-owned records have an explicit organization owner or an unambiguous ownership chain. Membership is the authorization join and must be checked server-side for every tenant operation. Platform administrators are represented separately from organization memberships and require explicit privileged paths and auditing. No model exposes a cross-tenant convenience relationship, and audit entries carry organization context where applicable. Policies and request-level authorization are deferred until the prompt that introduces protected application behavior.
+Customer-owned records have an explicit organization owner or an unambiguous ownership chain. Membership is the authorization join and must be checked server-side for every tenant operation. Platform administrators are represented separately from organization memberships and require explicit privileged paths and auditing. No model exposes a cross-tenant convenience relationship, and audit entries carry organization context where applicable. Policies and request-level authorization use the pattern documented in `docs/security/tenant-authorization.md`.

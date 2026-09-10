@@ -22,7 +22,7 @@ typecheck:
 
 test:
 	docker compose run --rm --no-deps web npm run test
-	docker compose run --rm --no-deps api php artisan test
+	docker compose run --rm --no-deps -e APP_ENV=testing -e SESSION_DRIVER=array -e CACHE_STORE=array api php artisan test
 	docker compose run --rm --no-deps ingestion pytest
 
 contract:
@@ -30,7 +30,10 @@ contract:
 	docker compose run --rm --no-deps web npm run check:api-client
 
 e2e:
+	docker compose exec -e APP_ENV=testing api php artisan app:prepare-auth-e2e
 	docker compose exec \
+		-e PLAYWRIGHT_DOCKER=true \
+		-e WEB_URL=http://localhost:3000 \
 		-e WEB_HEALTH_URL=http://localhost:3000/api/health \
 		-e API_HEALTH_URL=http://api:8080/api/v1/health \
 		-e API_READINESS_URL=http://api:8080/api/v1/readiness \

@@ -38,6 +38,353 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/csrf-cookie": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Initialize the browser session and readable CSRF cookie */
+        get: operations["initializeCsrfCookie"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start an invite-only browser session */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the authenticated user and authorized organizations */
+        get: operations["getCurrentSession"];
+        put?: never;
+        post?: never;
+        /** Invalidate the current browser session */
+        delete: operations["logout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request reset instructions without disclosing account existence */
+        post: operations["requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset a password using a valid reset token */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description One-time invitation bearer token; only its keyed digest is persisted. */
+                token: components["parameters"]["InvitationToken"];
+            };
+            cookie?: never;
+        };
+        /** Inspect an invitation's authoritative public acceptance context */
+        get: operations["getInvitation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Atomically activate an invited account and membership */
+        post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/email/verification-notification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a verification link when the authenticated email is unverified */
+        post: operations["sendEmailVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify-email/{id}/{hash}": {
+        parameters: {
+            query: {
+                expires: number;
+                signature: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+                hash: string;
+            };
+            cookie?: never;
+        };
+        /** Verify the authenticated user's email with a signed link */
+        get: operations["verifyEmail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Resolve the active authenticated tenant context */
+        get: operations["getOrganizationContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Read limited lifecycle status for an authorized organization */
+        get: operations["getOrganizationStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Read the effective plan, subscription lifecycle, capabilities, limits, and usage */
+        get: operations["getOrganizationSubscriptionStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/switch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select another active organization membership */
+        post: operations["switchOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/restaurant-locations/{restaurantLocation}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+                restaurantLocation: components["parameters"]["RestaurantLocationId"];
+            };
+            cookie?: never;
+        };
+        /** Get a restaurant location through its authoritative organization */
+        get: operations["getRestaurantLocation"];
+        put?: never;
+        post?: never;
+        /** Delete an owner-authorized restaurant location */
+        delete: operations["deleteRestaurantLocation"];
+        options?: never;
+        head?: never;
+        /** Update an owner-authorized restaurant location */
+        patch: operations["updateRestaurantLocation"];
+        trace?: never;
+    };
+    "/organizations/{organization}/restaurant-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a tenant location when role authorization and the plan limit allow it */
+        post: operations["createRestaurantLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/memberships/{membership}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+                membership: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change an owner-authorized organization membership role */
+        patch: operations["updateOrganizationMembership"];
+        trace?: never;
+    };
+    "/platform/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Enter the explicit audited platform-administration scope */
+        get: operations["getPlatformContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/organizations/{organization}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Perform an audited manual provider-neutral subscription transition
+         * @description Explicit platform-admin scope only. No payment-provider operation is performed.
+         */
+        patch: operations["updatePlatformOrganizationSubscription"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -81,6 +428,194 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        MessageResponse: {
+            message: string;
+        };
+        DestinationResponse: {
+            message?: string;
+            destination: string;
+        };
+        EmailRequest: {
+            /** Format: email */
+            email: string;
+        };
+        LoginRequest: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            password: string;
+            intended_destination?: string;
+        };
+        ResetPasswordRequest: {
+            /** Format: email */
+            email: string;
+            token: string;
+            /** Format: password */
+            password: string;
+            /** Format: password */
+            password_confirmation: string;
+        };
+        AcceptInvitationRequest: {
+            token: string;
+            name: string;
+            /** Format: email */
+            email?: string;
+            /** Format: password */
+            password: string;
+            /** Format: password */
+            password_confirmation: string;
+        };
+        LoginResponse: {
+            session: components["schemas"]["Session"];
+            destination: string;
+        };
+        SessionResponse: {
+            session: components["schemas"]["Session"];
+        };
+        Session: {
+            user: components["schemas"]["SessionUser"];
+            organizations: components["schemas"]["SessionOrganization"][];
+        };
+        SessionUser: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            email_verified: boolean;
+            /** @enum {string|null} */
+            platform_role: "platform_admin" | null;
+        };
+        SessionOrganization: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            status: components["schemas"]["OrganizationStatus"];
+            role: components["schemas"]["OrganizationRole"];
+        };
+        InvitationResponse: {
+            invitation: {
+                /** Format: email */
+                intended_email: string;
+                intended_role: components["schemas"]["OrganizationRole"];
+                /** Format: date-time */
+                expires_at: string;
+                organization: components["schemas"]["OrganizationSummary"];
+            };
+        };
+        OrganizationSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+        };
+        /** @enum {string} */
+        OrganizationRole: "organization_owner" | "buyer" | "viewer";
+        /** @enum {string} */
+        OrganizationStatus: "active" | "suspended" | "closed";
+        /** @enum {string} */
+        MembershipStatus: "invited" | "active" | "suspended" | "left";
+        /** @enum {string} */
+        SubscriptionStatus: "trialing" | "active" | "past_due" | "suspended" | "canceled" | "expired";
+        /** @enum {string} */
+        EntitlementKey: "max_locations" | "max_users" | "max_supplier_accounts" | "manual_imports_enabled" | "automatic_sync_enabled" | "price_history_enabled" | "basket_optimizer_enabled";
+        OrganizationContextResponse: {
+            organization_context: {
+                organization: components["schemas"]["OrganizationSummary"] & {
+                    status: components["schemas"]["OrganizationStatus"];
+                };
+                membership: components["schemas"]["Membership"];
+            };
+        };
+        OrganizationStatusResponse: {
+            organization_status: {
+                name: string;
+                slug: string;
+                status: components["schemas"]["OrganizationStatus"];
+                normal_access_available: boolean;
+            };
+        };
+        Membership: {
+            /** Format: uuid */
+            id: string;
+            role: components["schemas"]["OrganizationRole"];
+            status: components["schemas"]["MembershipStatus"];
+        };
+        MembershipResponse: {
+            membership: components["schemas"]["Membership"];
+        };
+        RestaurantLocationResponse: {
+            restaurant_location: components["schemas"]["RestaurantLocation"];
+        };
+        RestaurantLocation: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organization_id: string;
+            name: string;
+            code: string;
+            /** @enum {string} */
+            status: "active" | "inactive";
+            timezone: string;
+        };
+        CreateRestaurantLocationRequest: {
+            name: string;
+            code: string;
+            timezone: string;
+            address_line_1?: string | null;
+            address_line_2?: string | null;
+            city?: string | null;
+            region?: string | null;
+            postal_code?: string | null;
+            country_code?: string | null;
+        };
+        UpdateRestaurantLocationRequest: {
+            name?: string;
+            /** @enum {string} */
+            status?: "active" | "inactive";
+            timezone?: string;
+        };
+        SubscriptionStatusResponse: {
+            subscription_status: components["schemas"]["SubscriptionStatusDetail"];
+        };
+        SubscriptionStatusDetail: {
+            plan: components["schemas"]["PlanSummary"] | null;
+            subscription: components["schemas"]["SubscriptionSummary"] | null;
+            capabilities: {
+                [key: string]: boolean;
+            };
+            limits: {
+                [key: string]: components["schemas"]["EntitlementLimit"];
+            };
+        };
+        PlanSummary: {
+            code: string;
+            name: string;
+        };
+        SubscriptionSummary: {
+            status: components["schemas"]["SubscriptionStatus"];
+            recorded_status: components["schemas"]["SubscriptionStatus"];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            trial_ends_at: string | null;
+            /** Format: date-time */
+            current_period_ends_at: string | null;
+            access_available: boolean;
+        };
+        EntitlementLimit: {
+            limit: number | null;
+            current_usage: number | null;
+            reached: boolean | null;
+        };
+        PlatformSubscriptionActionRequest: {
+            /** @enum {string} */
+            action: "start_trial" | "extend_trial" | "activate" | "mark_past_due" | "suspend" | "cancel" | "restore";
+            plan_code?: string;
+            /** Format: date-time */
+            trial_ends_at?: string;
+        };
     };
     responses: {
         /** @description Request failed using the standard API error envelope. */
@@ -93,10 +628,36 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
+        /** @description Role authorization succeeded, but the effective plan does not enable the capability. Uses HTTP 403. */
+        FeatureDisabled: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description Role authorization succeeded, but creating another resource conflicts with the effective numeric limit. Uses HTTP 409. */
+        LimitReached: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
     };
     parameters: {
         /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
         RequestId: components["schemas"]["RequestId"];
+        /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+        OrganizationId: string;
+        RestaurantLocationId: string;
+        MembershipId: string;
+        /** @description One-time invitation bearer token; only its keyed digest is persisted. */
+        InvitationToken: string;
     };
     requestBodies: never;
     headers: {
@@ -162,6 +723,534 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadinessResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    initializeCsrfCookie: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSRF state initialized. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Authenticated session created. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getCurrentSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current authenticated session. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session invalidated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailRequest"];
+            };
+        };
+        responses: {
+            /** @description Generic reset-request acknowledgement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Password reset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description One-time invitation bearer token; only its keyed digest is persisted. */
+                token: components["parameters"]["InvitationToken"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active invitation context. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    acceptInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Invitation accepted and browser session created. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestinationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    sendEmailVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Generic verification notification acknowledgement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    verifyEmail: {
+        parameters: {
+            query: {
+                expires: number;
+                signature: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Email verified. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getOrganizationContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-authorized active tenant context. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationContextResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getOrganizationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Limited organization lifecycle status, including suspended tenants. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationStatusResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getOrganizationSubscriptionStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider-neutral subscription and entitlement status for the authorized tenant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionStatusResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    switchOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    intended_destination?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Organization context selected. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestinationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getRestaurantLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+                restaurantLocation: components["parameters"]["RestaurantLocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant-scoped restaurant location. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestaurantLocationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteRestaurantLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+                restaurantLocation: components["parameters"]["RestaurantLocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restaurant location deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateRestaurantLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+                restaurantLocation: components["parameters"]["RestaurantLocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRestaurantLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Restaurant location updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestaurantLocationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createRestaurantLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRestaurantLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Restaurant location created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestaurantLocationResponse"];
+                };
+            };
+            403: components["responses"]["FeatureDisabled"];
+            409: components["responses"]["LimitReached"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateOrganizationMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+                membership: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    role: components["schemas"]["OrganizationRole"];
+                };
+            };
+        };
+        responses: {
+            /** @description Organization membership role updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getPlatformContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Explicit platform scope established for this request. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        scope: "platform";
+                    };
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updatePlatformOrganizationSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformSubscriptionActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subscription state updated and entitlement authorization changed immediately. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionStatusResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

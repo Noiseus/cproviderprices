@@ -7,5 +7,10 @@ export default defineConfig({
   reporter: "line",
   use: {
     trace: "retain-on-failure",
+    launchOptions: process.env.PLAYWRIGHT_DOCKER
+      ? {
+          args: ["--host-resolver-rules=MAP localhost host.docker.internal"],
+        }
+      : undefined,
   },
 });

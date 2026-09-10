@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\EntitlementKey;
 use App\Enums\InvitationStatus;
 use App\Enums\MembershipStatus;
 use App\Enums\OrganizationStatus;
@@ -203,11 +204,11 @@ final class AccessModelTest extends TestCase
     public function test_plan_codes_and_entitlement_keys_are_unique_in_their_scopes(): void
     {
         $plan = Plan::factory()->create(['code' => 'starter']);
-        PlanEntitlement::factory()->for($plan)->create(['key' => 'locations.maximum']);
+        PlanEntitlement::factory()->for($plan)->create(['key' => EntitlementKey::MaxLocations]);
 
         $this->expectException(QueryException::class);
 
-        PlanEntitlement::factory()->for($plan)->create(['key' => 'locations.maximum']);
+        PlanEntitlement::factory()->for($plan)->create(['key' => EntitlementKey::MaxLocations]);
     }
 
     public function test_organization_and_subscription_lifecycles_are_independent(): void
