@@ -15,16 +15,32 @@ import {
   Tabs,
 } from ".";
 
+const storedValues = new Map<string, string>();
+const localStorageMock: Storage = {
+  get length() {
+    return storedValues.size;
+  },
+  clear: () => storedValues.clear(),
+  getItem: (key) => storedValues.get(key) ?? null,
+  key: (index) => [...storedValues.keys()][index] ?? null,
+  removeItem: (key) => storedValues.delete(key),
+  setItem: (key, value) => storedValues.set(key, String(value)),
+};
+
 beforeAll(() => {
+  // Node 26 exposes an experimental, unconfigured global localStorage. Ensure
+  // components get a deterministic Storage implementation in browser tests.
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: localStorageMock,
+  });
   Object.defineProperty(window, "matchMedia", {
     writable: true,
-    value: vi
-      .fn()
-      .mockImplementation(() => ({
-        matches: false,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
+    value: vi.fn().mockImplementation(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
   });
   HTMLDialogElement.prototype.showModal = function () {
     this.setAttribute("open", "");

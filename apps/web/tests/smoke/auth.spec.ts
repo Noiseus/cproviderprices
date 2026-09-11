@@ -18,6 +18,11 @@ const fixturePath = resolve(
 const fixture = JSON.parse(readFileSync(fixturePath, "utf8")) as Fixture;
 const webUrl = process.env.WEB_URL ?? "http://localhost:3000";
 
+// These flows intentionally exercise shared login and invitation rate limits.
+// Keep them serial so parallel workers do not turn valid fixture requests into
+// unrelated 429 responses.
+test.describe.configure({ mode: "serial" });
+
 async function login(page: Page, credentials: Credentials) {
   await page.goto(`${webUrl}/login`);
   await page.getByLabel("Email address").fill(credentials.email);
@@ -43,7 +48,9 @@ test("invitation acceptance reaches its organization shell", async ({
   await expect(page).toHaveURL(
     `${webUrl}/o/${fixture.invitation.slug}/dashboard`,
   );
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Invited E2E Owner")).toBeVisible();
 });
 
@@ -51,30 +58,33 @@ test("owner shell uses client navigation, active state, compact mode, and organi
   page,
 }) => {
   await login(page, fixture.login);
-  await expect(page.getByText("Organization", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Team" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  const sidebar = page.getByRole("complementary");
+  await expect(
+    sidebar.getByText("Organization", { exact: true }),
+  ).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "Team" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(
+    sidebar.getByRole("link", { name: "Dashboard" }),
+  ).toHaveAttribute("aria-current", "page");
 
   await page.evaluate(() => {
     (window as Window & { __shellMarker?: string }).__shellMarker = "preserved";
   });
-  await page.getByRole("link", { name: "Search" }).click();
+  await sidebar.getByRole("link", { name: "Search" }).click();
   await expect(page).toHaveURL(`${webUrl}/o/${fixture.login.slug}/search`);
   expect(
     await page.evaluate(
       () => (window as Window & { __shellMarker?: string }).__shellMarker,
     ),
   ).toBe("preserved");
-  await expect(page.getByRole("link", { name: "Search" })).toHaveAttribute(
+  await expect(sidebar.getByRole("link", { name: "Search" })).toHaveAttribute(
     "aria-current",
     "page",
   );
 
-  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await sidebar.getByRole("button", { name: "Collapse sidebar" }).focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByTestId("app-shell")).toHaveClass(/is-compact/);
 
   await page.locator(".ui-dropdown > summary").click();
@@ -93,7 +103,11 @@ test("viewer gets reduced and entitlement-aware navigation", async ({
   await expect(page.getByRole("link", { name: "Team" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Locations" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
-  await expect(page.getByText("Price history · unavailable")).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Workspace" })
+      .getByText("Price history · unavailable"),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Price history" })).toHaveCount(
     0,
   );

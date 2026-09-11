@@ -2,6 +2,7 @@
 
 use App\Enums\EntitlementKey;
 use App\Enums\InvitationStatus;
+use App\Enums\OrganizationStatus;
 use App\Enums\Role;
 use App\Models\Invitation;
 use App\Models\Organization;
@@ -59,7 +60,7 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
 
     $suspendedPassword = Str::password(24);
     $suspendedUser = User::factory()->create(['password' => Hash::make($suspendedPassword)]);
-    $suspendedOrganization = Organization::factory()->create(['status' => \App\Enums\OrganizationStatus::Suspended]);
+    $suspendedOrganization = Organization::factory()->create(['status' => OrganizationStatus::Suspended]);
     OrganizationMembership::factory()->for($suspendedUser)->for($suspendedOrganization)->create();
     Subscription::factory()->for($suspendedOrganization)->for($plan)->create();
 
