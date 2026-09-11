@@ -1,9 +1,12 @@
 import { readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
+type Credentials = { email: string; password: string; slug: string };
 type Fixture = {
-  login: { email: string; password: string; slug: string };
+  login: Credentials & { switch_slug: string; switch_id: string };
+  viewer: Credentials;
+  suspended: Credentials & { name: string };
   invitation: { token: string; password: string; slug: string };
   expired_token: string;
 };
@@ -15,9 +18,22 @@ const fixturePath = resolve(
 const fixture = JSON.parse(readFileSync(fixturePath, "utf8")) as Fixture;
 const webUrl = process.env.WEB_URL ?? "http://localhost:3000";
 
+// These flows intentionally exercise shared login and invitation rate limits.
+// Keep them serial so parallel workers do not turn valid fixture requests into
+// unrelated 429 responses.
+test.describe.configure({ mode: "serial" });
+
+async function login(page: Page, credentials: Credentials) {
+  await page.goto(`${webUrl}/login`);
+  await page.getByLabel("Email address").fill(credentials.email);
+  await page.getByLabel("Password").fill(credentials.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(`${webUrl}/o/${credentials.slug}/dashboard`);
+}
+
 test.afterAll(() => rmSync(fixturePath, { force: true }));
 
-test("invitation acceptance reaches only its organization", async ({
+test("invitation acceptance reaches its organization shell", async ({
   page,
 }) => {
   await page.goto(
@@ -33,28 +49,114 @@ test("invitation acceptance reaches only its organization", async ({
     `${webUrl}/o/${fixture.invitation.slug}/dashboard`,
   );
   await expect(
-    page.getByText("Protected organization workspace"),
+    page.getByRole("heading", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Invited E2E Owner")).toBeVisible();
+});
+
+test("owner shell uses client navigation, active state, compact mode, and organization switching", async ({
+  page,
+}) => {
+  await login(page, fixture.login);
+  const sidebar = page.getByRole("complementary");
+  await expect(
+    sidebar.getByText("Organization", { exact: true }),
+  ).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "Team" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(
+    sidebar.getByRole("link", { name: "Dashboard" }),
+  ).toHaveAttribute("aria-current", "page");
+
+  await page.evaluate(() => {
+    (window as Window & { __shellMarker?: string }).__shellMarker = "preserved";
+  });
+  await sidebar.getByRole("link", { name: "Search" }).click();
+  await expect(page).toHaveURL(`${webUrl}/o/${fixture.login.slug}/search`);
+  expect(
+    await page.evaluate(
+      () => (window as Window & { __shellMarker?: string }).__shellMarker,
+    ),
+  ).toBe("preserved");
+  await expect(sidebar.getByRole("link", { name: "Search" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  await sidebar.getByRole("button", { name: "Collapse sidebar" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("app-shell")).toHaveClass(/is-compact/);
+
+  await page.locator(".ui-dropdown > summary").click();
+  await page
+    .getByRole("combobox", { name: "Organization" })
+    .selectOption(fixture.login.switch_id);
+  await expect(page).toHaveURL(
+    `${webUrl}/o/${fixture.login.switch_slug}/dashboard`,
+  );
+});
+
+test("viewer gets reduced and entitlement-aware navigation", async ({
+  page,
+}) => {
+  await login(page, fixture.viewer);
+  await expect(page.getByRole("link", { name: "Team" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Locations" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("navigation", { name: "Workspace" })
+      .getByText("Price history · unavailable"),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Price history" })).toHaveCount(
+    0,
+  );
+});
+
+test("mobile shell uses an accessible navigation drawer", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, fixture.login);
+  await expect(
+    page.getByRole("navigation", { name: "Workspace" }),
+  ).not.toBeVisible();
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Workspace navigation" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Lists" }).click();
+  await expect(page).toHaveURL(`${webUrl}/o/${fixture.login.slug}/lists`);
+  await expect(
+    page.getByRole("dialog", { name: "Workspace navigation" }),
+  ).not.toBeVisible();
+});
+
+test("suspended organization receives only account status", async ({
+  page,
+}) => {
+  await login(page, fixture.suspended);
+  await expect(
+    page.getByRole("heading", {
+      name: `${fixture.suspended.name} is suspended`,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Workspace" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByText("Normal private workspace access is unavailable.", {
+      exact: false,
+    }),
   ).toBeVisible();
 });
 
-test("login and logout", async ({ page }) => {
-  await page.goto(`${webUrl}/login`);
-  await page.getByLabel("Email address").fill(fixture.login.email);
-  await page.getByLabel("Password").fill(fixture.login.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(`${webUrl}/o/${fixture.login.slug}/dashboard`);
-  await page
-    .getByRole("link", { name: "View subscription and capabilities" })
-    .click();
-
+test("subscription status reuses the authenticated shell", async ({ page }) => {
+  await login(page, fixture.login);
+  await page.getByRole("link", { name: "Subscription" }).click();
   await expect(page.getByRole("heading", { name: "Plan" })).toBeVisible();
   await expect(page.getByText("E2E Plan")).toBeVisible();
-  await expect(page.getByText("Manual imports")).toBeVisible();
   await expect(
     page.getByText("Online checkout is not available."),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveURL(`${webUrl}/login`);
 });
 
 test("expired invitation has a clear state", async ({ page }) => {
