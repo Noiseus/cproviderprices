@@ -183,7 +183,7 @@ final class EntitlementSubscriptionTest extends TestCase
         Subscription::factory()->for($organization)->for($plan)->create();
 
         $this->asUser($admin)->patchJson("/api/v1/platform/organizations/{$organization->id}/subscription", [
-            'action' => 'suspend',
+            'action' => 'suspend', 'reason' => 'Requested by the customer owner.',
         ])->assertOk()->assertJsonPath('subscription_status.subscription.status', 'suspended');
         $this->asUser($owner)->postJson("/api/v1/organizations/{$organization->id}/restaurant-locations", [
             'name' => 'Blocked', 'code' => 'BLOCKED', 'timezone' => 'UTC',
