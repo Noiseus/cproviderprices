@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Http\Middleware\AssignRequestId;
 use App\Models\AuditLog;
 use App\Models\User;
 
@@ -16,6 +17,10 @@ final class Audit
         ?string $subjectId = null,
         array $metadata = [],
     ): AuditLog {
+        if (app()->bound('request') && request()->is('api/*')) {
+            $metadata = ['request_id' => AssignRequestId::for(request()), ...$metadata];
+        }
+
         return AuditLog::query()->create([
             'organization_id' => $organizationId,
             'actor_id' => $actor->id,

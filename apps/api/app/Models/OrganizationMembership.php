@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MembershipStatus;
 use App\Enums\Role;
+use Carbon\CarbonImmutable;
 use Database\Factories\OrganizationMembershipFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property Role $role
  * @property MembershipStatus $status
+ * @property CarbonImmutable|null $joined_at
+ * @property User $user
  */
 class OrganizationMembership extends Model
 {

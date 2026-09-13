@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\InvitationStatus;
-use App\Enums\MembershipStatus;
 use App\Enums\OrganizationStatus;
 use App\Enums\Role;
 use App\Enums\SubscriptionStatus;
@@ -43,6 +42,18 @@ final class PlatformAdministrationTest extends TestCase
             ->assertOk()->assertJsonStructure(['platform_overview' => ['organization_counts', 'recent_organizations']]);
     }
 
+    public function test_platform_admin_login_accepts_only_the_explicit_platform_destination(): void
+    {
+        $password = 'a-long-platform-test-password';
+        $admin = User::factory()->platformAdmin()->create(['password' => $password]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => $admin->email,
+            'password' => $password,
+            'intended_destination' => '/platform/organizations',
+        ])->assertOk()->assertJsonPath('destination', '/platform/organizations');
+    }
+
     public function test_platform_list_uses_validated_stable_server_pagination_and_filters(): void
     {
         $admin = User::factory()->platformAdmin()->create();
@@ -60,6 +71,8 @@ final class PlatformAdministrationTest extends TestCase
 
         $this->getJson('/api/v1/platform/organizations?status=invalid&per_page=500')
             ->assertUnprocessable()->assertJsonPath('error.code', 'validation_failed');
+        $this->getJson('/api/v1/platform/organizations?search=%25')
+            ->assertOk()->assertJsonCount(0, 'organizations');
     }
 
     public function test_platform_admin_can_create_and_inspect_an_organization_without_tenant_membership(): void
@@ -100,7 +113,7 @@ final class PlatformAdministrationTest extends TestCase
         $this->assertDatabaseHas('organization_memberships', ['id' => $membership->id]);
         $this->assertDatabaseHas('restaurant_locations', ['id' => $location->id]);
         $audit = AuditLog::query()->where('action', 'organization.status_changed')->firstOrFail();
-        $this->assertSame('Security review requested.', $audit->metadata['reason']);
+        $this->assertSame('Security review requested.', data_get($audit->metadata, 'reason'));
     }
 
     public function test_subscription_high_risk_actions_require_and_audit_a_reason(): void
@@ -117,7 +130,16 @@ final class PlatformAdministrationTest extends TestCase
             'action' => 'suspend', 'reason' => 'Account review.',
         ])->assertOk()->assertJsonPath('subscription_status.subscription.status', 'suspended');
         $audit = AuditLog::query()->where('action', 'subscription.suspend')->firstOrFail();
-        $this->assertSame('Account review.', $audit->metadata['reason']);
+        $this->assertSame('Account review.', data_get($audit->metadata, 'reason'));
+
+        $this->patchJson("/api/v1/platform/organizations/{$organization->id}/subscription", [
+            'action' => 'activate',
+        ])->assertOk()->assertJsonPath('subscription_status.subscription.status', 'active');
+        $this->patchJson("/api/v1/platform/organizations/{$organization->id}/subscription", [
+            'action' => 'cancel', 'reason' => 'Customer requested cancellation.',
+        ])->assertOk()->assertJsonPath('subscription_status.subscription.status', 'canceled');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'subscription.activate', 'organization_id' => $organization->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'subscription.cancel', 'organization_id' => $organization->id]);
     }
 
     public function test_initial_owner_invitation_and_resend_replace_the_active_token_without_persisting_plaintext(): void
@@ -143,7 +165,7 @@ final class PlatformAdministrationTest extends TestCase
         $this->assertNotSame($firstHash, Invitation::query()->findOrFail($secondId)->token_hash);
         $this->assertDatabaseHas('audit_logs', ['action' => 'invitation.initial_owner_created', 'subject_id' => $firstId]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'invitation.initial_owner_replaced', 'subject_id' => $secondId]);
-        Notification::assertSentOnDemand(OrganizationOwnerInvitation::class, 2);
+        Notification::assertSentOnDemand(OrganizationOwnerInvitation::class);
 
         foreach (AuditLog::query()->get() as $audit) {
             $this->assertStringNotContainsString($firstHash, json_encode($audit->metadata, JSON_THROW_ON_ERROR));

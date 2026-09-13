@@ -9,6 +9,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Support\ApiProblem;
 use App\Support\Audit;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -59,6 +60,10 @@ final class PlatformSubscriptionService
                 if ($action === 'extend_trial') {
                     if ($current->status !== SubscriptionStatus::Trialing || ! isset($input['trial_ends_at'])) {
                         throw new ApiProblem('subscription_transition_invalid', 'Only a trialing subscription can be extended with a trial end timestamp.', 422);
+                    }
+                    $newTrialEnd = CarbonImmutable::parse($input['trial_ends_at']);
+                    if ($current->trial_ends_at !== null && $newTrialEnd->lessThanOrEqualTo($current->trial_ends_at)) {
+                        throw new ApiProblem('subscription_transition_invalid', 'The new trial end must be later than the current trial end.', 422);
                     }
                     $current->update(['trial_ends_at' => $input['trial_ends_at']]);
                 } else {

@@ -206,7 +206,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -226,7 +226,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -246,7 +246,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -266,7 +266,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -286,7 +286,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
                 restaurantLocation: components["parameters"]["RestaurantLocationId"];
             };
@@ -309,7 +309,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -329,7 +329,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
                 membership: components["parameters"]["MembershipId"];
             };
@@ -362,12 +362,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get safe platform provisioning and lifecycle summaries */
+        get: operations["getPlatformOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search and filter organizations with stable server pagination */
+        get: operations["listPlatformOrganizations"];
+        put?: never;
+        /** Create and audit a customer organization */
+        post: operations["createPlatformOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/organizations/{organization}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Get safe provisioning detail for one organization */
+        get: operations["getPlatformOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/organizations/{organization}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change and audit organization lifecycle status */
+        patch: operations["updatePlatformOrganizationStatus"];
+        trace?: never;
+    };
     "/platform/organizations/{organization}/subscription": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -383,6 +458,48 @@ export interface paths {
          * @description Explicit platform-admin scope only. No payment-provider operation is performed.
          */
         patch: operations["updatePlatformOrganizationSubscription"];
+        trace?: never;
+    };
+    "/platform/organizations/{organization}/initial-owner-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite the authoritative initial organization owner */
+        post: operations["createPlatformInitialOwnerInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/organizations/{organization}/initial-owner-invitations/{invitation}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                /** @description Invitation UUID, checked against the authoritative route organization. */
+                invitation: components["parameters"]["InvitationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke and replace an initial-owner invitation token */
+        post: operations["resendPlatformInitialOwnerInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -615,6 +732,136 @@ export interface components {
             plan_code?: string;
             /** Format: date-time */
             trial_ends_at?: string;
+            /** @description Required when suspending or canceling a subscription; retained in safe audit metadata. */
+            reason?: string;
+        };
+        PlatformOverviewResponse: {
+            platform_overview: {
+                organization_counts: {
+                    total: number;
+                    active: number;
+                    suspended: number;
+                    closed: number;
+                };
+                trialing_subscriptions: number;
+                pending_invitations: number;
+                recent_organizations: components["schemas"]["PlatformOrganizationSummary"][];
+                recent_audit_activity: components["schemas"]["PlatformAuditSummary"][];
+            };
+        };
+        PlatformOrganizationListResponse: {
+            organizations: components["schemas"]["PlatformOrganizationSummary"][];
+            pagination: components["schemas"]["Pagination"];
+            filters: {
+                search: string | null;
+                status: components["schemas"]["OrganizationStatus"] | null;
+                subscription_status: components["schemas"]["SubscriptionStatus"] | null;
+            };
+        };
+        Pagination: {
+            page: number;
+            per_page: number;
+            total: number;
+            total_pages: number;
+        };
+        PlatformOrganizationSummaryResponse: {
+            organization: components["schemas"]["PlatformOrganizationSummary"];
+        };
+        PlatformOrganizationSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            status: components["schemas"]["OrganizationStatus"];
+            /** Format: date-time */
+            created_at: string;
+            subscription: components["schemas"]["PlatformSubscriptionSummary"] | null;
+        };
+        PlatformSubscriptionSummary: {
+            status: components["schemas"]["SubscriptionStatus"];
+            plan_code: string;
+            /** Format: date-time */
+            trial_ends_at: string | null;
+        };
+        CreatePlatformOrganizationRequest: {
+            name: string;
+            slug: string;
+        };
+        PlatformOrganizationStatusRequest: {
+            status: components["schemas"]["OrganizationStatus"];
+            reason: string;
+        };
+        PlatformOrganizationStatusResponse: {
+            organization_status: {
+                /** Format: uuid */
+                id: string;
+                status: components["schemas"]["OrganizationStatus"];
+            };
+        };
+        PlatformOrganizationDetailResponse: {
+            platform_organization: {
+                organization: components["schemas"]["PlatformOrganizationSummary"];
+                locations: components["schemas"]["PlatformLocationSummary"][];
+                members: components["schemas"]["PlatformMemberSummary"][];
+                invitations: components["schemas"]["PlatformInvitation"][];
+                subscription_status: components["schemas"]["SubscriptionStatusDetail"];
+                available_plans: components["schemas"]["PlanSummary"][];
+                audit_activity: components["schemas"]["PlatformAuditSummary"][];
+            };
+        };
+        PlatformLocationSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            code: string;
+            /** @enum {string} */
+            status: "active" | "inactive";
+            timezone: string;
+        };
+        PlatformMemberSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            role: components["schemas"]["OrganizationRole"];
+            status: components["schemas"]["MembershipStatus"];
+            /** Format: date-time */
+            joined_at: string | null;
+        };
+        PlatformInvitationResponse: {
+            invitation: components["schemas"]["PlatformInvitation"];
+        };
+        PlatformInvitation: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            intended_email: string;
+            /** @constant */
+            intended_role: "organization_owner";
+            /** @enum {string} */
+            status: "pending" | "accepted" | "expired" | "revoked";
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        CreateInitialOwnerInvitationRequest: {
+            /** Format: email */
+            email: string;
+        };
+        PlatformAuditSummary: {
+            /** Format: uuid */
+            id: string;
+            action: string;
+            actor_label: string | null;
+            subject_type: string | null;
+            subject_id: string | null;
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            occurred_at: string;
         };
     };
     responses: {
@@ -652,8 +899,10 @@ export interface components {
     parameters: {
         /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
         RequestId: components["schemas"]["RequestId"];
-        /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+        /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
         OrganizationId: string;
+        /** @description Invitation UUID, checked against the authoritative route organization. */
+        InvitationId: string;
         RestaurantLocationId: string;
         MembershipId: string;
         /** @description One-time invitation bearer token; only its keyed digest is persisted. */
@@ -967,7 +1216,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -991,7 +1240,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -1015,7 +1264,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -1039,7 +1288,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -1069,7 +1318,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
                 restaurantLocation: components["parameters"]["RestaurantLocationId"];
             };
@@ -1094,7 +1343,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
                 restaurantLocation: components["parameters"]["RestaurantLocationId"];
             };
@@ -1119,7 +1368,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
                 restaurantLocation: components["parameters"]["RestaurantLocationId"];
             };
@@ -1148,7 +1397,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -1178,7 +1427,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
                 membership: components["parameters"]["MembershipId"];
             };
@@ -1228,12 +1477,137 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
+    getPlatformOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform overview without tenant-private supplier or raw import data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOverviewResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listPlatformOrganizations: {
+        parameters: {
+            query?: {
+                search?: string;
+                status?: components["schemas"]["OrganizationStatus"];
+                subscription_status?: components["schemas"]["SubscriptionStatus"];
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A validated page of organizations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOrganizationListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createPlatformOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlatformOrganizationRequest"];
+            };
+        };
+        responses: {
+            /** @description Organization created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOrganizationSummaryResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getPlatformOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization provisioning detail without private supplier pricing or raw files. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOrganizationDetailResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updatePlatformOrganizationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformOrganizationStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Organization lifecycle status updated without deleting data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOrganizationStatusResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
     updatePlatformOrganizationSubscription: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Route-authoritative organization UUID, still validated against authenticated membership. */
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
                 organization: components["parameters"]["OrganizationId"];
             };
             cookie?: never;
@@ -1251,6 +1625,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubscriptionStatusResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createPlatformInitialOwnerInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInitialOwnerInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Invitation created and delivered without exposing its plaintext token. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformInvitationResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    resendPlatformInitialOwnerInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                /** @description Invitation UUID, checked against the authoritative route organization. */
+                invitation: components["parameters"]["InvitationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Previous pending token revoked and a new invitation delivered. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformInvitationResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

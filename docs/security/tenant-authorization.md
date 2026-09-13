@@ -23,3 +23,9 @@ The organization switch endpoint is available only when the user has at least tw
 Audit rows are persisted for organization switches, role changes, denied high-risk mutations, successful explicit platform actions, and denied platform-scope attempts. Metadata contains only route/ability and scalar context—never passwords, session cookies, reset tokens, invitation tokens, or CSRF values.
 
 The standard API envelope and `X-Request-ID` cover authentication, authorization, lifecycle, throttling, and validation failures. Frontends should branch on stable codes including `unauthorized`, `forbidden`, `account_suspended`, `membership_suspended`, `organization_suspended`, and `organization_unavailable`.
+
+## Platform administration workspace
+
+Prompt 09 keeps platform operations under `/platform` in the web application and `/api/v1/platform` in the API. Both are separate from `/o/[organizationSlug]` and tenant-scoped API paths. The web layout rejects users without `users.platform_role = platform_admin`, while every API request independently passes through authentication, active-user enforcement, and `platform.scope`. Platform privilege never creates a membership or grants access through tenant routes.
+
+Platform organization list/detail responses are provisioning-only: identity, lifecycle, locations, members, initial-owner invitation status, plan/subscription/entitlement summaries, and relevant audit history. Supplier pricing, raw files, credentials, and support impersonation are outside the platform response boundary. Mutations use authoritative route UUIDs, validate inputs, preserve organization data on lifecycle changes, and record the existing request correlation ID in audit metadata.

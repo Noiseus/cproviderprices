@@ -81,16 +81,21 @@ export function ConfirmationDialog({
   title,
   children,
   confirmLabel = "Confirm",
-}: DialogProps & { onConfirm: () => void; confirmLabel?: string }) {
+  pending = false,
+}: DialogProps & {
+  onConfirm: () => void;
+  confirmLabel?: string;
+  pending?: boolean;
+}) {
   return (
     <Dialog open={open} onClose={onClose} title={title}>
       {children}
       <div className="ui-dialog__actions">
-        <Button variant="secondary" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose} disabled={pending}>
           Cancel
         </Button>
-        <Button variant="danger" onClick={onConfirm}>
-          {confirmLabel}
+        <Button variant="danger" onClick={onConfirm} disabled={pending}>
+          {pending ? "Working…" : confirmLabel}
         </Button>
       </div>
     </Dialog>

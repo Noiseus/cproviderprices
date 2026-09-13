@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\AuditLogFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
 
+/**
+ * @property array<string, mixed>|null $metadata
+ * @property CarbonImmutable $occurred_at
+ */
 class AuditLog extends Model
 {
     /** @use HasFactory<AuditLogFactory> */

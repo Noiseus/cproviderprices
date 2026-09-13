@@ -51,3 +51,7 @@ prefetched.
 Feature routes created in Prompt 08 are structural placeholders. They must not
 be treated as implemented dashboard, supplier, import, search, list, or pricing
 functionality.
+
+## Platform workspace
+
+Prompt 09 adds a visibly distinct `/platform` shell for explicit platform administrators. It reuses the shared cards, tables, badges, forms, dialogs, loading states, and theme controls, while labeling the current security scope and never selecting a tenant implicitly. The organization list keeps search, lifecycle, subscription, page, and page-size state in the URL; detail links carry only that filtered-list return context. Platform mutations show pending state, prevent duplicate submission, wait for the API response, and update only the affected detail section.
