@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** @property LocationStatus $status */
 class RestaurantLocation extends Model
@@ -28,6 +29,7 @@ class RestaurantLocation extends Model
         'region',
         'postal_code',
         'country_code',
+        'external_reference',
     ];
 
     /** @return array<string, string> */
@@ -40,5 +42,11 @@ class RestaurantLocation extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    /** @return HasMany<SupplierAccount, $this> */
+    public function supplierAccounts(): HasMany
+    {
+        return $this->hasMany(SupplierAccount::class);
     }
 }

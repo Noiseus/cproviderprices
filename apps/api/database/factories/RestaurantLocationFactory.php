@@ -28,6 +28,7 @@ class RestaurantLocationFactory extends Factory
             'region' => fake()->stateAbbr(),
             'postal_code' => fake()->postcode(),
             'country_code' => 'US',
+            'external_reference' => null,
         ];
     }
 }

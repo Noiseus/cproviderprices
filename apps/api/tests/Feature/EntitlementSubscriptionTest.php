@@ -105,7 +105,7 @@ final class EntitlementSubscriptionTest extends TestCase
             ->assertJsonPath('error.request_id', fn ($value) => is_string($value) && $value !== '');
     }
 
-    public function test_status_response_exposes_safe_usage_and_future_supplier_usage_is_unimplemented(): void
+    public function test_status_response_exposes_safe_implemented_usage(): void
     {
         $user = User::factory()->create();
         $organization = Organization::factory()->create();
@@ -122,7 +122,7 @@ final class EntitlementSubscriptionTest extends TestCase
             ->assertJsonPath('subscription_status.limits.max_locations.limit', 3)
             ->assertJsonPath('subscription_status.limits.max_locations.current_usage', 1)
             ->assertJsonPath('subscription_status.limits.max_locations.reached', false)
-            ->assertJsonPath('subscription_status.limits.max_supplier_accounts.current_usage', null);
+            ->assertJsonPath('subscription_status.limits.max_supplier_accounts.current_usage', 0);
     }
 
     public function test_user_limit_is_enforced_when_an_invited_membership_would_become_active(): void

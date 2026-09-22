@@ -15,10 +15,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 final class RestaurantLocationController extends Controller
 {
+    public function index(TenantContext $context, Organization $organization): JsonResponse
+    {
+        return response()->json(['restaurant_locations' => $context->organization->restaurantLocations()
+            ->orderBy('name')->get()->map(fn (RestaurantLocation $location): array => $this->payload($location))->all()]);
+    }
+
     public function store(
         Request $request,
         TenantContext $context,
@@ -29,7 +36,7 @@ final class RestaurantLocationController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'code' => [
-                'required', 'string', 'max:64',
+                'sometimes', 'string', 'max:64',
                 Rule::unique('restaurant_locations')->where('organization_id', $context->organization->id),
             ],
             'timezone' => ['required', 'timezone:all'],
@@ -39,7 +46,9 @@ final class RestaurantLocationController extends Controller
             'region' => ['nullable', 'string', 'max:64'],
             'postal_code' => ['nullable', 'string', 'max:32'],
             'country_code' => ['nullable', 'string', 'size:2'],
+            'external_reference' => ['nullable', 'string', 'max:255'],
         ]);
+        $validated['code'] ??= $this->nextCode($context, $validated['name']);
         $location = DB::transaction(function () use ($context, $entitlements, $validated): RestaurantLocation {
             Organization::query()->whereKey($context->organization->id)->lockForUpdate()->firstOrFail();
             $entitlements->assertWithinLimit($context->organization, EntitlementKey::MaxLocations);
@@ -48,6 +57,8 @@ final class RestaurantLocationController extends Controller
                 ['status' => LocationStatus::Active, ...$validated]
             );
         });
+        Audit::record('location.created', $context->user, $context->organization->id,
+            'restaurant_location', $location->id);
 
         return response()->json(['restaurant_location' => $this->payload($location)], 201);
     }
@@ -68,8 +79,20 @@ final class RestaurantLocationController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', Rule::enum(LocationStatus::class)],
             'timezone' => ['sometimes', 'timezone:all'],
+            'address_line_1' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'address_line_2' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'city' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'region' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'postal_code' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'country_code' => ['sometimes', 'string', 'size:2'],
+            'external_reference' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
+        $fromStatus = $location->status;
         $location->update($validated);
+        $action = $fromStatus !== $location->status
+            ? ($location->status === LocationStatus::Active ? 'location.activated' : 'location.deactivated')
+            : 'location.updated';
+        Audit::record($action, $context->user, $context->organization->id, 'restaurant_location', $location->id);
 
         return response()->json(['restaurant_location' => $this->payload($location->refresh())]);
     }
@@ -78,9 +101,23 @@ final class RestaurantLocationController extends Controller
     {
         $location = $this->find($context, $restaurantLocation);
         $this->authorizeHighRisk('delete', $location, $context);
-        $location->delete();
+        $location->update(['status' => LocationStatus::Inactive]);
+        Audit::record('location.deactivated', $context->user, $context->organization->id,
+            'restaurant_location', $location->id);
 
-        return response()->json(['message' => 'Restaurant location deleted.']);
+        return response()->json(['message' => 'Restaurant location deactivated.']);
+    }
+
+    public function select(Request $request, TenantContext $context, Organization $organization, string $restaurantLocation): JsonResponse
+    {
+        $location = $this->find($context, $restaurantLocation);
+        Gate::authorize('view', $location);
+        if ($location->status !== LocationStatus::Active) {
+            throw new ApiProblem('location_inactive', 'Only an active location can be selected.', 409);
+        }
+        $request->session()->put('selected_location.'.$context->organization->id, $location->id);
+
+        return response()->json(['selected_location_id' => $location->id]);
     }
 
     private function find(TenantContext $context, string $id): RestaurantLocation
@@ -119,6 +156,26 @@ final class RestaurantLocationController extends Controller
             'code' => $location->code,
             'status' => $location->status->value,
             'timezone' => $location->timezone,
+            'address_line_1' => $location->address_line_1,
+            'address_line_2' => $location->address_line_2,
+            'city' => $location->city,
+            'region' => $location->region,
+            'postal_code' => $location->postal_code,
+            'country_code' => $location->country_code,
+            'external_reference' => $location->external_reference,
         ];
+    }
+
+    private function nextCode(TenantContext $context, string $name): string
+    {
+        $base = Str::upper(Str::slug($name, '_')) ?: 'LOCATION';
+        $base = mb_substr($base, 0, 55);
+        $code = $base;
+        $counter = 1;
+        while ($context->organization->restaurantLocations()->where('code', $code)->exists()) {
+            $code = $base.'_'.++$counter;
+        }
+
+        return $code;
     }
 }

@@ -7,6 +7,7 @@ import {
 } from "@/components/app-shell/ShellStates";
 import { currentSessionResult } from "@/lib/server-session";
 import { organizationSubscription } from "@/lib/server-subscription";
+import { tenantServerRequest, type Location } from "@/lib/customer-api";
 
 export default async function OrganizationLayout({
   children,
@@ -32,6 +33,17 @@ export default async function OrganizationLayout({
     return <ShellFailure kind="forbidden" />;
 
   const subscriptionResult = await organizationSubscription(organization.id);
+  let locations: Location[] = [];
+  try {
+    locations = (
+      await tenantServerRequest<{ restaurant_locations: Location[] }>(
+        organization.id,
+        "restaurant-locations",
+      )
+    ).restaurant_locations;
+  } catch {
+    locations = [];
+  }
   const subscription = subscriptionResult.data;
   if (organization.status === "suspended")
     return (
@@ -48,6 +60,7 @@ export default async function OrganizationLayout({
       organizations={session.organizations}
       subscription={subscription}
       subscriptionProblem={subscriptionResult.error !== null}
+      locations={locations}
     >
       {children}
     </AppShell>

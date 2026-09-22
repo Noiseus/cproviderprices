@@ -16,7 +16,7 @@ final class RestaurantLocationPolicy
     {
         return $user->memberships()->whereBelongsTo($organization)
             ->where('status', MembershipStatus::Active)
-            ->whereIn('role', [Role::OrganizationOwner, Role::Buyer])
+            ->where('role', Role::OrganizationOwner)
             ->exists();
     }
 
