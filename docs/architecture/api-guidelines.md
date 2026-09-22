@@ -34,6 +34,10 @@ Entitlement failures use the same envelope. `feature_disabled` uses HTTP 403 aft
 
 Browser authentication uses Laravel's cookie session and CSRF middleware. Private tenant paths follow `/api/v1/organizations/{organization}/...`; the route UUID is authorized server-side and is the authoritative tenant selector. See `docs/security/authentication.md` and `docs/security/tenant-authorization.md`.
 
+## Platform administration
+
+Explicit platform administration uses `/api/v1/platform/...` and the same cookie/CSRF and error-envelope conventions, but requires `platform.scope` rather than tenant context. Platform organization identifiers remain selectors validated by route binding and action-specific logic; they never create implicit tenant authorization. List endpoints use bounded server pagination and return explicit pagination/filter metadata.
+
 ## Request correlation
 
 Every `/api/*` response includes `X-Request-ID`. A caller-provided value is reused only when it is 1–128 characters and contains letters, digits, dots, underscores, colons, or hyphens. Missing or invalid values are replaced with a UUID. API response bodies include the same value where their schema defines `request_id`.

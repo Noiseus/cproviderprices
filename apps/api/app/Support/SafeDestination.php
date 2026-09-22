@@ -4,12 +4,20 @@ namespace App\Support;
 
 use App\Enums\MembershipStatus;
 use App\Enums\OrganizationStatus;
+use App\Enums\Role;
 use App\Models\User;
 
 final class SafeDestination
 {
     public static function afterLogin(User $user, ?string $requested): string
     {
+        if ($user->platform_role === Role::PlatformAdmin
+            && is_string($requested)
+            && self::isInternalPath($requested)
+            && ($requested === '/platform' || str_starts_with($requested, '/platform/'))) {
+            return $requested;
+        }
+
         $memberships = $user->memberships()
             ->where('status', MembershipStatus::Active)
             ->with('organization')
@@ -27,6 +35,10 @@ final class SafeDestination
         $membership = $memberships->first(
             fn ($candidate): bool => $candidate->organization->status === OrganizationStatus::Active
         ) ?? $memberships->first();
+
+        if ($membership === null && $user->platform_role === Role::PlatformAdmin) {
+            return '/platform';
+        }
 
         return $membership === null ? '/' : '/o/'.$membership->organization->slug.'/dashboard';
     }

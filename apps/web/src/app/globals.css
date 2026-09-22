@@ -874,6 +874,65 @@ small {
   flex-basis: 100%;
   color: var(--color-danger);
 }
+
+.platform-stack {
+  display: grid;
+  gap: var(--space-6);
+}
+.platform-stats,
+.platform-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-4);
+}
+.platform-detail-grid {
+  align-items: start;
+}
+.platform-form,
+.platform-inline-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.platform-inline-form {
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+  margin-bottom: var(--space-5);
+}
+.platform-form-card {
+  width: min(100%, 38rem);
+}
+.platform-link-button {
+  min-height: var(--touch-target);
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.platform-cell-detail {
+  display: block;
+}
+.platform-audit-list {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+.platform-audit-list li {
+  display: grid;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.platform-audit-list span {
+  color: var(--color-text-muted);
+}
+.platform-mobile-nav {
+  display: none;
+  gap: var(--space-3);
+}
 dl div {
   display: grid;
   grid-template-columns: minmax(8rem, 1fr) 2fr;
@@ -912,6 +971,9 @@ dd {
     background: var(--color-accent-soft);
     color: var(--color-accent-strong);
   }
+  .platform-mobile-nav {
+    display: flex;
+  }
 }
 
 @media (max-width: 47.99rem) {
@@ -946,6 +1008,16 @@ dd {
   }
   .account-summary > span:last-child {
     display: none;
+  }
+  .platform-shell .app-topbar {
+    align-items: flex-start;
+  }
+  .platform-mobile-nav {
+    width: 100%;
+    order: 5;
+  }
+  .platform-inline-form {
+    grid-template-columns: 1fr;
   }
   .ui-pagination {
     justify-content: space-between;

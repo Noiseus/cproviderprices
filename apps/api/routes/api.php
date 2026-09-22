@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\OrganizationContextController;
 use App\Http\Controllers\Api\V1\OrganizationMembershipController;
 use App\Http\Controllers\Api\V1\PlatformContextController;
+use App\Http\Controllers\Api\V1\PlatformInvitationController;
+use App\Http\Controllers\Api\V1\PlatformOrganizationController;
+use App\Http\Controllers\Api\V1\PlatformOverviewController;
 use App\Http\Controllers\Api\V1\PlatformSubscriptionController;
 use App\Http\Controllers\Api\V1\RestaurantLocationController;
 use App\Http\Controllers\Api\V1\SubscriptionStatusController;
@@ -53,8 +56,16 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('/platform/context', [PlatformContextController::class, 'show'])
                 ->middleware('platform.scope')->name('platform.context');
-            Route::patch('/platform/organizations/{organization}/subscription', [PlatformSubscriptionController::class, 'update'])
-                ->middleware('platform.scope')->name('platform.organizations.subscription.update');
+            Route::prefix('platform')->middleware('platform.scope')->name('platform.')->group(function (): void {
+                Route::get('/overview', [PlatformOverviewController::class, 'show'])->name('overview');
+                Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('organizations.index');
+                Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('organizations.store');
+                Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('organizations.show');
+                Route::patch('/organizations/{organization}/status', [PlatformOrganizationController::class, 'updateStatus'])->name('organizations.status.update');
+                Route::patch('/organizations/{organization}/subscription', [PlatformSubscriptionController::class, 'update'])->name('organizations.subscription.update');
+                Route::post('/organizations/{organization}/initial-owner-invitations', [PlatformInvitationController::class, 'store'])->name('organizations.invitations.store');
+                Route::post('/organizations/{organization}/initial-owner-invitations/{invitation}/resend', [PlatformInvitationController::class, 'resend'])->name('organizations.invitations.resend');
+            });
         });
     });
 });

@@ -4,6 +4,7 @@ use App\Enums\EntitlementKey;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationStatus;
 use App\Enums\Role;
+use App\Enums\SubscriptionStatus;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationMembership;
@@ -78,6 +79,15 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
         'expires_at' => now()->subMinute(),
     ]);
 
+    $platformPassword = Str::password(24);
+    $platformUser = User::factory()->platformAdmin()->create(['password' => Hash::make($platformPassword)]);
+    $platformOrganization = Organization::factory()->create(['name' => 'Platform E2E Customer']);
+    Subscription::factory()->for($platformOrganization)->for($plan)->create([
+        'status' => SubscriptionStatus::Trialing,
+        'trial_ends_at' => now()->addWeek(),
+    ]);
+    Organization::factory()->count(5)->create();
+
     $path = storage_path('app/private/auth-e2e.json');
     file_put_contents($path, json_encode([
         'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug, 'switch_slug' => $switchOrganization->slug, 'switch_id' => $switchOrganization->id],
@@ -85,6 +95,12 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
         'suspended' => ['email' => $suspendedUser->email, 'password' => $suspendedPassword, 'slug' => $suspendedOrganization->slug, 'name' => $suspendedOrganization->name],
         'invitation' => ['token' => $invitationToken, 'password' => $invitationPassword, 'slug' => $invitationOrganization->slug],
         'expired_token' => $expiredToken,
+        'platform' => [
+            'email' => $platformUser->email,
+            'password' => $platformPassword,
+            'organization_id' => $platformOrganization->id,
+            'organization_name' => $platformOrganization->name,
+        ],
     ], JSON_THROW_ON_ERROR));
 
     $this->info('Authentication E2E fixture created in ignored private storage.');

@@ -88,6 +88,10 @@ Application time and containers use UTC. Database instants use timezone-aware co
 
 Audit rows record an event name, UTC occurrence time, optional organization and actor identity, optional subject type/identifier, an actor label snapshot, and secret-free JSON metadata. The Eloquent model rejects updates and deletes. Organization, actor, and subject references are deliberately scalar and have no cascading foreign keys so deleting or changing a mutable domain record cannot silently erase historical context.
 
+## Prompt 09 platform provisioning
+
+Prompt 09 uses these existing entities for platform provisioning. Organization creation writes the canonical `organizations` row. Initial-owner invitation and resend write canonical `invitations` rows with `organization_owner` fixed server-side; replacement revokes pending owner invitations under an organization lock before generating a new keyed token hash. Plaintext tokens exist only long enough to construct the delivery notification. Platform list search uses justified PostgreSQL functional prefix indexes on normalized organization name and slug, while status/name, unique slug, subscription, invitation, membership, and audit indexes continue to serve the remaining filters and detail sections.
+
 ## Tenant isolation considerations
 
 Customer-owned records have an explicit organization owner or an unambiguous ownership chain. Membership is the authorization join and must be checked server-side for every tenant operation. Platform administrators are represented separately from organization memberships and require explicit privileged paths and auditing. No model exposes a cross-tenant convenience relationship, and audit entries carry organization context where applicable. Policies and request-level authorization use the pattern documented in `docs/security/tenant-authorization.md`.
