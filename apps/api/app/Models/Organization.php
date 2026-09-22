@@ -56,9 +56,9 @@ class Organization extends Model
     /** @return HasOne<Subscription, $this> */
     public function latestSubscription(): HasOne
     {
-        return $this->hasOne(Subscription::class)->ofMany([
-            'starts_at' => 'max',
-            'created_at' => 'max',
-        ]);
+        return $this->hasOne(Subscription::class)
+            ->orderByDesc('starts_at')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
     }
 }

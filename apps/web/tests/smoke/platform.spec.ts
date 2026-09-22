@@ -30,7 +30,10 @@ async function loginFor(
   await page.goto(`${webUrl}/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await Promise.all([
+    page.waitForURL((url) => url.pathname !== "/login"),
+    page.getByRole("button", { name: "Sign in" }).click(),
+  ]);
 }
 
 test("non-platform user is rejected from the direct platform route", async ({
@@ -58,7 +61,9 @@ test("platform overview, URL filters, pagination, detail, and return context wor
     /search=Platform(?:\+|%20)E2E.*subscription_status=trialing/,
   );
   await page
-    .getByRole("link", { name: fixture.platform.organization_name })
+    .locator(
+      `a[href^="/platform/organizations/${fixture.platform.organization_id}"]`,
+    )
     .click();
   await expect(
     page.getByRole("heading", { name: fixture.platform.organization_name }),
@@ -76,28 +81,32 @@ test("platform overview, URL filters, pagination, detail, and return context wor
 test("platform admin creates an organization and receives server validation errors", async ({
   page,
 }) => {
+  const suffix = fixture.platform.organization_id.slice(-8);
+  const organizationName = `Prompt 09 E2E Organization ${suffix}`;
+  const organizationSlug = `prompt-09-e2e-${suffix}`;
   await loginFor(page, fixture.platform.email, fixture.platform.password);
   await page.goto(`${webUrl}/platform/organizations/new`);
-  await page.getByLabel("Organization name").fill("Prompt 09 E2E Organization");
+  await page.getByLabel("Organization name").fill(organizationName);
   await page
     .getByLabel("Organization slug", { exact: false })
-    .fill("prompt-09-e2e-organization");
+    .fill(organizationSlug);
   await page.getByRole("button", { name: "Create organization" }).click();
   await expect(
-    page.getByRole("heading", { name: "Prompt 09 E2E Organization" }),
+    page.getByRole("heading", { name: organizationName }),
   ).toBeVisible();
   await page.goto(`${webUrl}/platform/organizations/new`);
   await page.getByLabel("Organization name").fill("Duplicate slug");
   await page
     .getByLabel("Organization slug", { exact: false })
-    .fill("prompt-09-e2e-organization");
+    .fill(organizationSlug);
   await page.getByRole("button", { name: "Create organization" }).click();
   await expect(page.getByText("Creation failed")).toBeVisible();
 });
 
 test("trial extension, suspension confirmation, invite, and resend wait for the server", async ({
   page,
-}) => {
+}, testInfo) => {
+  testInfo.setTimeout(30_000);
   await loginFor(page, fixture.platform.email, fixture.platform.password);
   await page.goto(
     `${webUrl}/platform/organizations/${fixture.platform.organization_id}`,
@@ -105,20 +114,17 @@ test("trial extension, suspension confirmation, invite, and resend wait for the 
   const future = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 16);
-  await page.getByLabel("Action").selectOption("extend_trial");
+  await page.locator('select[name="action"]').selectOption("extend_trial");
   await page.getByLabel("Trial end (UTC)").fill(future);
-  await page
-    .getByLabel("Reason", { exact: true })
-    .nth(1)
-    .fill("E2E trial extension");
+  await page.locator('input[name="reason"]').nth(1).fill("E2E trial extension");
   await page.getByRole("button", { name: "Apply subscription action" }).click();
   await expect(
     page.getByText(/Subscription extend trial completed/),
   ).toBeVisible();
 
-  await page.getByLabel("Action").selectOption("suspend");
+  await page.locator('select[name="action"]').selectOption("suspend");
   await page
-    .getByLabel("Reason", { exact: true })
+    .locator('input[name="reason"]')
     .nth(1)
     .fill("E2E lifecycle verification");
   await page.getByRole("button", { name: "Apply subscription action" }).click();

@@ -60,7 +60,10 @@ final class PlatformAdministrationTest extends TestCase
         $plan = Plan::factory()->create(['code' => 'platform-list-plan']);
         $active = Organization::factory()->create(['name' => 'Alpha Restaurant', 'status' => OrganizationStatus::Active]);
         Organization::factory()->create(['name' => 'Beta Restaurant', 'status' => OrganizationStatus::Suspended]);
-        Subscription::factory()->for($active)->for($plan)->create(['status' => SubscriptionStatus::Trialing]);
+        Subscription::factory()->for($active)->for($plan)->create([
+            'status' => SubscriptionStatus::Trialing,
+            'trial_ends_at' => now()->addWeek(),
+        ]);
 
         $this->asUser($admin)->getJson('/api/v1/platform/organizations?search=alpha&status=active&subscription_status=trialing&page=1&per_page=10')
             ->assertOk()

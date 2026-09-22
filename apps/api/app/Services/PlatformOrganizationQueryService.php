@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\OrganizationMembership;
 use App\Models\Plan;
 use App\Models\Subscription;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 final class PlatformOrganizationQueryService
@@ -36,7 +37,15 @@ final class PlatformOrganizationQueryService
 
         if (($filters['subscription_status'] ?? null) !== null) {
             $status = $filters['subscription_status'];
-            $query->whereHas('latestSubscription', function ($query) use ($status): void {
+            $latestSubscriptions = Subscription::query()
+                ->select(['organization_id', 'status', 'trial_ends_at'])
+                ->selectRaw('ROW_NUMBER() OVER (PARTITION BY organization_id ORDER BY starts_at DESC, created_at DESC, id DESC) AS row_number');
+
+            $query->whereIn('id', function (Builder $query) use ($latestSubscriptions, $status): void {
+                $query->fromSub($latestSubscriptions, 'latest_subscriptions')
+                    ->select('organization_id')
+                    ->where('row_number', 1);
+
                 if ($status === 'expired') {
                     $query->where(function ($query): void {
                         $query->where('status', 'expired')
