@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: "./tests/smoke",
   timeout: 15_000,
   fullyParallel: true,
+  globalTeardown: "./tests/smoke/global-teardown.ts",
   reporter: "line",
   use: {
     trace: "retain-on-failure",

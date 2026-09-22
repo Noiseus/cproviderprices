@@ -1,4 +1,4 @@
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -30,8 +30,6 @@ async function login(page: Page, credentials: Credentials) {
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(`${webUrl}/o/${credentials.slug}/dashboard`);
 }
-
-test.afterAll(() => rmSync(fixturePath, { force: true }));
 
 test("invitation acceptance reaches its organization shell", async ({
   page,
