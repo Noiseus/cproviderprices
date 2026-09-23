@@ -24,7 +24,7 @@ class ImportRun extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['status' => ImportStatus::class, 'mapping_snapshot' => 'array', 'started_at' => 'immutable_datetime', 'finished_at' => 'immutable_datetime'];
+        return ['status' => ImportStatus::class, 'mapping_snapshot' => 'array', 'started_at' => 'immutable_datetime', 'finished_at' => 'immutable_datetime', 'validation_started_at' => 'immutable_datetime', 'validation_completed_at' => 'immutable_datetime'];
     }
 
     /** @return BelongsTo<Organization, $this> */

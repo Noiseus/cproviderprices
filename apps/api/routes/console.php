@@ -19,9 +19,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\Command;
 
-Artisan::command('app:prepare-auth-e2e', function (): void {
+Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synthetic import files without creating users}', function (): void {
     if (! app()->environment(['local', 'testing'])) {
         throw new RuntimeException('Authentication E2E fixtures are restricted to local and testing environments.');
+    }
+    if ($this->option('import-fixtures-only')) {
+        require base_path('tests/Fixtures/generate-import-xlsx.php');
+        $this->info('Synthetic import fixtures are available in tests/Fixtures.');
+        return;
     }
 
     $loginPassword = Str::password(24);
