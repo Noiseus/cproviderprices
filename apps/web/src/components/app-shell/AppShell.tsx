@@ -167,12 +167,21 @@ export function AppShell(props: Props) {
                     { method: "POST", body: JSON.stringify({}) },
                   ).then(() => {
                     setLocationId(next);
-                    localStorage.setItem(`cproviderprices-location:${organization.id}`, next);
-                    window.dispatchEvent(new CustomEvent("workspace-location-changed", { detail: { locationId: next } }));
+                    localStorage.setItem(
+                      `cproviderprices-location:${organization.id}`,
+                      next,
+                    );
+                    window.dispatchEvent(
+                      new CustomEvent("workspace-location-changed", {
+                        detail: { locationId: next },
+                      }),
+                    );
                   });
                 }}
               >
-                {activeLocations.length === 0 && <option value="">No active locations</option>}
+                {activeLocations.length === 0 && (
+                  <option value="">No active locations</option>
+                )}
                 {activeLocations.map((location) => (
                   <option key={location.id} value={location.id}>
                     {location.name}

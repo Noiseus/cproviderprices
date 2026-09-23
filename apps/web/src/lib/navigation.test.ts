@@ -22,6 +22,9 @@ describe("workspace navigation", () => {
       "Search",
       "Lists",
       "Price history",
+      "Suppliers",
+      "Team",
+      "Locations",
       "Subscription",
     ]);
   });

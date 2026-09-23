@@ -12,6 +12,7 @@ use App\Models\Plan;
 use App\Models\PlanEntitlement;
 use App\Models\Subscription;
 use App\Models\User;
+use Database\Seeders\SupplierDefinitionSeeder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -27,6 +28,8 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
     $loginUser = User::factory()->create(['password' => Hash::make($loginPassword)]);
     $loginOrganization = Organization::factory()->create();
     OrganizationMembership::factory()->for($loginUser)->for($loginOrganization)->create(['role' => Role::OrganizationOwner]);
+    $teamMember = User::factory()->create();
+    OrganizationMembership::factory()->for($teamMember)->for($loginOrganization)->create(['role' => Role::Viewer]);
     $plan = Plan::factory()->create(['name' => 'E2E Plan']);
     $entitlements = [
         EntitlementKey::MaxLocations->value => ['limit' => 2],
@@ -41,6 +44,7 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
         PlanEntitlement::factory()->for($plan)->create(['key' => $key, 'value' => $value]);
     }
     Subscription::factory()->for($loginOrganization)->for($plan)->create();
+    Artisan::call('db:seed', ['--class' => SupplierDefinitionSeeder::class, '--force' => true]);
 
     $switchOrganization = Organization::factory()->create();
     OrganizationMembership::factory()->for($loginUser)->for($switchOrganization)->create(['role' => Role::OrganizationOwner]);
@@ -58,6 +62,20 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
         ]);
     }
     Subscription::factory()->for($viewerOrganization)->for($viewerPlan)->create();
+
+    $workspacePassword = Str::password(24);
+    $workspaceUser = User::factory()->create(['password' => Hash::make($workspacePassword)]);
+    $workspaceOrganization = Organization::factory()->create();
+    OrganizationMembership::factory()->for($workspaceUser)->for($workspaceOrganization)->create(['role' => Role::OrganizationOwner]);
+    $workspaceMember = User::factory()->create();
+    OrganizationMembership::factory()->for($workspaceMember)->for($workspaceOrganization)->create(['role' => Role::Viewer]);
+    Subscription::factory()->for($workspaceOrganization)->for($plan)->create();
+
+    $workspaceViewerPassword = Str::password(24);
+    $workspaceViewer = User::factory()->create(['password' => Hash::make($workspaceViewerPassword)]);
+    $workspaceViewerOrganization = Organization::factory()->create();
+    OrganizationMembership::factory()->for($workspaceViewer)->for($workspaceViewerOrganization)->create(['role' => Role::Viewer]);
+    Subscription::factory()->for($workspaceViewerOrganization)->for($plan)->create();
 
     $suspendedPassword = Str::password(24);
     $suspendedUser = User::factory()->create(['password' => Hash::make($suspendedPassword)]);
@@ -90,8 +108,10 @@ Artisan::command('app:prepare-auth-e2e', function (): void {
 
     $path = storage_path('app/private/auth-e2e.json');
     file_put_contents($path, json_encode([
-        'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug, 'switch_slug' => $switchOrganization->slug, 'switch_id' => $switchOrganization->id],
+        'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug, 'switch_slug' => $switchOrganization->slug, 'switch_id' => $switchOrganization->id, 'name' => $loginUser->name, 'team_member_name' => $teamMember->name],
         'viewer' => ['email' => $viewerUser->email, 'password' => $viewerPassword, 'slug' => $viewerOrganization->slug],
+        'workspace_login' => ['email' => $workspaceUser->email, 'password' => $workspacePassword, 'slug' => $workspaceOrganization->slug, 'name' => $workspaceUser->name, 'team_member_name' => $workspaceMember->name],
+        'workspace_viewer' => ['email' => $workspaceViewer->email, 'password' => $workspaceViewerPassword, 'slug' => $workspaceViewerOrganization->slug],
         'suspended' => ['email' => $suspendedUser->email, 'password' => $suspendedPassword, 'slug' => $suspendedOrganization->slug, 'name' => $suspendedOrganization->name],
         'invitation' => ['token' => $invitationToken, 'password' => $invitationPassword, 'slug' => $invitationOrganization->slug],
         'expired_token' => $expiredToken,

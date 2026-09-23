@@ -1,10 +1,4 @@
-import { RoutePlaceholder } from "@/components/app-shell/RoutePlaceholder";
+import { TeamManager } from "@/components/workspace/TeamManager";
 export default function TeamPage() {
-  return (
-    <RoutePlaceholder
-      title="Team"
-      description="This owner-visible route is a shell for future membership administration."
-      audience="Organization administration"
-    />
-  );
+  return <TeamManager />;
 }

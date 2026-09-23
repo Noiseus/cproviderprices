@@ -893,6 +893,38 @@ small {
   display: grid;
   gap: var(--space-4);
 }
+.workspace-page {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 74rem;
+}
+.workspace-page > header p {
+  color: var(--color-text-muted);
+}
+.workspace-page .ui-card {
+  display: grid;
+  gap: var(--space-4);
+}
+.ui-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.ui-list-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.ui-list-row p {
+  margin: var(--space-1) 0;
+  color: var(--color-text-muted);
+}
+.ui-list-row > div:last-child {
+  display: flex;
+  align-items: end;
+  gap: var(--space-2);
+}
 .platform-inline-form {
   grid-template-columns: minmax(12rem, 1fr) auto;
   align-items: end;
@@ -1018,6 +1050,10 @@ dd {
   }
   .platform-inline-form {
     grid-template-columns: 1fr;
+  }
+  .ui-list-row {
+    align-items: stretch;
+    flex-direction: column;
   }
   .ui-pagination {
     justify-content: space-between;

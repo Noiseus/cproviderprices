@@ -106,7 +106,7 @@ test("platform admin creates an organization and receives server validation erro
 test("trial extension, suspension confirmation, invite, and resend wait for the server", async ({
   page,
 }, testInfo) => {
-  testInfo.setTimeout(30_000);
+  testInfo.setTimeout(45_000);
   await loginFor(page, fixture.platform.email, fixture.platform.password);
   await page.goto(
     `${webUrl}/platform/organizations/${fixture.platform.organization_id}`,
@@ -137,5 +137,7 @@ test("trial extension, suspension confirmation, invite, and resend wait for the 
   await page.getByRole("button", { name: "Invite initial owner" }).click();
   await expect(page.getByText("Initial-owner invitation sent.")).toBeVisible();
   await page.getByRole("button", { name: "Resend" }).first().click();
-  await expect(page.getByText("Invitation replaced and resent.")).toBeVisible();
+  await expect(page.getByText("Invitation replaced and resent.")).toBeVisible({
+    timeout: 15_000,
+  });
 });

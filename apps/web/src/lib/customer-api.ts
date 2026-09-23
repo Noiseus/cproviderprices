@@ -43,11 +43,17 @@ export type SupplierAccount = {
   last_successful_sync_at: string | null;
 };
 
-export async function tenantServerRequest<T>(organizationId: string, path: string): Promise<T> {
+export async function tenantServerRequest<T>(
+  organizationId: string,
+  path: string,
+): Promise<T> {
   const cookieStore = await cookies();
   const response = await fetch(
     `${apiServerBaseUrl}/api/v1/organizations/${organizationId}/${path}`,
-    { headers: { Accept: "application/json", Cookie: cookieStore.toString() }, cache: "no-store" },
+    {
+      headers: { Accept: "application/json", Cookie: cookieStore.toString() },
+      cache: "no-store",
+    },
   );
   if (!response.ok) throw new Error("Tenant configuration is unavailable.");
   return (await response.json()) as T;

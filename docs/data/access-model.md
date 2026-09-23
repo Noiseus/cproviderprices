@@ -14,6 +14,7 @@ This access model establishes the private, multi-tenant account foundation for C
 - `plans` and `plan_entitlements` describe provider-neutral commercial definitions and their typed JSON capability/limit values.
 - `subscriptions` records an organization's plan history and subscription lifecycle without controlling organization lifecycle.
 - `audit_logs` stores immutable event context using durable scalar identifiers and snapshots rather than foreign keys that could erase history.
+- `supplier_definitions` stores the small global catalog of stable supplier identities, while `supplier_accounts` stores credential-free organization/location-scoped configuration metadata.
 
 ## ER-style diagram
 
@@ -78,6 +79,7 @@ Application time and containers use UTC. Database instants use timezone-aware co
 - Membership `(organization_id, user_id)` is unique and role/status values are database constrained.
 - Membership indexes support active memberships by user and by organization.
 - Location code is unique within an organization; organization/status supports tenant location lists.
+- Supplier definition code is globally unique. A supplier account belongs to one organization and a location in that same organization, and the same supplier cannot be configured twice for one location.
 - Only one pending invitation may exist per organization and normalized intended email. Status/expiration and organization/email lookups are indexed.
 - Entitlement key is unique within a plan.
 - Subscription indexes support organization/status and plan/status lookups while preserving subscription history.

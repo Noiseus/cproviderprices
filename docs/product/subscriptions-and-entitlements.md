@@ -10,7 +10,7 @@ The stable `starter` and `growth` definitions are seeded without prices, custome
 
 `EntitlementService` selects the organization's latest subscription deterministically, resolves its plan entitlements, evaluates lifecycle access, reports feature flags, computes implemented usage, and raises standard API problems for denied actions. Policies and tenant context run first. The authorization sequence is authenticated identity, tenant membership and role, organization lifecycle, subscription lifecycle, entitlement, then the use case.
 
-Restaurant-location creation enforces `max_locations`. Invitation acceptance enforces `max_users` when an invited membership becomes active. Location usage counts all retained locations; user usage counts active memberships. `max_supplier_accounts` is defined but its usage remains `null` until the approved supplier-account domain exists.
+Restaurant-location creation enforces `max_locations`. Invitation acceptance enforces `max_users` when an invited membership becomes active. Supplier-account creation enforces `max_supplier_accounts`. Location usage counts all retained locations, user usage counts active memberships, and supplier-account usage counts retained organization-scoped accounts.
 
 The server is authoritative. The web status page uses the same response to explain or hide unavailable functions, but client state never grants access.
 
