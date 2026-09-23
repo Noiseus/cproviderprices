@@ -41,6 +41,12 @@ class Organization extends Model
         return $this->hasMany(RestaurantLocation::class);
     }
 
+    /** @return HasMany<SupplierAccount, $this> */
+    public function supplierAccounts(): HasMany
+    {
+        return $this->hasMany(SupplierAccount::class);
+    }
+
     /** @return HasMany<Invitation, $this> */
     public function invitations(): HasMany
     {

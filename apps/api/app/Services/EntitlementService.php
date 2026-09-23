@@ -62,7 +62,7 @@ final class EntitlementService
             EntitlementKey::MaxLocations => $organization->restaurantLocations()->count(),
             EntitlementKey::MaxUsers => $organization->memberships()
                 ->where('status', MembershipStatus::Active)->count(),
-            EntitlementKey::MaxSupplierAccounts => null,
+            EntitlementKey::MaxSupplierAccounts => $organization->supplierAccounts()->count(),
             default => null,
         };
     }

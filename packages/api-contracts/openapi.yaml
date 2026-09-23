@@ -368,6 +368,15 @@ paths:
   /organizations/{organization}/restaurant-locations:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
+    get:
+      operationId: listRestaurantLocations
+      summary: List retained tenant locations
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Tenant-scoped locations.
+          content: { application/json: { schema: { $ref: "#/components/schemas/RestaurantLocationListResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
     post:
       operationId: createRestaurantLocation
       summary: Create a tenant location when role authorization and the plan limit allow it
@@ -392,6 +401,112 @@ paths:
           $ref: "#/components/responses/LimitReached"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /organizations/{organization}/restaurant-locations/{restaurantLocation}/select:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RestaurantLocationId"
+    post:
+      operationId: selectRestaurantLocation
+      summary: Select an active location in the authenticated session
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Location selected.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SelectedLocationResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/team:
+    parameters: [{ $ref: "#/components/parameters/OrganizationId" }]
+    get:
+      operationId: listOrganizationTeam
+      summary: List active members and pending invitations
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Tenant team configuration.
+          content: { application/json: { schema: { $ref: "#/components/schemas/TeamResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/invitations:
+    parameters: [{ $ref: "#/components/parameters/OrganizationId" }]
+    post:
+      operationId: createTeamInvitation
+      summary: Invite a tenant member; owner role requires explicit confirmation
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateTeamInvitationRequest" } } }
+      responses:
+        "201":
+          description: Invitation created.
+          content: { application/json: { schema: { $ref: "#/components/schemas/TeamInvitationResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/invitations/{invitation}/resend:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/InvitationId"
+    post:
+      operationId: resendTeamInvitation
+      summary: Revoke and safely replace a pending invitation
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Replacement invitation created.
+          content: { application/json: { schema: { $ref: "#/components/schemas/TeamInvitationResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/invitations/{invitation}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/InvitationId"
+    delete:
+      operationId: revokeTeamInvitation
+      summary: Revoke a pending invitation
+      security: [{ cookieSession: [] }]
+      responses:
+        "200": { description: Invitation revoked., content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/supplier-accounts:
+    parameters: [{ $ref: "#/components/parameters/OrganizationId" }]
+    get:
+      operationId: listSupplierAccounts
+      summary: List safe supplier-account metadata and global supplier definitions
+      security: [{ cookieSession: [] }]
+      parameters:
+        - name: location_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Supplier metadata.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SupplierAccountListResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createSupplierAccount
+      summary: Create safe tenant/location-scoped supplier-account metadata
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateSupplierAccountRequest" } } }
+      responses:
+        "201":
+          description: Supplier account created.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SupplierAccountResponse" } } }
+        "409": { $ref: "#/components/responses/LimitReached" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/supplier-accounts/{supplierAccount}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SupplierAccountId"
+    patch:
+      operationId: updateSupplierAccount
+      summary: Update safe supplier-account metadata
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateSupplierAccountRequest" } } }
+      responses:
+        "200":
+          description: Supplier account updated.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SupplierAccountResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /organizations/{organization}/memberships/{membership}:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -421,6 +536,13 @@ paths:
                 $ref: "#/components/schemas/MembershipResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+    delete:
+      operationId: revokeOrganizationMembership
+      summary: Revoke a membership while retaining at least one active owner
+      security: [{ cookieSession: [] }]
+      responses:
+        "200": { description: Membership revoked., content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /platform/context:
     get:
       operationId: getPlatformContext
@@ -670,6 +792,11 @@ components:
       schema:
         type: string
         format: uuid
+    SupplierAccountId:
+      name: supplierAccount
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     InvitationToken:
       name: token
       in: path
@@ -1083,7 +1210,7 @@ components:
     CreateRestaurantLocationRequest:
       type: object
       additionalProperties: false
-      required: [name, code, timezone]
+      required: [name, timezone]
       properties:
         name:
           type: string
@@ -1114,6 +1241,122 @@ components:
           enum: [active, inactive]
         timezone:
           type: string
+    RestaurantLocationListResponse:
+      type: object
+      additionalProperties: false
+      required: [restaurant_locations]
+      properties:
+        restaurant_locations: { type: array, items: { $ref: "#/components/schemas/RestaurantLocation" } }
+    SelectedLocationResponse:
+      type: object
+      additionalProperties: false
+      required: [selected_location_id]
+      properties: { selected_location_id: { type: string, format: uuid } }
+    TeamResponse:
+      type: object
+      additionalProperties: false
+      required: [team]
+      properties:
+        team:
+          type: object
+          additionalProperties: false
+          required: [members, pending_invitations]
+          properties:
+            members: { type: array, items: { $ref: "#/components/schemas/TeamMember" } }
+            pending_invitations: { type: array, items: { $ref: "#/components/schemas/TeamInvitation" } }
+    TeamMember:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, role, status, joined_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/OrganizationRole" }
+        status: { type: string, const: active }
+        joined_at: { type: [string, "null"], format: date-time }
+    TeamInvitation:
+      type: object
+      additionalProperties: false
+      required: [id, intended_email, intended_role, status, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        intended_email: { type: string, format: email }
+        intended_role: { $ref: "#/components/schemas/OrganizationRole" }
+        status: { type: string, enum: [pending, accepted, expired, revoked] }
+        expires_at: { type: string, format: date-time }
+    TeamInvitationResponse:
+      type: object
+      additionalProperties: false
+      required: [invitation]
+      properties: { invitation: { $ref: "#/components/schemas/TeamInvitation" } }
+    CreateTeamInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [email, role]
+      properties:
+        email: { type: string, format: email, maxLength: 255 }
+        role: { $ref: "#/components/schemas/OrganizationRole" }
+        high_risk_confirmed: { type: boolean, default: false }
+    SupplierDefinition:
+      type: object
+      additionalProperties: false
+      required: [id, code, name]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+    SupplierAccount:
+      type: object
+      additionalProperties: false
+      required: [id, supplier, location, display_name, masked_account_reference, source_method, expected_refresh_cadence, status, last_successful_sync_at]
+      properties:
+        id: { type: string, format: uuid }
+        supplier: { $ref: "#/components/schemas/SupplierDefinition" }
+        location:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties: { id: { type: string, format: uuid }, name: { type: string } }
+        display_name: { type: string }
+        masked_account_reference: { type: [string, "null"] }
+        source_method: { type: string, enum: [manual_import, future_automatic_sync] }
+        expected_refresh_cadence: { type: string, enum: [on_demand, daily, weekly, monthly] }
+        status: { type: string, enum: [active, inactive] }
+        last_successful_sync_at: { type: [string, "null"], format: date-time }
+    SupplierAccountListResponse:
+      type: object
+      additionalProperties: false
+      required: [supplier_definitions, supplier_accounts]
+      properties:
+        supplier_definitions: { type: array, items: { $ref: "#/components/schemas/SupplierDefinition" } }
+        supplier_accounts: { type: array, items: { $ref: "#/components/schemas/SupplierAccount" } }
+    SupplierAccountResponse:
+      type: object
+      additionalProperties: false
+      required: [supplier_account]
+      properties: { supplier_account: { $ref: "#/components/schemas/SupplierAccount" } }
+    CreateSupplierAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [restaurant_location_id, supplier_definition_id, display_name, source_method, expected_refresh_cadence]
+      properties:
+        restaurant_location_id: { type: string, format: uuid }
+        supplier_definition_id: { type: string, format: uuid }
+        display_name: { type: string, maxLength: 255 }
+        masked_account_reference: { type: [string, "null"], maxLength: 64 }
+        source_method: { type: string, enum: [manual_import, future_automatic_sync] }
+        expected_refresh_cadence: { type: string, enum: [on_demand, daily, weekly, monthly] }
+        status: { type: string, enum: [active, inactive] }
+    UpdateSupplierAccountRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        display_name: { type: string, maxLength: 255 }
+        masked_account_reference: { type: [string, "null"], maxLength: 64 }
+        source_method: { type: string, enum: [manual_import, future_automatic_sync] }
+        expected_refresh_cadence: { type: string, enum: [on_demand, daily, weekly, monthly] }
+        status: { type: string, enum: [active, inactive] }
     SubscriptionStatusResponse:
       type: object
       additionalProperties: false

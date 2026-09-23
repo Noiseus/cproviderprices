@@ -98,8 +98,9 @@ test("viewer gets reduced and entitlement-aware navigation", async ({
   page,
 }) => {
   await login(page, fixture.viewer);
-  await expect(page.getByRole("link", { name: "Team" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Locations" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Team" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Locations" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Suppliers" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
   await expect(
     page
@@ -109,6 +110,48 @@ test("viewer gets reduced and entitlement-aware navigation", async ({
   await expect(page.getByRole("link", { name: "Price history" })).toHaveCount(
     0,
   );
+
+  await page.getByRole("link", { name: "Team" }).click();
+  await expect(page.getByText("Read-only access")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send invitation" }),
+  ).toHaveCount(0);
+});
+
+test("owner workspace configuration uses client navigation", async ({
+  page,
+}) => {
+  await login(page, fixture.login);
+  await page.evaluate(() => {
+    (
+      window as Window & { __configurationMarker?: string }
+    ).__configurationMarker = "preserved";
+  });
+  await page.getByRole("link", { name: "Team" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Team" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send invitation" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __configurationMarker?: string })
+          .__configurationMarker,
+    ),
+  ).toBe("preserved");
+  await page.getByRole("link", { name: "Locations" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Locations" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create location" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Suppliers" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Suppliers" }),
+  ).toBeVisible();
 });
 
 test("mobile shell uses an accessible navigation drawer", async ({ page }) => {

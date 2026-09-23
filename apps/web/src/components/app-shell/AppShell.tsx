@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiRequest } from "@/lib/api";
-import { developmentLocationOptions } from "@/lib/development-fixtures/location-options";
+import type { Location } from "@/lib/customer-api";
 import { buildNavigation, titleForSegment } from "@/lib/navigation";
 import type { OrganizationSession, SessionPayload } from "@/lib/server-session";
 import type { SubscriptionStatusPayload } from "@/lib/server-subscription";
@@ -26,6 +26,7 @@ type Props = {
   subscription: SubscriptionStatusPayload | null;
   subscriptionProblem?: boolean;
   children: ReactNode;
+  locations: Location[];
 };
 
 export function AppShell(props: Props) {
@@ -36,17 +37,18 @@ export function AppShell(props: Props) {
     subscription,
     subscriptionProblem,
     children,
+    locations,
   } = props;
   const pathname = usePathname();
   const router = useRouter();
   const [compact, setCompact] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const locations = useMemo(
-    () => developmentLocationOptions(organization.id),
-    [organization.id],
+  const activeLocations = useMemo(
+    () => locations.filter((location) => location.status === "active"),
+    [locations],
   );
-  const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
+  const [locationId, setLocationId] = useState(activeLocations[0]?.id ?? "");
   const segment = pathname.split("/").filter(Boolean)[2] ?? "dashboard";
   const capabilities = subscription?.capabilities ?? {};
   const navigation = buildNavigation(organization.role, capabilities);
@@ -55,10 +57,10 @@ export function AppShell(props: Props) {
     setCompact(localStorage.getItem("cproviderprices-sidebar") === "compact");
     const locationKey = `cproviderprices-location:${organization.id}`;
     const stored = localStorage.getItem(locationKey);
-    if (stored && locations.some((location) => location.id === stored))
+    if (stored && activeLocations.some((location) => location.id === stored))
       setLocationId(stored);
-    else setLocationId(locations[0]?.id ?? "");
-  }, [locations, organization.id]);
+    else setLocationId(activeLocations[0]?.id ?? "");
+  }, [activeLocations, organization.id]);
 
   const navigationContent = (mobile = false) => (
     <nav
@@ -158,16 +160,29 @@ export function AppShell(props: Props) {
                 value={locationId}
                 onChange={(event) => {
                   const next = event.target.value;
-                  if (!locations.some((location) => location.id === next))
+                  if (!activeLocations.some((location) => location.id === next))
                     return;
-                  setLocationId(next);
-                  localStorage.setItem(
-                    `cproviderprices-location:${organization.id}`,
-                    next,
-                  );
+                  void apiRequest(
+                    `/api/v1/organizations/${organization.id}/restaurant-locations/${next}/select`,
+                    { method: "POST", body: JSON.stringify({}) },
+                  ).then(() => {
+                    setLocationId(next);
+                    localStorage.setItem(
+                      `cproviderprices-location:${organization.id}`,
+                      next,
+                    );
+                    window.dispatchEvent(
+                      new CustomEvent("workspace-location-changed", {
+                        detail: { locationId: next },
+                      }),
+                    );
+                  });
                 }}
               >
-                {locations.map((location) => (
+                {activeLocations.length === 0 && (
+                  <option value="">No active locations</option>
+                )}
+                {activeLocations.map((location) => (
                   <option key={location.id} value={location.id}>
                     {location.name}
                   </option>

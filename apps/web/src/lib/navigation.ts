@@ -29,7 +29,6 @@ const definitions: Definition[] = [
     label: "Suppliers",
     segment: "suppliers",
     icon: "SU",
-    roles: ["organization_owner", "buyer"],
     prefetch: false,
   },
   {
@@ -44,14 +43,12 @@ const definitions: Definition[] = [
     label: "Team",
     segment: "team",
     icon: "TM",
-    roles: ["organization_owner"],
     prefetch: false,
   },
   {
     label: "Locations",
     segment: "locations",
     icon: "LO",
-    roles: ["organization_owner"],
     prefetch: false,
   },
   {

@@ -24,6 +24,6 @@ final class OrganizationMembershipPolicy
 
     public function delete(User $user, OrganizationMembership $membership): bool
     {
-        return $this->update($user, $membership) && $membership->user_id !== $user->id;
+        return $this->update($user, $membership);
     }
 }

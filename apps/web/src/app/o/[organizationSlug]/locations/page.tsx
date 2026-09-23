@@ -1,10 +1,4 @@
-import { RoutePlaceholder } from "@/components/app-shell/RoutePlaceholder";
+import { LocationManager } from "@/components/workspace/LocationManager";
 export default function LocationsPage() {
-  return (
-    <RoutePlaceholder
-      title="Locations"
-      description="This owner-visible route will host tenant-scoped location management."
-      audience="Organization administration"
-    />
-  );
+  return <LocationManager />;
 }

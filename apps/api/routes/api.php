@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\V1\PlatformOverviewController;
 use App\Http\Controllers\Api\V1\PlatformSubscriptionController;
 use App\Http\Controllers\Api\V1\RestaurantLocationController;
 use App\Http\Controllers\Api\V1\SubscriptionStatusController;
+use App\Http\Controllers\Api\V1\SupplierAccountController;
+use App\Http\Controllers\Api\V1\TeamController;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Route;
 
@@ -46,11 +48,21 @@ Route::prefix('v1')->group(function (): void {
                 Route::middleware('tenant')->group(function (): void {
                     Route::get('/context', [OrganizationContextController::class, 'show']);
                     Route::post('/switch', [OrganizationContextController::class, 'switch']);
+                    Route::get('/team', [TeamController::class, 'index']);
+                    Route::post('/invitations', [TeamController::class, 'invite']);
+                    Route::post('/invitations/{invitation}/resend', [TeamController::class, 'resend']);
+                    Route::delete('/invitations/{invitation}', [TeamController::class, 'revoke']);
+                    Route::get('/restaurant-locations', [RestaurantLocationController::class, 'index']);
                     Route::get('/restaurant-locations/{restaurantLocation}', [RestaurantLocationController::class, 'show']);
                     Route::post('/restaurant-locations', [RestaurantLocationController::class, 'store']);
                     Route::patch('/restaurant-locations/{restaurantLocation}', [RestaurantLocationController::class, 'update']);
                     Route::delete('/restaurant-locations/{restaurantLocation}', [RestaurantLocationController::class, 'destroy']);
+                    Route::post('/restaurant-locations/{restaurantLocation}/select', [RestaurantLocationController::class, 'select']);
                     Route::patch('/memberships/{membership}', [OrganizationMembershipController::class, 'update']);
+                    Route::delete('/memberships/{membership}', [OrganizationMembershipController::class, 'destroy']);
+                    Route::get('/supplier-accounts', [SupplierAccountController::class, 'index']);
+                    Route::post('/supplier-accounts', [SupplierAccountController::class, 'store']);
+                    Route::patch('/supplier-accounts/{supplierAccount}', [SupplierAccountController::class, 'update']);
                 });
             });
 
