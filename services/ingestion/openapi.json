@@ -1,0 +1,746 @@
+{
+  "components": {
+    "schemas": {
+      "BatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "correlation_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/RawRecord"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          }
+        },
+        "required": [
+          "correlation_id",
+          "records"
+        ],
+        "title": "BatchRequest",
+        "type": "object"
+      },
+      "BatchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "correlation_id": {
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "parser_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Parser Version",
+            "type": "string"
+          },
+          "processed": {
+            "title": "Processed",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/NormalizedResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "warning": {
+            "title": "Warning",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correlation_id",
+          "results",
+          "processed",
+          "warning",
+          "failed"
+        ],
+        "title": "BatchResponse",
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ServiceError"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service",
+          "timestamp"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "MappedValues": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "description": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "gtin": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gtin"
+          },
+          "pack_size_text": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Size Text"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "supplier_sku": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Supplier Sku",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "supplier_sku",
+          "description"
+        ],
+        "title": "MappedValues",
+        "type": "object"
+      },
+      "Measurement": {
+        "additionalProperties": false,
+        "properties": {
+          "dimension": {
+            "anyOf": [
+              {
+                "enum": [
+                  "weight",
+                  "volume",
+                  "count"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimension"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "normalized_unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "g",
+                  "mL",
+                  "ea"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Unit"
+          },
+          "normalized_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Value"
+          },
+          "original_text": {
+            "title": "Original Text",
+            "type": "string"
+          },
+          "original_unit": {
+            "title": "Original Unit",
+            "type": "string"
+          },
+          "original_value": {
+            "title": "Original Value",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "original_text",
+          "original_value",
+          "original_unit",
+          "dimension",
+          "value",
+          "unit"
+        ],
+        "title": "Measurement",
+        "type": "object"
+      },
+      "NormalizedResult": {
+        "additionalProperties": false,
+        "properties": {
+          "case_quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Quantity"
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "title": "Measurements",
+            "type": "array"
+          },
+          "original": {
+            "$ref": "#/components/schemas/RawRecord"
+          },
+          "packs": {
+            "items": {
+              "$ref": "#/components/schemas/Pack"
+            },
+            "title": "Packs",
+            "type": "array"
+          },
+          "parser_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Parser Version",
+            "type": "string"
+          },
+          "record_id": {
+            "title": "Record Id",
+            "type": "string"
+          },
+          "size_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Code"
+          },
+          "variable_weight": {
+            "title": "Variable Weight",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Warning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "record_id",
+          "correlation_id",
+          "original",
+          "measurements",
+          "packs",
+          "case_quantity",
+          "size_code",
+          "variable_weight",
+          "warnings",
+          "confidence"
+        ],
+        "title": "NormalizedResult",
+        "type": "object"
+      },
+      "Pack": {
+        "additionalProperties": false,
+        "properties": {
+          "case_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Total"
+          },
+          "case_total_unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "g",
+                  "mL",
+                  "ea"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Total Unit"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "original_count": {
+            "title": "Original Count",
+            "type": "string"
+          },
+          "original_text": {
+            "title": "Original Text",
+            "type": "string"
+          },
+          "pack_count": {
+            "title": "Pack Count",
+            "type": "string"
+          },
+          "unit_size": {
+            "$ref": "#/components/schemas/Measurement"
+          }
+        },
+        "required": [
+          "field",
+          "original_text",
+          "original_count",
+          "pack_count",
+          "unit_size"
+        ],
+        "title": "Pack",
+        "type": "object"
+      },
+      "RawRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "correlation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "mapped": {
+            "$ref": "#/components/schemas/MappedValues"
+          },
+          "record_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "source_conventions": {
+            "$ref": "#/components/schemas/SourceConventions"
+          }
+        },
+        "required": [
+          "record_id",
+          "mapped"
+        ],
+        "title": "RawRecord",
+        "type": "object"
+      },
+      "ServiceError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "unauthorized_service",
+              "unsupported_encoding",
+              "unsupported_media_type",
+              "invalid_content_length",
+              "request_too_large",
+              "invalid_request"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "request_id"
+        ],
+        "title": "ServiceError",
+        "type": "object"
+      },
+      "SourceConventions": {
+        "additionalProperties": false,
+        "properties": {
+          "pound_sign_is_weight": {
+            "default": false,
+            "title": "Pound Sign Is Weight",
+            "type": "boolean"
+          },
+          "produce_size_code": {
+            "default": false,
+            "title": "Produce Size Code",
+            "type": "boolean"
+          },
+          "volume_system": {
+            "anyOf": [
+              {
+                "const": "us_liquid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume System"
+          }
+        },
+        "title": "SourceConventions",
+        "type": "object"
+      },
+      "Warning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "missing_quantity",
+              "ambiguous_quantity",
+              "ambiguous_unit",
+              "ambiguous_pack",
+              "ambiguous_size_code",
+              "unit_system_required",
+              "unsupported_unit",
+              "unsafe_conversion",
+              "conflicting_values",
+              "variable_weight"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "field",
+          "message"
+        ],
+        "title": "Warning",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "CProviderPrices Ingestion",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [],
+        "summary": "Health"
+      }
+    },
+    "/internal/v1/normalize": {
+      "post": {
+        "description": "Internal only. Maximum 100 records and 1 MiB JSON body; no database access. Body correlation_id is authoritative on success; X-Request-ID is an optional error trace. Warnings count affected records, not warning objects. Retries belong to Laravel.",
+        "operationId": "normalize_batch_internal_v1_normalize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Normalize Batch"
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Internal ingestion service only",
+      "url": "/"
+    }
+  ]
+}
