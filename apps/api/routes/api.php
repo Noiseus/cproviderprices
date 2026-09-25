@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\InvitationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\OrganizationContextController;
 use App\Http\Controllers\Api\V1\OrganizationMembershipController;
 use App\Http\Controllers\Api\V1\PlatformContextController;
@@ -17,7 +18,6 @@ use App\Http\Controllers\Api\V1\SubscriptionStatusController;
 use App\Http\Controllers\Api\V1\SupplierAccountController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Models\Organization;
-use App\Http\Controllers\Api\V1\ImportController;
 use Illuminate\Support\Facades\Route;
 
 Route::model('organization', Organization::class);

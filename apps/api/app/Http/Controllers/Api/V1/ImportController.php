@@ -46,7 +46,7 @@ final class ImportController extends Controller
             ->paginate($data['per_page'] ?? 20);
 
         return response()->json(['imports' => $page->getCollection()->map(fn (ImportRun $run): array => $this->payload($run))->all(),
-            'pagination' => ['current_page' => $page->currentPage(), 'per_page' => $page->perPage(), 'total' => $page->total(), 'last_page' => $page->lastPage()]]);
+            'pagination' => ['page' => $page->currentPage(), 'per_page' => $page->perPage(), 'total' => $page->total(), 'total_pages' => $page->lastPage()]]);
     }
 
     public function show(Request $request, TenantContext $context, Organization $organization, string $import): JsonResponse
@@ -60,7 +60,7 @@ final class ImportController extends Controller
     {
         $this->authorizeImport($request, $context, true, true);
         $data = $request->validate(['restaurant_location_id' => ['required', 'uuid'], 'supplier_account_id' => ['required', 'uuid'],
-            'file' => ['required', 'file', 'min:1', 'max:'.config('imports.max_kib')]]);
+            'file' => ['required', 'file', 'max:'.config('imports.max_kib')]]);
         $account = $this->access->account($context->organization, $data['supplier_account_id'], $data['restaurant_location_id']);
         $upload = $request->file('file');
         assert($upload instanceof UploadedFile);
@@ -68,7 +68,7 @@ final class ImportController extends Controller
         $originalPath = $upload->getClientOriginalPath();
         $format = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         $mime = $upload->getMimeType();
-        if (strlen($name) > 200 || preg_match('~[\\\\/\x00-\x1f\x7f]|\.\.~', $originalPath) || ! in_array($format, ['csv', 'xlsx'], true)
+        if ($upload->getSize() === 0 || strlen($name) > 200 || preg_match('~[\\\\/\x00-\x1f\x7f]|\.\.~', $originalPath) || ! in_array($format, ['csv', 'xlsx'], true)
             || ! in_array($mime, $format === 'csv' ? ['text/plain', 'text/csv', 'application/csv'] : ['application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], true)) {
             throw new ApiProblem('invalid_import_file', 'A safe CSV or XLSX file is required.', 422);
         }
@@ -125,7 +125,7 @@ final class ImportController extends Controller
 
         return response()->json(['templates' => $page->getCollection()->map(fn (ImportMappingTemplate $template): array => [
             'id' => $template->id, 'name' => $template->name, 'headers' => $template->headers, 'mapping' => $template->mapping, 'source_conventions' => (object) $template->source_conventions,
-        ])->all(), 'pagination' => ['current_page' => $page->currentPage(), 'per_page' => 20, 'total' => $page->total(), 'last_page' => $page->lastPage()]]);
+        ])->all(), 'pagination' => ['page' => $page->currentPage(), 'per_page' => 20, 'total' => $page->total(), 'total_pages' => $page->lastPage()]]);
     }
 
     public function mapping(Request $request, TenantContext $context, Organization $organization, string $import, ImportMapping $mapping): JsonResponse
@@ -233,7 +233,11 @@ final class ImportController extends Controller
         }
 
         return response()->streamDownload(function () use ($stream): void {
-            try { fpassthru($stream); } finally { fclose($stream); }
+            try {
+                fpassthru($stream);
+            } finally {
+                fclose($stream);
+            }
         }, $record->original_filename, ['Content-Type' => 'application/octet-stream', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
 
@@ -244,7 +248,9 @@ final class ImportController extends Controller
 
         return response()->streamDownload(function () use ($run): void {
             $output = fopen('php://output', 'wb');
-            if ($output === false) { return; }
+            if ($output === false) {
+                return;
+            }
             fputcsv($output, ['source_row', 'field', 'code', 'message'], escape: '');
             foreach (ImportError::query()->where('organization_id', $run->organization_id)->where('import_run_id', $run->id)->orderBy('source_row')->orderBy('id')->cursor() as $error) {
                 $values = array_map(static fn ($value): string => preg_match('/^[=+@\-\t\r\n]/', (string) $value) ? "'".$value : (string) $value,
@@ -261,7 +267,8 @@ final class ImportController extends Controller
         if ($feature) {
             app(EntitlementService::class)->assertFeatureEnabled($context->organization, EntitlementKey::ManualImportsEnabled);
         }
-        $request->validate(['organization_id' => ['prohibited']]);
+        $request->validate(['organization_id' => ['prohibited'], 'credentials' => ['prohibited'], 'password' => ['prohibited'],
+            'portal_password' => ['prohibited'], 'mfa_secret' => ['prohibited'], 'api_key' => ['prohibited'], 'cookie' => ['prohibited']]);
     }
 
     private function requireMappingState(ImportRun $run): void
@@ -285,7 +292,9 @@ final class ImportController extends Controller
     private function payload(ImportRun $run): array
     {
         $snapshot = $run->mapping_snapshot;
-        if ($snapshot !== null) { $snapshot['source_conventions'] = (object) $snapshot['source_conventions']; }
+        if ($snapshot !== null) {
+            $snapshot['source_conventions'] = (object) $snapshot['source_conventions'];
+        }
 
         return ['id' => $run->id, 'restaurant_location_id' => $run->restaurant_location_id, 'supplier_account_id' => $run->supplier_account_id,
             'status' => $run->status->value, 'mapping_snapshot' => $snapshot, 'mapping_template_id' => $run->mapping_template_id,

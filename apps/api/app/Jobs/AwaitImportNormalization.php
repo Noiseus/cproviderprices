@@ -15,6 +15,7 @@ final class AwaitImportNormalization implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
     public int $timeout = 60;
 
     public function __construct(public string $organizationId, public string $importId) {}
@@ -22,10 +23,14 @@ final class AwaitImportNormalization implements ShouldQueue
     public function handle(ImportAccess $access): void
     {
         $organization = Organization::query()->find($this->organizationId);
-        if ($organization === null) { return; }
+        if ($organization === null) {
+            return;
+        }
         DB::transaction(function () use ($organization, $access): void {
             $run = $access->run($organization, $this->importId, true);
-            if ($run->status !== ImportStatus::Queued) { return; }
+            if ($run->status !== ImportStatus::Queued) {
+                return;
+            }
             $access->file($run);
             // Intentionally no normalization, processing/completed transition, or raw mutation.
             // Phase D replaces this handoff with bounded raw-ID batching and Python delivery.

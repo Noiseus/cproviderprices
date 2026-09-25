@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property array<string, string> $raw_values
+ * @property array<string, string> $mapped_values
+ */
 class RawImportRecord extends Model
 {
     use HasUuids;

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ImportStatus;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property ImportStatus $status
  * @property array<string, mixed>|null $mapping_snapshot
+ * @property CarbonInterface|null $started_at
+ * @property CarbonInterface|null $finished_at
+ * @property CarbonInterface|null $validation_started_at
+ * @property CarbonInterface|null $validation_completed_at
  */
 class ImportRun extends Model
 {

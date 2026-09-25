@@ -18,8 +18,8 @@ final class ImportMapping
         $data = $request->validate([
             'mapping' => ['required_without:template_id', 'array:'.implode(',', self::FIELDS)],
             'mapping.*' => ['required', 'string', Rule::in($file->headers)],
-            'mapping.supplier_sku' => ['required_without:template_id', 'string'],
-            'mapping.description' => ['required_without:template_id', 'string'],
+            'mapping.supplier_sku' => ['required_without:template_id', 'string', Rule::in($file->headers)],
+            'mapping.description' => ['required_without:template_id', 'string', Rule::in($file->headers)],
             'template_id' => ['sometimes', 'uuid', 'prohibits:mapping,source_conventions,template_name'],
             'template_name' => ['sometimes', 'string', 'max:100'],
             'source_conventions' => ['sometimes', 'array:volume_system,produce_size_code,pound_sign_is_weight'],

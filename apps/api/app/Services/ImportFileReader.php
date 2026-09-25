@@ -58,7 +58,7 @@ final class ImportFileReader
                 $line = rtrim($line, "\r\n");
                 if ($row === 1) {
                     $line = preg_replace('/^\xEF\xBB\xBF/', '', $line) ?? $line;
-                    foreach ([",", ";", "\t"] as $candidate) {
+                    foreach ([',', ';', "\t"] as $candidate) {
                         if (count(str_getcsv($line, $candidate, '"', '')) > count(str_getcsv($line, $delimiter, '"', ''))) {
                             $delimiter = $candidate;
                         }
@@ -102,22 +102,56 @@ final class ImportFileReader
                 $names[$stat['name']] = true;
                 $total += $stat['size'];
             }
-            if ($total > 33554432 || ! isset($names['[Content_Types].xml'], $names['xl/workbook.xml'], $names['xl/worksheets/sheet1.xml'])) {
+            if ($total > 33554432 || ! isset($names['[Content_Types].xml'], $names['xl/workbook.xml'], $names['xl/_rels/workbook.xml.rels'], $names['xl/worksheets/sheet1.xml'])) {
                 $this->invalid();
             }
             // Single-sheet pilot format: no silent selection of another worksheet.
             if (count(preg_grep('~^xl/worksheets/sheet\d+\.xml$~', array_keys($names)) ?: []) !== 1) {
                 $this->invalid();
             }
+            $sheetCount = 0;
+            $sheetRelationship = null;
+            $targets = [];
             foreach (array_keys($names) as $name) {
                 if (str_ends_with($name, '.rels') || in_array($name, ['[Content_Types].xml', 'xl/workbook.xml'], true)) {
                     $metadata = $this->xml($zip, $name, 65536);
-                    while ($metadata->read()) {
-                        if (strtolower($metadata->getAttribute('TargetMode') ?? '') === 'external') { $this->invalid(); }
+                    try {
+                        while ($metadata->read()) {
+                            if ($metadata->nodeType !== XMLReader::ELEMENT) {
+                                continue;
+                            }
+                            if (strtolower($metadata->getAttribute('TargetMode') ?? '') === 'external') {
+                                $this->invalid();
+                            }
+                            if ($metadata->depth === 0 && $metadata->localName !== match ($name) {
+                                'xl/workbook.xml' => 'workbook', '[Content_Types].xml' => 'Types', default => 'Relationships'
+                            }) {
+                                $this->invalid();
+                            }
+                            if ($name === 'xl/workbook.xml' && $metadata->localName === 'sheet') {
+                                $sheetCount++;
+                                $sheetRelationship = $metadata->getAttributeNs('id', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+                            }
+                            if ($name === 'xl/_rels/workbook.xml.rels' && $metadata->localName === 'Relationship') {
+                                $id = $metadata->getAttribute('Id');
+                                if ($id === null || isset($targets[$id])) {
+                                    $this->invalid();
+                                }
+                                $targets[$id] = ['target' => $metadata->getAttribute('Target'), 'type' => $metadata->getAttribute('Type')];
+                            }
+                        }
+                    } finally {
+                        $metadata->close();
                     }
-                    $metadata->close();
-                    if (libxml_get_errors() !== []) { $this->invalid(); }
+                    if (libxml_get_errors() !== []) {
+                        $this->invalid();
+                    }
                 }
+            }
+            if ($sheetCount !== 1 || $sheetRelationship === null || ! isset($targets[$sheetRelationship])
+                || ! in_array($targets[$sheetRelationship]['target'], ['worksheets/sheet1.xml', '/xl/worksheets/sheet1.xml'], true)
+                || $targets[$sheetRelationship]['type'] !== 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet') {
+                $this->invalid();
             }
             $strings = [];
             if (isset($names['xl/sharedStrings.xml'])) {
@@ -134,14 +168,28 @@ final class ImportFileReader
                 } finally {
                     $xml->close();
                 }
-                if (libxml_get_errors() !== []) { $this->invalid(); }
+                if (libxml_get_errors() !== []) {
+                    $this->invalid();
+                }
             }
             $xml = $this->xml($zip, 'xl/worksheets/sheet1.xml', 8388608);
             $previous = 0;
+            $headerWidth = 0;
+            $sheetData = false;
             try {
                 while ($xml->read()) {
+                    if ($xml->nodeType === XMLReader::ELEMENT && $xml->depth === 0
+                        && ($xml->localName !== 'worksheet' || $xml->namespaceURI !== 'http://schemas.openxmlformats.org/spreadsheetml/2006/main')) {
+                        $this->invalid();
+                    }
+                    if ($xml->localName === 'sheetData' && $xml->depth === 1) {
+                        $sheetData = $xml->nodeType === XMLReader::ELEMENT;
+                    }
                     if ($xml->nodeType !== XMLReader::ELEMENT || $xml->localName !== 'row') {
                         continue;
+                    }
+                    if (! $sheetData || $xml->depth !== 2 || ! preg_match('/^[1-9][0-9]{0,4}$/D', $xml->getAttribute('r') ?? '')) {
+                        $this->invalid();
                     }
                     $row = (int) $xml->getAttribute('r');
                     if ($row <= $previous || ($previous === 0 && $row !== 1) || $row > config('imports.max_rows') + 1) {
@@ -188,10 +236,18 @@ final class ImportFileReader
                         }
                         $cells[] = $value;
                     }
+                    // XLSX omits blank cells, including optional trailing columns.
+                    if ($row === 1) {
+                        $headerWidth = count($cells);
+                    } else {
+                        $cells = array_pad($cells, $headerWidth, '');
+                    }
                     $this->checkCells($cells);
                     yield $row => $cells;
                 }
-                if (libxml_get_errors() !== []) { $this->invalid(); }
+                if (libxml_get_errors() !== []) {
+                    $this->invalid();
+                }
             } finally {
                 $xml->close();
             }

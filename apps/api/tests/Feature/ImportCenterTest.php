@@ -20,6 +20,7 @@ use App\Models\Subscription;
 use App\Models\SupplierAccount;
 use App\Models\User;
 use App\Services\EntitlementService;
+use App\Support\ApiProblem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Concerns\BuildsTenantContext;
 use Tests\TestCase;
 use ZipArchive;
@@ -37,8 +39,16 @@ final class ImportCenterTest extends TestCase
     use RefreshDatabase;
 
     private SupplierAccount $account;
+
     private Organization $organization;
+
     private User $user;
+
+    protected function beforeRefreshingDatabase(): void
+    {
+        $this->assertSame('cproviderprices_test', config('database.connections.pgsql.database'), 'Import tests require the dedicated test database.');
+        $this->assertTrue(app()->environment('testing'), 'Start the test process with APP_ENV=testing.');
+    }
 
     protected function setUp(): void
     {
@@ -109,11 +119,92 @@ final class ImportCenterTest extends TestCase
         $this->assertDatabaseCount('import_files', 0);
     }
 
+    public function test_pagination_uses_shared_contract_and_credentials_are_rejected(): void
+    {
+        $id = $this->upload()->assertCreated()->json('import.id');
+        $this->getJson($this->url().'?per_page=1')->assertOk()->assertJsonPath('pagination.page', 1)->assertJsonPath('pagination.total_pages', 1);
+        $this->getJson($this->url().'?per_page=101')->assertUnprocessable();
+        $this->putJson($this->url($id.'/mapping'), [...$this->mapping(), 'credentials' => ['password' => 'not-real']])->assertUnprocessable();
+    }
+
+    public function test_no_valid_rows_cannot_start_and_each_missing_field_has_an_error(): void
+    {
+        $id = $this->upload(UploadedFile::fake()->createWithContent('empty-values.csv', "Item,Description,Brand,Pack,Price\n,,Pilot,1 CS,1\n"))->assertCreated()->json('import.id');
+        $this->putJson($this->url($id.'/mapping'), $this->mapping())->assertOk();
+        $this->validateRun($id);
+        $this->assertDatabaseCount('raw_import_records', 0);
+        $this->assertDatabaseCount('import_errors', 2);
+        $this->getJson($this->url($id))->assertOk()->assertJsonPath('import.failed_count', 1);
+        $this->postJson($this->url($id.'/start'))->assertConflict()->assertJsonPath('error.code', 'import_not_ready');
+    }
+
+    public function test_source_conventions_and_exact_whitespace_are_preserved(): void
+    {
+        $id = $this->upload(UploadedFile::fake()->createWithContent('exact.csv', "Item,Description,Brand,Pack,Price\n0001,  OIL CANOLA 6/1 GAL  ,Pilot,6/1 GAL,42.50\n"))->assertCreated()->json('import.id');
+        $conventions = ['volume_system' => 'us_liquid', 'produce_size_code' => true, 'pound_sign_is_weight' => true];
+        $this->putJson($this->url($id.'/mapping'), [...$this->mapping(), 'source_conventions' => $conventions])->assertOk()->assertJsonPath('import.mapping_snapshot.source_conventions', $conventions);
+        $this->validateRun($id);
+        $this->assertSame('  OIL CANOLA 6/1 GAL  ', RawImportRecord::query()->sole()->mapped_values['description']);
+    }
+
+    public function test_same_tenant_different_import_file_id_cannot_be_downloaded(): void
+    {
+        $first = $this->upload()->assertCreated()->json('import.id');
+        $second = $this->upload($this->fixture('b'))->assertCreated()->json('import.id');
+        $file = ImportFile::query()->where('import_run_id', $second)->sole();
+        $url = URL::temporarySignedRoute('imports.file', now()->addMinutes(5), ['organization' => $this->organization->id, 'import' => $first, 'file' => $file->id], absolute: false);
+        $this->getJson($url)->assertNotFound();
+    }
+
+    public function test_job_tenant_forgery_does_not_persist_rows(): void
+    {
+        $id = $this->mapped();
+        $this->postJson($this->url($id.'/validate'))->assertAccepted();
+        try {
+            $this->app->call([new ValidateImportBatch(Organization::factory()->create()->id, $id), 'handle']);
+            $this->fail('Forged job ancestry was accepted.');
+        } catch (ApiProblem $problem) {
+            $this->assertSame(404, $problem->status);
+        }
+        $this->assertDatabaseCount('raw_import_records', 0);
+    }
+
+    public function test_download_rechecks_revoked_membership_and_suspended_organization(): void
+    {
+        $id = $this->upload()->assertCreated()->json('import.id');
+        $url = $this->postJson($this->url($id.'/downloads'))->assertOk()->json('file_url');
+        $this->organization->update(['status' => 'suspended']);
+        $this->getJson($url)->assertStatus(423);
+        $this->organization->update(['status' => 'active']);
+        $this->user->memberships()->where('organization_id', $this->organization->id)->update(['status' => 'suspended']);
+        $this->getJson($url)->assertForbidden();
+    }
+
     public function test_sample_is_limited_to_twenty_rows(): void
     {
         $this->upload(UploadedFile::fake()->createWithContent('many.csv', "SKU,Description\n".str_repeat("1,Tomato\n", 40)))
             ->assertCreated()->assertJsonCount(20, 'file.sample_rows');
         $this->assertDatabaseCount('raw_import_records', 0);
+    }
+
+    public function test_xlsx_omitted_trailing_cells_are_blank_not_a_corrupt_row(): void
+    {
+        $temp = tempnam(sys_get_temp_dir(), 'import-test-');
+        copy(base_path('tests/Fixtures/import-supplier-b.xlsx'), $temp);
+        try {
+            $zip = new ZipArchive;
+            $zip->open($temp);
+            $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
+            $zip->addFromString('xl/worksheets/sheet1.xml', str_replace('<c r="E4" t="inlineStr"><is><t>4/5 LB</t></is></c>', '', $sheet));
+            $zip->close();
+            $id = $this->upload(new UploadedFile($temp, 'sparse.xlsx', test: true))->assertCreated()->json('import.id');
+            $this->putJson($this->url($id.'/mapping'), ['mapping' => ['supplier_sku' => 'Vendor Code', 'description' => 'Product Text', 'pack_size_text' => 'Size Label']])->assertOk();
+            $this->validateRun($id);
+            $this->assertDatabaseCount('raw_import_records', 3);
+            $this->assertSame('', RawImportRecord::query()->where('source_row', 4)->sole()->mapped_values['pack_size_text']);
+        } finally {
+            unlink($temp);
+        }
     }
 
     public function test_duplicate_bytes_ignore_filename_but_are_account_scoped(): void
@@ -151,7 +242,9 @@ final class ImportCenterTest extends TestCase
         $this->getJson($this->url())->assertOk()->assertJsonPath('pagination.total', 1);
         $this->upload()->assertForbidden();
         $this->putJson($this->url($id.'/mapping'), $this->mapping())->assertForbidden();
-        foreach (['validate', 'start', 'cancel'] as $action) { $this->postJson($this->url($id.'/'.$action))->assertForbidden(); }
+        foreach (['validate', 'start', 'cancel'] as $action) {
+            $this->postJson($this->url($id.'/'.$action))->assertForbidden();
+        }
         $this->postJson($this->url($id.'/downloads'))->assertOk();
     }
 
@@ -288,7 +381,9 @@ final class ImportCenterTest extends TestCase
         $this->postJson($this->url($id.'/validate'))->assertConflict();
         $this->postJson($this->url($id.'/start'))->assertConflict();
         $this->postJson($this->url($id.'/cancel'))->assertOk();
-        foreach (['validate', 'start'] as $action) { $this->postJson($this->url($id.'/'.$action))->assertConflict(); }
+        foreach (['validate', 'start'] as $action) {
+            $this->postJson($this->url($id.'/'.$action))->assertConflict();
+        }
         $this->putJson($this->url($id.'/mapping'), $this->mapping())->assertConflict();
         $this->assertSame(ImportStatus::Canceled, ImportRun::query()->findOrFail($id)->status);
     }
@@ -388,17 +483,24 @@ final class ImportCenterTest extends TestCase
                 'external link' => $zip->addFromString('xl/externalLinks/link.xml', '<link/>'),
                 'multiple sheets' => $zip->addFromString('xl/worksheets/sheet2.xml', $sheet),
                 'expanded limit' => $zip->addFromString('xl/large.xml', str_repeat('x', 8388609)),
+                'wrong worksheet root' => $zip->addFromString('xl/worksheets/sheet1.xml', str_replace(['<worksheet ', '</worksheet>'], ['<unrelated ', '</unrelated>'], $sheet)),
+                'invalid row number' => $zip->addFromString('xl/worksheets/sheet1.xml', str_replace('r="2"', 'r="2oops"', $sheet)),
+                'wrong workbook target' => $zip->addFromString('xl/_rels/workbook.xml.rels', str_replace('worksheets/sheet1.xml', 'worksheets/missing.xml', $zip->getFromName('xl/_rels/workbook.xml.rels'))),
                 default => null,
             };
             $zip->close();
             $this->upload(new UploadedFile($temp, 'unsafe.xlsx', test: true))->assertUnprocessable();
-        } finally { unlink($temp); }
+        } finally {
+            unlink($temp);
+        }
     }
 
     /** @return iterable<string, array{string}> */
     public static function unsafeXlsx(): iterable
     {
-        foreach (['formula', 'truncated XML', 'entity', 'external link', 'multiple sheets', 'expanded limit'] as $attack) { yield $attack => [$attack]; }
+        foreach (['formula', 'truncated XML', 'entity', 'external link', 'multiple sheets', 'expanded limit', 'wrong worksheet root', 'invalid row number', 'wrong workbook target'] as $attack) {
+            yield $attack => [$attack];
+        }
     }
 
     /** @param array<string, mixed> $extra */
@@ -406,6 +508,7 @@ final class ImportCenterTest extends TestCase
     {
         $id = $this->upload()->assertCreated()->json('import.id');
         $this->putJson($this->url($id.'/mapping'), [...$this->mapping(), ...$extra])->assertOk();
+
         return $id;
     }
 
@@ -421,10 +524,13 @@ final class ImportCenterTest extends TestCase
         $this->runJob($id);
     }
 
-    private function runJob(string $id): void { $this->app->call([new ValidateImportBatch($this->organization->id, $id), 'handle']); }
+    private function runJob(string $id): void
+    {
+        $this->app->call([new ValidateImportBatch($this->organization->id, $id), 'handle']);
+    }
 
     /** @param array<string, mixed> $extra
-     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     * @return TestResponse<Response>
      */
     private function upload(?UploadedFile $file = null, array $extra = []): TestResponse
     {
@@ -434,8 +540,12 @@ final class ImportCenterTest extends TestCase
     private function fixture(string $supplier): UploadedFile
     {
         $name = 'import-supplier-'.$supplier.($supplier === 'a' ? '.csv' : '.xlsx');
+
         return new UploadedFile(base_path('tests/Fixtures/'.$name), $name, test: true);
     }
 
-    private function url(string $suffix = ''): string { return '/api/v1/organizations/'.$this->organization->id.'/imports'.($suffix === '' ? '' : '/'.$suffix); }
+    private function url(string $suffix = ''): string
+    {
+        return '/api/v1/organizations/'.$this->organization->id.'/imports'.($suffix === '' ? '' : '/'.$suffix);
+    }
 }

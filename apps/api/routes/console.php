@@ -26,6 +26,7 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
     if ($this->option('import-fixtures-only')) {
         require base_path('tests/Fixtures/generate-import-xlsx.php');
         $this->info('Synthetic import fixtures are available in tests/Fixtures.');
+
         return;
     }
 

@@ -23,6 +23,8 @@ Repository quality gates are deterministic and runnable locally and in CI:
 
 Docker is the canonical runtime. From an initialized checkout, run:
 
+Create a dedicated local PostgreSQL test database once with `docker compose exec -T postgres createdb -U cproviderprices cproviderprices_test`. Laravel test commands must start with `APP_ENV=testing` and `DB_DATABASE=cproviderprices_test`; `RefreshDatabase` resets its target database. Never point test commands at the development database. `make test` supplies these overrides. For direct PowerShell invocation, use `docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=cproviderprices_test api php artisan test`. See [Import Center validation](import-pipeline.md#phase-b-validation-and-continuation) for the opt-in real MinIO/Redis test.
+
 ```shell
 make lint
 make typecheck

@@ -22,7 +22,7 @@ typecheck:
 
 test:
 	docker compose run --rm --no-deps web npm run test
-	docker compose run --rm --no-deps -e APP_ENV=testing -e SESSION_DRIVER=array -e CACHE_STORE=array api php artisan test
+	docker compose run --rm --no-deps -e APP_ENV=testing -e DB_DATABASE=cproviderprices_test -e SESSION_DRIVER=array -e CACHE_STORE=array api php artisan test
 	docker compose run --rm --no-deps ingestion pytest
 
 contract:
