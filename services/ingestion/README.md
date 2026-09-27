@@ -71,3 +71,5 @@ docker compose exec -T ingestion python tests/container_smoke.py
 Parser tests deny socket calls. API tests use an in-process client. The separate container smoke launches a temporary loopback Uvicorn process inside the ingestion container with a random process-only token, verifies real HTTP health/auth/normalization, and terminates only that process. It does not modify `.env`, print secrets or contact Laravel. Normal service configuration remains fail-closed until a token is supplied. Existing pinned test dependencies emit two deprecation warnings; no dependencies were added/upgraded for Phase C.
 
 No database commands are needed. Preserve all Phase B test-database safeguards. Stop after Phase C; Phase D will authorize and batch existing pending raw records, call this contract with service credentials, persist versioned results idempotently, and finalize lifecycle counts. Do not start frontend or Prompt 13 automatically.
+
+Phase C completion, fixture outcomes, final checks and remaining boundaries are recorded in [the validation record](../../docs/architecture/import-phase-c-validation.md).

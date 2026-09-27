@@ -117,6 +117,15 @@ def _normalize(record: RawRecord) -> NormalizedResult:
             warn("ambiguous_quantity", field)
             if expected:
                 blocked.add(expected)
+            else:
+                # Invalid evidence must not silently lose to another candidate in its dimension.
+                token = " ".join(unit_text.lower().split())
+                token = token.removeprefix("us ").removeprefix("liquid ")
+                known_unit = UNITS.get(token)
+                if known_unit is not None:
+                    blocked.add(known_unit.dimension)
+                else:
+                    blocked.update(("weight", "volume", "count"))
             return None
         token = " ".join(unit_text.lower().split())
         explicit_us = token.startswith("us ")

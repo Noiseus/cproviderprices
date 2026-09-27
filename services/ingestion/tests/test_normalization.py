@@ -1,5 +1,8 @@
 import json
+import os
 import socket
+import subprocess
+import sys
 from decimal import getcontext
 from typing import NoReturn
 
@@ -246,3 +249,43 @@ def test_explicit_unit_disagreement_does_not_choose_a_winner() -> None:
     result = normalize(record("4/1 LB", weight="1 LB", unit="kg"))
     assert "conflicting_values" in {w.code for w in result.warnings}
     assert result.packs[0].case_total is None
+
+
+@pytest.mark.parametrize("text", ["4/10 LB OR 4/0 LB", "10 LB OR 0 LB"])
+def test_invalid_competing_numeric_evidence_cannot_leave_a_safe_winner(text: str) -> None:
+    result = normalize(record(text))
+    assert "ambiguous_quantity" in {warning.code for warning in result.warnings}
+    assert all(item.normalized_value is None for item in result.measurements)
+    assert all(pack.case_total is None for pack in result.packs)
+    assert result.confidence == "low"
+
+
+def test_invalid_weight_evidence_does_not_suppress_independent_safe_volume() -> None:
+    result = normalize(record("10 LB OR 0 LB", volume="1 L"))
+    assert result.measurements[0].normalized_value is None
+    assert result.measurements[1].normalized_value == "1000"
+
+
+def test_serialization_is_identical_across_process_hash_seeds() -> None:
+    source = record("TOM BEEF 5X6 1/25 LB CS").model_dump_json()
+    program = (
+        "import sys; from cproviderprices_ingestion.models import RawRecord; "
+        "from cproviderprices_ingestion.normalization import normalize; "
+        "print(normalize(RawRecord.model_validate_json(sys.stdin.read())).model_dump_json())"
+    )
+    outputs = [
+        subprocess.run(
+            [sys.executable, "-c", program],
+            input=source,
+            text=True,
+            capture_output=True,
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+        ).stdout
+        for seed in ["1", "777"]
+    ]
+    assert (
+        outputs[0]
+        == outputs[1]
+        == normalize(record("TOM BEEF 5X6 1/25 LB CS")).model_dump_json() + "\n"
+    )

@@ -65,16 +65,17 @@ def main() -> None:
             assert result["results"][0]["packs"][0]["case_total"] == "9071.8474"
             assert result["parser_version"] == "1.0.0"
             assert response.headers["X-Request-ID"] == "container-smoke"
-        request.remove_header("Authorization")
-        try:
-            urllib.request.urlopen(request, timeout=5)
-        except urllib.error.HTTPError as error:
-            assert error.code == 401
-        else:
-            raise AssertionError("Unauthenticated request was accepted.")
-        print(
-            "Container HTTP smoke: health 200; authenticated normalization 200; missing auth 401."
-        )
+        for authorization in [None, "Bearer invalid-test-token"]:
+            request.remove_header("Authorization")
+            if authorization is not None:
+                request.add_header("Authorization", authorization)
+            try:
+                urllib.request.urlopen(request, timeout=5)
+            except urllib.error.HTTPError as error:
+                assert error.code == 401
+            else:
+                raise AssertionError("Missing or invalid authentication was accepted.")
+        print("Container HTTP smoke: health 200; normalization 200; missing/invalid auth both 401.")
     finally:
         process.terminate()
         process.wait(timeout=5)
