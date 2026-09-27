@@ -2,6 +2,12 @@
 
 return [
 
+    'ingestion' => [
+        'url' => env('INGESTION_SERVICE_URL', 'http://ingestion:8001'),
+        'token' => env('INGESTION_SERVICE_TOKEN', ''),
+        'timeout' => (int) env('INGESTION_SERVICE_TIMEOUT', 20),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

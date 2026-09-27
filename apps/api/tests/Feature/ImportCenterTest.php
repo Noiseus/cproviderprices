@@ -342,8 +342,10 @@ final class ImportCenterTest extends TestCase
         $this->postJson($this->url($id.'/start'))->assertAccepted()->assertJsonPath('import.status', 'queued');
         Queue::assertPushedOn('import-normalization', AwaitImportNormalization::class);
         $this->app->call([new AwaitImportNormalization($this->organization->id, $id), 'handle']);
-        $this->assertDatabaseHas('import_runs', ['id' => $id, 'status' => 'queued', 'processed_count' => 0]);
+        $this->assertDatabaseHas('import_runs', ['id' => $id, 'status' => 'processing', 'processed_count' => 0]);
         $this->assertDatabaseCount('normalized_import_records', 0);
+        $this->postJson($this->url($id.'/start'))->assertAccepted()->assertJsonPath('import.status', 'processing')
+            ->assertJsonPath('import.remaining_count', 3)->assertJsonPath('import.normalization_failed_count', 0)->assertJsonPath('import.retry_count', 0);
     }
 
     public function test_validation_replay_and_start_replay_do_not_duplicate_evidence(): void

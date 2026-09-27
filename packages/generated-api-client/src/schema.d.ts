@@ -53,7 +53,7 @@ export interface paths {
         };
         /**
          * Get import status and bounded preview
-         * @description Includes at most 20 sample rows and 100 safe errors. Full errors are available through authorized download. Mapping validation remains needs_mapping until Start; timestamps distinguish validation progress. Queued means awaiting the later Python integration, not completed.
+         * @description Includes at most 20 sample rows and 100 safe errors. Full errors are available through authorized download. Mapping validation remains needs_mapping until Start; timestamps distinguish validation progress. Queued awaits bounded Python delivery. Processing counters are updated at batch boundaries, not dispatch time.
          */
         get: operations["getImport"];
         put?: never;
@@ -136,7 +136,7 @@ export interface paths {
         put?: never;
         /**
          * Queue validated records for normalization
-         * @description Requires finished validation and at least one valid raw record. Returns 409 import_not_ready or invalid_import_transition otherwise. Queued retries safely redispatch the bounded tenant/run pointer to import-normalization; no normalized output is produced.
+         * @description Requires finished validation and at least one valid raw record. Returns 409 import_not_ready or invalid_import_transition otherwise. Queued or processing retries safely redispatch the bounded tenant/run pointer to import-normalization. Previously completed rows are skipped; terminal imports cannot restart. The same owner/buyer and entitlement checks apply to resume.
          */
         post: operations["startImport"];
         delete?: never;
@@ -1008,11 +1008,17 @@ export interface components {
             validation_completed_at: string | null;
             validated_through_row: number;
             valid_rows: number;
-            /** @description Normalization count; remains zero in Phase B. */
+            /** @description Persisted successful rows for parser version 1.0.0, including warning-bearing rows. */
             processed_count: number;
             warning_count: number;
-            /** @description Invalid mapped row count, not number of error objects. */
+            /** @description Distinct failed source rows across validation and normalization, not error objects. */
             failed_count: number;
+            /** @description Eligible raw rows permanently failed during normalization. */
+            normalization_failed_count: number;
+            /** @description Eligible rows minus persisted success and normalization failure counts; retained after cancellation. */
+            remaining_count: number;
+            /** @description Transient service attempts eligible for queue retry; excludes final exhausted attempt. */
+            retry_count: number;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */

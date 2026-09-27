@@ -36,3 +36,5 @@ make e2e
 On Windows without GNU Make, use the equivalent `docker compose run --rm ...` commands in the root `Makefile`. The PowerShell setup command and Compose remain the supported bootstrap path.
 
 Tests must not depend on execution order, committed secrets, or pre-existing business data. Add the smallest test at the lowest boundary that proves a behavior, then use broader integration or end-to-end coverage only where service interaction is material.
+
+Phase D normalization: run `ImportNormalizationTest` under the explicit test environment/database above. For real MinIO/Redis/Laravel-to-Python/PostgreSQL validation, run `powershell -NoProfile -ExecutionPolicy Bypass -File infra/scripts/test-import-normalization.ps1` with dependencies running. It supplies a process-only shared token to an isolated ingestion container on the private Compose network, runs `ImportInfrastructureTest` against the disposable test database, and cleans up its own temporary resources. See [Phase D](import-phase-d-validation.md) for bounds and operational caveats.

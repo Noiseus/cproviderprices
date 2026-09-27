@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CProviderPrices API
-  version: 0.10.0
+  version: 0.11.0
   description: Versioned API contract for operational, invite-only authentication, tenant-context, entitlement, and explicit platform-administration endpoints.
 security: []
 servers:
@@ -52,7 +52,7 @@ paths:
       operationId: getImport
       summary: Get import status and bounded preview
       description: >-
-        Includes at most 20 sample rows and 100 safe errors. Full errors are available through authorized download. Mapping validation remains needs_mapping until Start; timestamps distinguish validation progress. Queued means awaiting the later Python integration, not completed.
+        Includes at most 20 sample rows and 100 safe errors. Full errors are available through authorized download. Mapping validation remains needs_mapping until Start; timestamps distinguish validation progress. Queued awaits bounded Python delivery. Processing counters are updated at batch boundaries, not dispatch time.
       security: [{ cookieSession: [] }]
       responses:
         "200":
@@ -108,7 +108,7 @@ paths:
       operationId: startImport
       summary: Queue validated records for normalization
       description: >-
-        Requires finished validation and at least one valid raw record. Returns 409 import_not_ready or invalid_import_transition otherwise. Queued retries safely redispatch the bounded tenant/run pointer to import-normalization; no normalized output is produced.
+        Requires finished validation and at least one valid raw record. Returns 409 import_not_ready or invalid_import_transition otherwise. Queued or processing retries safely redispatch the bounded tenant/run pointer to import-normalization. Previously completed rows are skipped; terminal imports cannot restart. The same owner/buyer and entitlement checks apply to resume.
       security: [{ cookieSession: [] }]
       responses:
         "202":
@@ -1154,7 +1154,7 @@ components:
     ImportSummary:
       type: object
       additionalProperties: false
-      required: [id, restaurant_location_id, supplier_account_id, status, mapping_snapshot, mapping_template_id, validation_started_at, validation_completed_at, validated_through_row, valid_rows, processed_count, warning_count, failed_count, created_at, finished_at]
+      required: [id, restaurant_location_id, supplier_account_id, status, mapping_snapshot, mapping_template_id, validation_started_at, validation_completed_at, validated_through_row, valid_rows, processed_count, warning_count, failed_count, normalization_failed_count, remaining_count, retry_count, created_at, finished_at]
       properties:
         id: { type: string, format: uuid }
         restaurant_location_id: { type: string, format: uuid }
@@ -1169,9 +1169,12 @@ components:
         validation_completed_at: { type: [string, "null"], format: date-time }
         validated_through_row: { type: integer, minimum: 1 }
         valid_rows: { type: integer, minimum: 0 }
-        processed_count: { type: integer, minimum: 0, description: "Normalization count; remains zero in Phase B." }
+        processed_count: { type: integer, minimum: 0, description: "Persisted successful rows for parser version 1.0.0, including warning-bearing rows." }
         warning_count: { type: integer, minimum: 0 }
-        failed_count: { type: integer, minimum: 0, description: "Invalid mapped row count, not number of error objects." }
+        failed_count: { type: integer, minimum: 0, description: "Distinct failed source rows across validation and normalization, not error objects." }
+        normalization_failed_count: { type: integer, minimum: 0, description: "Eligible raw rows permanently failed during normalization." }
+        remaining_count: { type: integer, minimum: 0, description: "Eligible rows minus persisted success and normalization failure counts; retained after cancellation." }
+        retry_count: { type: integer, minimum: 0, description: "Transient service attempts eligible for queue retry; excludes final exhausted attempt." }
         created_at: { type: string, format: date-time }
         finished_at: { type: [string, "null"], format: date-time }
     ImportPreviewFile:

@@ -23,12 +23,14 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\Concerns\BuildsNormalizationImport;
 use Tests\Concerns\BuildsTenantContext;
 use Tests\TestCase;
 
 /** Opt-in, real PostgreSQL + MinIO + Redis + Laravel worker. Never a developer database. */
 final class ImportInfrastructureTest extends TestCase
 {
+    use BuildsNormalizationImport;
     use BuildsTenantContext;
     use DatabaseMigrations;
 
@@ -39,9 +41,11 @@ final class ImportInfrastructureTest extends TestCase
         }
         $this->assertSame('pgsql', config('database.default'));
         $this->assertSame('cproviderprices_test', config('database.connections.pgsql.database'));
+        $this->assertTrue(app()->environment('testing'));
+        $this->assertNotEmpty(config('services.ingestion.token'), 'Provide an ephemeral shared ingestion token for the real HTTP path.');
     }
 
-    public function test_two_real_objects_pass_through_redis_worker_and_stop_at_normalization_boundary(): void
+    public function test_real_storage_queue_python_and_persistence_with_cancellation(): void
     {
         $prefix = 'phase-b-test:'.Str::uuid().':';
         config(['database.redis.options.prefix' => $prefix, 'queue.connections.redis.queue' => 'import-validation-test']);
@@ -81,14 +85,21 @@ final class ImportInfrastructureTest extends TestCase
             }
             $this->assertSame(2, Queue::connection('redis')->size('import-normalization'));
             $this->assertSame(0, NormalizedImportRecord::query()->count());
-            // Actual worker delivery is intentionally a no-op at Phase B, including cancellation.
+            // Phase D consumes the former handoff through authenticated real Python HTTP.
             $last = ImportRun::query()->latest('id')->firstOrFail();
             $this->postJson($url.'/'.$last->id.'/cancel')->assertOk();
             $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'redis', '--queue' => 'import-normalization', '--stop-when-empty' => true, '--sleep' => 0, '--tries' => 3, '--timeout' => 60]));
             $this->assertSame('canceled', $last->refresh()->status->value);
-            $this->assertSame(1, ImportRun::query()->where('status', 'queued')->count());
+            $this->assertSame(1, ImportRun::query()->where('status', 'partially_completed')->count());
             $this->assertSame(6, RawImportRecord::query()->count());
-            $this->assertSame(0, NormalizedImportRecord::query()->count());
+            $this->assertSame(3, NormalizedImportRecord::query()->count());
+            foreach (NormalizedImportRecord::query()->get() as $result) {
+                $this->assertSame('1.0.0', $result->parser_version);
+                $this->assertSame($result->importRun->request_id, $result->normalized_values['correlation_id']);
+                $this->assertSame($result->raw_import_record_id, $result->normalized_values['original']['record_id']);
+            }
+            $mozz = NormalizedImportRecord::query()->whereHas('rawImportRecord', fn ($query) => $query->where('source_row', 4))->sole();
+            $this->assertSame('9071.8474', $mozz->normalized_values['packs'][0]['case_total']);
             $this->assertDatabaseCount('failed_jobs', 0);
             // Exercise Laravel's real exhausted-job callback and configured failed-job store.
             $failedId = $this->postJson($url, ['restaurant_location_id' => $account->restaurant_location_id, 'supplier_account_id' => $account->id,
@@ -116,6 +127,36 @@ final class ImportInfrastructureTest extends TestCase
             }
             // Isolated random Redis prefix; never flush shared Redis databases.
             Queue::connection('redis')->clear('import-validation-test');
+            Queue::connection('redis')->clear('import-normalization');
+            Redis::purge('default');
+        }
+    }
+
+    public function test_real_redis_three_attempt_exhaustion_keeps_failed_jobs_safe(): void
+    {
+        config(['database.redis.options.prefix' => 'phase-d-test:'.Str::uuid().':']);
+        Redis::purge('default');
+        $run = $this->normalizationRun();
+        $token = config('services.ingestion.token');
+        Http::fake(['*' => Http::response('PRIVATE_RESPONSE_SENTINEL', 503)]);
+        try {
+            Queue::connection('redis')->push($this->normalizationJob($run), '', 'import-normalization');
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'redis', '--queue' => 'import-normalization', '--once' => true, '--sleep' => 0, '--timeout' => 60]));
+                $this->travel(31)->seconds();
+            }
+            Http::assertSentCount(3);
+            $this->assertSame('failed', $run->refresh()->status->value);
+            $this->assertSame(2, $run->retry_count);
+            $this->assertSame(1, $run->failed_count);
+            $this->assertDatabaseCount('failed_jobs', 1);
+            $failure = DB::table('failed_jobs')->sole();
+            $this->assertStringContainsString($run->id, $failure->payload);
+            foreach ([$token, 'PRIVATE_RESPONSE_SENTINEL', 'MOZZ WHOLE MILK'] as $private) {
+                $this->assertStringNotContainsString($private, $failure->payload.$failure->exception);
+            }
+        } finally {
+            $this->travelBack();
             Queue::connection('redis')->clear('import-normalization');
             Redis::purge('default');
         }

@@ -176,7 +176,7 @@ final class ImportController extends Controller
         $this->authorizeImport($request, $context, true, true);
         $run = DB::transaction(function () use ($context, $import): ImportRun {
             $run = $this->access->run($context->organization, $import, true);
-            if ($run->status !== ImportStatus::Queued) {
+            if (! in_array($run->status, [ImportStatus::Queued, ImportStatus::Processing], true)) {
                 $this->requireMappingState($run);
                 if ($run->validation_completed_at === null || ! RawImportRecord::query()->where('organization_id', $run->organization_id)->where('import_run_id', $run->id)->exists()) {
                     throw new ApiProblem('import_not_ready', 'Validation must finish with at least one valid row before starting.', 409);
@@ -295,12 +295,16 @@ final class ImportController extends Controller
         if ($snapshot !== null) {
             $snapshot['source_conventions'] = (object) $snapshot['source_conventions'];
         }
+        $raw = RawImportRecord::query()->where('organization_id', $run->organization_id)->where('import_run_id', $run->id);
+        $eligible = (clone $raw)->count();
+        $normalizationFailed = (clone $raw)->where('status', 'failed')->count();
 
         return ['id' => $run->id, 'restaurant_location_id' => $run->restaurant_location_id, 'supplier_account_id' => $run->supplier_account_id,
             'status' => $run->status->value, 'mapping_snapshot' => $snapshot, 'mapping_template_id' => $run->mapping_template_id,
             'validation_started_at' => $run->validation_started_at?->toIso8601String(), 'validation_completed_at' => $run->validation_completed_at?->toIso8601String(),
-            'validated_through_row' => $run->validation_cursor, 'valid_rows' => RawImportRecord::query()->where('organization_id', $run->organization_id)->where('import_run_id', $run->id)->count(),
+            'validated_through_row' => $run->validation_cursor, 'valid_rows' => $eligible,
             'processed_count' => $run->processed_count, 'warning_count' => $run->warning_count, 'failed_count' => $run->failed_count,
+            'normalization_failed_count' => $normalizationFailed, 'remaining_count' => max(0, $eligible - $run->processed_count - $normalizationFailed), 'retry_count' => $run->retry_count,
             'created_at' => $run->created_at?->toIso8601String(), 'finished_at' => $run->finished_at?->toIso8601String()];
     }
 }
