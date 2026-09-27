@@ -29,6 +29,9 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
 
         return;
     }
+    if (config('database.connections.pgsql.database') !== 'cproviderprices_e2e' || env('E2E_ISOLATED') !== '1') {
+        throw new RuntimeException('Browser fixtures require the isolated cproviderprices_e2e database and E2E_ISOLATED=1.');
+    }
 
     $loginPassword = Str::password(24);
     $loginUser = User::factory()->create(['password' => Hash::make($loginPassword)]);
@@ -112,7 +115,7 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
     ]);
     Organization::factory()->count(5)->create();
 
-    $path = storage_path('app/private/auth-e2e.json');
+    $path = storage_path('app/private/auth-e2e-isolated.json');
     file_put_contents($path, json_encode([
         'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug, 'switch_slug' => $switchOrganization->slug, 'switch_id' => $switchOrganization->id, 'name' => $loginUser->name, 'team_member_name' => $teamMember->name],
         'viewer' => ['email' => $viewerUser->email, 'password' => $viewerPassword, 'slug' => $viewerOrganization->slug],

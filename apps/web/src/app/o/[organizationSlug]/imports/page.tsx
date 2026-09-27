@@ -1,9 +1,4 @@
-import { RoutePlaceholder } from "@/components/app-shell/RoutePlaceholder";
+import { ImportCenter } from "@/components/imports/ImportCenter";
 export default function ImportsPage() {
-  return (
-    <RoutePlaceholder
-      title="Imports"
-      description="Import workflows and supplier connectors are intentionally not implemented."
-    />
-  );
+  return <ImportCenter />;
 }

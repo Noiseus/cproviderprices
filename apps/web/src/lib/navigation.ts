@@ -35,8 +35,7 @@ const definitions: Definition[] = [
     label: "Imports",
     segment: "imports",
     icon: "IM",
-    roles: ["organization_owner", "buyer"],
-    entitlement: "manual_imports_enabled",
+    // Historical imports remain readable by viewers and after feature disablement.
     prefetch: false,
   },
   {

@@ -13,7 +13,7 @@ type Fixture = {
 
 const fixturePath = resolve(
   process.cwd(),
-  "../api/storage/app/private/auth-e2e.json",
+  "../api/storage/app/private/auth-e2e-isolated.json",
 );
 const fixture = JSON.parse(readFileSync(fixturePath, "utf8")) as Fixture;
 const webUrl = process.env.WEB_URL ?? "http://localhost:3000";

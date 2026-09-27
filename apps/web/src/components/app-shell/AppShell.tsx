@@ -104,7 +104,7 @@ export function AppShell(props: Props) {
 
   return (
     <WorkspaceProvider
-      value={{ user, organization, organizations, subscription }}
+      value={{ user, organization, organizations, subscription, locations, locationId }}
     >
       <div
         className={`app-shell${compact ? " is-compact" : ""}`}

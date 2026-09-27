@@ -13,7 +13,7 @@ type Fixture = {
 };
 const fixture = JSON.parse(
   readFileSync(
-    resolve(process.cwd(), "../api/storage/app/private/auth-e2e.json"),
+    resolve(process.cwd(), "../api/storage/app/private/auth-e2e-isolated.json"),
     "utf8",
   ),
 ) as Fixture;
