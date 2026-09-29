@@ -12,6 +12,8 @@ Use a dedicated environment-managed service token in `Authorization: Bearer ...`
 
 Reject oversized requests before buffering unbounded bodies. Log safe error codes and aggregate counts; never tokens, authorization headers, full request bodies, samples, or source rows. Error responses must not echo credentials or validation inputs.
 
+Browser acceptance provisions a fresh process-only token through the isolated Compose runner; it never writes the token to committed configuration or frontend variables. E2E identities are synthetic and stored only in ignored private `auth-e2e-isolated.json`, removed at browser teardown. Retained Playwright failure traces may include synthetic authentication cookies; do not publish those artifacts or raw request logs. See the [isolated browser execution contract](../architecture/testing-strategy.md#isolated-browser-acceptance).
+
 ## Source objects and downloads
 
 Reuse Laravel's S3 disk and existing local MinIO. Generate object keys server-side from authorized tenant/import identifiers and random object IDs; filenames are display metadata, never paths. Keep buckets private. Local MinIO credentials are development-only and must not be reused in production. Production object-storage credentials stay environment-managed with least privilege.

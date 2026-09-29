@@ -61,7 +61,7 @@ jobs:
               - 'packages/**'
               - 'infra/docker/**'
               - 'infra/scripts/**'
-              - 'docker-compose.yml'
+              - 'docker-compose*.yml'
               - 'package.json'
               - 'package-lock.json'
 
@@ -171,14 +171,23 @@ jobs:
     if: needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      COMPOSE_PROJECT_NAME: cproviderprices-e2e
+      COMPOSE_FILE: docker-compose.yml:docker-compose.e2e.yml
     steps:
       - uses: actions/checkout@v4
+      - name: Generate ephemeral ingestion credential
+        run: |
+          token=$(openssl rand -hex 32)
+          echo "::add-mask::$token"
+          echo "E2E_INGESTION_TOKEN=$token" >> "$GITHUB_ENV"
       - run: sh infra/scripts/setup.sh
       - run: docker compose up -d --wait
       - run: docker compose exec api php artisan migrate --force
       - run: docker compose exec api php artisan db:seed --force
-      - run: docker compose exec -e APP_ENV=testing api php artisan app:prepare-auth-e2e
-      - run: docker compose exec -e PLAYWRIGHT_DOCKER=true -e WEB_HEALTH_URL=http://localhost:3000/api/health -e API_HEALTH_URL=http://api:8080/api/v1/health -e API_READINESS_URL=http://api:8080/api/v1/readiness -e INGESTION_HEALTH_URL=http://ingestion:8001/health -e MAILPIT_URL=http://mailpit:8025/ web npm run smoke
+      - run: docker compose exec api php artisan app:prepare-auth-e2e
+      - run: docker compose exec web npm run smoke
+      - run: docker compose exec api php artisan app:verify-import-e2e
       - if: failure()
         run: docker compose logs --tail=200
       - if: always()

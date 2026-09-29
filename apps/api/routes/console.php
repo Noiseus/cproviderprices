@@ -5,12 +5,16 @@ use App\Enums\InvitationStatus;
 use App\Enums\OrganizationStatus;
 use App\Enums\Role;
 use App\Enums\SubscriptionStatus;
+use App\Models\ImportFile;
 use App\Models\Invitation;
+use App\Models\NormalizedImportRecord;
 use App\Models\Organization;
 use App\Models\OrganizationMembership;
 use App\Models\Plan;
 use App\Models\PlanEntitlement;
+use App\Models\RestaurantLocation;
 use App\Models\Subscription;
+use App\Models\SupplierAccount;
 use App\Models\User;
 use Database\Seeders\SupplierDefinitionSeeder;
 use Illuminate\Foundation\Inspiring;
@@ -29,7 +33,7 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
 
         return;
     }
-    if (config('database.connections.pgsql.database') !== 'cproviderprices_e2e' || env('E2E_ISOLATED') !== '1') {
+    if (config('database.connections.pgsql.database') !== 'cproviderprices_e2e' || config('e2e.isolated') !== true) {
         throw new RuntimeException('Browser fixtures require the isolated cproviderprices_e2e database and E2E_ISOLATED=1.');
     }
 
@@ -115,8 +119,37 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
     ]);
     Organization::factory()->count(5)->create();
 
+    // Dedicated import identities keep prior workspace tests independent.
+    $importOrganization = Organization::factory()->create(['name' => 'Import E2E workspace']);
+    Subscription::factory()->for($importOrganization)->for($plan)->create();
+    $importIdentities = [];
+    foreach (['owner' => Role::OrganizationOwner, 'buyer' => Role::Buyer, 'viewer' => Role::Viewer] as $label => $role) {
+        $password = Str::password(24);
+        $user = User::factory()->create(['password' => Hash::make($password)]);
+        OrganizationMembership::factory()->for($user)->for($importOrganization)->create(['role' => $role]);
+        $importIdentities[$label] = ['email' => $user->email, 'password' => $password, 'slug' => $importOrganization->slug, 'organization_id' => $importOrganization->id];
+    }
+    $importLocation = RestaurantLocation::factory()->for($importOrganization)->create(['name' => 'Import Kitchen']);
+    $otherLocation = RestaurantLocation::factory()->for($importOrganization)->create(['name' => 'Other Kitchen']);
+    RestaurantLocation::factory()->for($importOrganization)->create(['name' => 'Inactive Kitchen', 'status' => 'inactive']);
+    $importAccounts = [];
+    foreach (['CSV Supplier', 'XLSX Supplier', 'Cancel Supplier'] as $name) {
+        $account = SupplierAccount::factory()->create(['organization_id' => $importOrganization->id, 'restaurant_location_id' => $importLocation->id, 'display_name' => $name]);
+        $importAccounts[$name] = $account->id;
+    }
+    SupplierAccount::factory()->create(['organization_id' => $importOrganization->id, 'restaurant_location_id' => $otherLocation->id, 'display_name' => 'Other Location Supplier']);
+    $disabledPassword = Str::password(24);
+    $disabledUser = User::factory()->create(['password' => Hash::make($disabledPassword)]);
+    $disabledOrganization = Organization::factory()->create();
+    OrganizationMembership::factory()->for($disabledUser)->for($disabledOrganization)->create(['role' => Role::OrganizationOwner]);
+    $disabledPlan = Plan::factory()->create();
+    PlanEntitlement::factory()->for($disabledPlan)->create(['key' => EntitlementKey::ManualImportsEnabled, 'value' => ['enabled' => false]]);
+    Subscription::factory()->for($disabledOrganization)->for($disabledPlan)->create();
+
     $path = storage_path('app/private/auth-e2e-isolated.json');
     file_put_contents($path, json_encode([
+        'imports' => $importIdentities + ['accounts' => $importAccounts, 'location_id' => $importLocation->id, 'other_location_id' => $otherLocation->id,
+            'disabled' => ['email' => $disabledUser->email, 'password' => $disabledPassword, 'slug' => $disabledOrganization->slug, 'organization_id' => $disabledOrganization->id]],
         'login' => ['email' => $loginUser->email, 'password' => $loginPassword, 'slug' => $loginOrganization->slug, 'switch_slug' => $switchOrganization->slug, 'switch_id' => $switchOrganization->id, 'name' => $loginUser->name, 'team_member_name' => $teamMember->name],
         'viewer' => ['email' => $viewerUser->email, 'password' => $viewerPassword, 'slug' => $viewerOrganization->slug],
         'workspace_login' => ['email' => $workspaceUser->email, 'password' => $workspacePassword, 'slug' => $workspaceOrganization->slug, 'name' => $workspaceUser->name, 'team_member_name' => $workspaceMember->name],
@@ -134,6 +167,27 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
 
     $this->info('Authentication E2E fixture created in ignored private storage.');
 })->purpose('Create short-lived local authentication E2E data without logging credentials');
+
+Artisan::command('app:verify-import-e2e', function (): void {
+    if (config('database.connections.pgsql.database') !== 'cproviderprices_e2e' || config('e2e.isolated') !== true) {
+        throw new RuntimeException('Verification requires the isolated browser database.');
+    }
+    $organization = Organization::query()->where('name', 'Import E2E workspace')->latest('id')->firstOrFail();
+    foreach (['a' => 'partially_completed', 'b' => 'completed'] as $supplier => $status) {
+        $file = ImportFile::query()->where('organization_id', $organization->id)->where('original_filename', 'import-supplier-'.$supplier.($supplier === 'a' ? '.csv' : '.xlsx'))->sole();
+        $run = $file->importRun;
+        $results = NormalizedImportRecord::query()->where('organization_id', $organization->id)->where('import_run_id', $run->id)->where('parser_version', '1.0.0');
+        if ($run->status->value !== $status || $results->count() !== 3 || $run->processed_count !== 3) {
+            throw new RuntimeException('Real UI import did not produce expected persisted outcomes.');
+        }
+        foreach ($results->get() as $result) {
+            if ($result->normalized_values['correlation_id'] !== $run->request_id) {
+                throw new RuntimeException('Import trace did not propagate.');
+            }
+        }
+    }
+    $this->info('Both real UI fixtures persisted three parser-1.0.0 results with matching correlation and expected terminal status.');
+});
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

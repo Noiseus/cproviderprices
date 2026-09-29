@@ -13,6 +13,8 @@ services:
     ports: !reset []
   api:
     image: cproviderprices-api
+    # Laravel's reload mode discards container env overrides in its child server.
+    command: sh -c "php artisan app:validate-environment && php artisan serve --host=0.0.0.0 --port=8080 --no-reload"
     environment: &e2e-api
       DB_DATABASE: cproviderprices_e2e
       E2E_ISOLATED: "1"
@@ -40,7 +42,7 @@ services:
       WEB_URL: http://localhost:3100
       E2E_ISOLATED: "1"
       PLAYWRIGHT_DOCKER: "true"
-      WEB_HEALTH_URL: http://localhost:3100/api/health
+      WEB_HEALTH_URL: http://web:3000/api/health
       API_HEALTH_URL: http://api:8080/api/v1/health
       API_READINESS_URL: http://api:8080/api/v1/readiness
       INGESTION_HEALTH_URL: http://ingestion:8001/health

@@ -14,6 +14,10 @@ try {
     if ($Spec) { $testArgs += $Spec }
     & docker @compose @testArgs
     if ($LASTEXITCODE -ne 0) { throw 'Browser validation failed.' }
+    if (-not $Spec -or $Spec -eq 'imports.spec.ts') {
+        & docker @compose exec -T api php artisan app:verify-import-e2e
+        if ($LASTEXITCODE -ne 0) { throw 'Real import persistence verification failed.' }
+    }
 } finally {
     # Stop only the named isolated project. Preserve volumes for diagnostics; never down -v.
     & docker @compose stop
