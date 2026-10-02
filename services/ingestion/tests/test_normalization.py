@@ -4,6 +4,7 @@ import socket
 import subprocess
 import sys
 from decimal import getcontext
+from pathlib import Path
 from typing import NoReturn
 
 import pytest
@@ -273,17 +274,30 @@ def test_serialization_is_identical_across_process_hash_seeds() -> None:
         "from cproviderprices_ingestion.normalization import normalize; "
         "print(normalize(RawRecord.model_validate_json(sys.stdin.read())).model_dump_json())"
     )
-    outputs = [
-        subprocess.run(
+    source_directory = Path(__file__).resolve().parents[1] / "src"
+
+    def output_for_hash_seed(seed: str) -> str:
+        existing_pythonpath = os.environ.get("PYTHONPATH")
+        child_pythonpath = str(source_directory)
+        if existing_pythonpath:
+            child_pythonpath += os.pathsep + existing_pythonpath
+        completed = subprocess.run(
             [sys.executable, "-c", program],
             input=source,
             text=True,
             capture_output=True,
-            check=True,
-            env={**os.environ, "PYTHONHASHSEED": seed},
-        ).stdout
-        for seed in ["1", "777"]
-    ]
+            check=False,
+            env={
+                **os.environ,
+                "PYTHONHASHSEED": seed,
+                "PYTHONPATH": child_pythonpath,
+            },
+        )
+        assert completed.returncode == 0, completed.stderr
+
+        return completed.stdout
+
+    outputs = [output_for_hash_seed(seed) for seed in ["1", "777"]]
     assert (
         outputs[0]
         == outputs[1]
