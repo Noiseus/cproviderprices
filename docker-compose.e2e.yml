@@ -48,6 +48,11 @@ services:
       - web-app-node-modules:/workspace/apps/web/node_modules
     tmpfs:
       - /workspace/apps/web/.next
+    # Docker Desktop provides this hostname automatically, but Linux Engine (the
+    # GitHub runner) needs an explicit host-gateway mapping for Chromium's
+    # localhost-to-host resolver rule in Playwright.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8180
       API_INTERNAL_URL: http://api:8080
