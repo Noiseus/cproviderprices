@@ -36,6 +36,18 @@ services:
     ports: !reset []
   web:
     image: cproviderprices-web
+    # Keep host-mounted dynamic route discovery deterministic for browser tests.
+    command: >-
+      sh -c "npm run validate-env --workspace @cproviderprices/web &&
+      npm run dev --workspace @cproviderprices/web -- --hostname 0.0.0.0 --webpack"
+    # A persisted Next dev cache can retain an outdated dynamic-route manifest.
+    # Keep dependency caches, but make compiled E2E output ephemeral per run.
+    volumes: !override
+      - .:/workspace
+      - web-node-modules:/workspace/node_modules
+      - web-app-node-modules:/workspace/apps/web/node_modules
+    tmpfs:
+      - /workspace/apps/web/.next
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8180
       API_INTERNAL_URL: http://api:8080

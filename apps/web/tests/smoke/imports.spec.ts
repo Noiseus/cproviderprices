@@ -114,6 +114,38 @@ async function noLeakOrOverflow(page: Page) {
   ).toBe(true);
 }
 
+async function assertMobileTableContainment(
+  page: Page,
+  tableClass: "import-preview" | "import-errors",
+) {
+  const table = page.locator(`table.${tableClass}`);
+  await expect(table.locator("thead th").first()).toHaveCSS(
+    "white-space",
+    "nowrap",
+  );
+  expect(
+    await table
+      .locator("thead th")
+      .first()
+      .evaluate((cell) => cell.clientWidth),
+  ).toBeGreaterThanOrEqual(128);
+  const scroll = table.locator("xpath=..");
+  expect(
+    await scroll.evaluate(
+      (element) => element.scrollWidth > element.clientWidth,
+    ),
+  ).toBe(true);
+  await scroll.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth;
+  });
+  expect(
+    await scroll.evaluate((element) => element.scrollLeft),
+  ).toBeGreaterThan(0);
+  await scroll.evaluate((element) => {
+    element.scrollLeft = 0;
+  });
+}
+
 test("owner completes real CSV flow, restores state, downloads, and avoids document reload", async ({
   page,
 }, info) => {
@@ -189,6 +221,15 @@ test("owner completes real CSV flow, restores state, downloads, and avoids docum
       () => (window as Window & { importMarker?: string }).importMarker,
     ),
   ).toBe("same-document");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await assertMobileTableContainment(page, "import-preview");
+  await assertMobileTableContainment(page, "import-errors");
+  await noLeakOrOverflow(page);
+  await page.screenshot({
+    path: info.outputPath("import-mobile-errors.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
   for (const label of ["Download source file", "Download error report"]) {
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: label }).click();

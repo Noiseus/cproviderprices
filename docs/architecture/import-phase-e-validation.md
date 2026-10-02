@@ -1,6 +1,6 @@
 # Phase E — Import Center frontend validation
 
-Continuation of checkpoint `b36d975` on `feat/11-12-import-ingestion`. Phases A–D, their schema/service boundaries and parser 1.0.0 remain intact. No Prompt 13 work, commit or push.
+Continuation of checkpoint `cef59d9` on `feat/11-12-import-ingestion`. Phases A–D, their schema/service boundaries and parser 1.0.0 remain intact. No Prompt 13 work, commit or push.
 
 ## Reused implementation and scoped corrections
 
@@ -11,6 +11,9 @@ The checkpoint already contained real history/detail routes, native CSV/XLSX mul
 - Added total-row summary, accurate terminal partial-failure wording and non-noisy validation announcements.
 - Added focused component/polling and real browser acceptance tests; expanded the existing synthetic fixture command and persisted-result verifier.
 - Completed isolated Compose environment retention, health addressing, local runner cleanup and CI/Makefile integration. No development database reset or destructive preparation.
+- Kept the E2E-only Next compiled output ephemeral and ran its development server with Webpack so a persisted Turbopack route manifest cannot make a host-mounted dynamic detail route appear absent. This does not change the normal development or production server.
+- Made the preview and error-table source-row headers preserve a readable minimum width and internal horizontal scrolling at narrow viewports; the shared table shell still prevents document-level overflow.
+- Kept the explicit Laravel configuration-backed E2E isolation guard and added PHPStan-compatible iterable typing to its unsafe-target data provider. Its runtime cases continue to fail closed before a database connection can be used.
 - Applied repository formatters; no additional frontend dependencies, shell, component library, query cache or backend business behavior.
 
 ## UI and API boundaries
@@ -36,7 +39,11 @@ Owners/buyers can mutate under existing policy; viewers retain authorized histor
 - CSV: real upload → mapping → async validation → queue → Python → persistence; **partially_completed**, three normalized/processed rows, one missing-description error at source row 5, total four, remaining zero.
 - XLSX: different ordered column names/layout; real end-to-end **completed**, three normalized/processed rows, zero failed rows.
 - Both fixtures persisted parser **1.0.0** with matching run correlation; no Python/lifecycle response fake. Expired-download coverage modifies only the signed download request expiry and exercises actual backend denial.
-- Full composed Playwright, final visual inspection, PHP static checks and final diff/config checks: pending final run.
+- Focused `E2EIsolationTest`: **4 passed, 8 assertions** for unsafe database/flag combinations; the guard requires both database `cproviderprices_e2e` and `E2E_ISOLATED=1` before either fixture command can run.
+- Full composed Playwright: **32 passed**. The latest Playwright result record is passed; real fixture verification ran after the suite before the isolated project stopped.
+- Final responsive inspection: desktop, tablet and 390-pixel mobile captures passed. Preview/error-table “Source row” headers remain readable; any extra table width scrolls only inside the shared table region and the document has no horizontal overflow.
+- PHPStan/Larastan: passed with the project configuration.
+- Final frontend lint/format/type/unit gates, `docker compose config --quiet`, and `git diff --check`: passed.
 
 Initial browser failures were selector and isolated test-network issues, not backend business defects. Native select assertions now use accessible combobox roles; expired-link testing stays in the browser network rather than Node's localhost. Tests use condition-based waits rather than fixed sleeps.
 
@@ -44,4 +51,4 @@ Initial browser failures were selector and isolated test-network issues, not bac
 
 Local test volumes intentionally remain for diagnostics; synthetic fixtures are fresh per run. Production shared-token provisioning, transport and source retention remain deployment responsibilities. Cancellation takes effect at a batch boundary. No vendor/catalog/matching records are created.
 
-Phase F has not begun. Final acceptance/continuation status will be recorded after the pending checks above.
+Phase E is formally complete. Phase F has not begun; begin its end-to-end fixture processing and broad quality gates only after explicit authorization.

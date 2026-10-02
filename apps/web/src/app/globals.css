@@ -1073,6 +1073,11 @@ dd {
 .import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-4); }
 .import-preview td { white-space: pre-wrap; min-width: 8rem; max-width: 24rem; overflow-wrap: anywhere; }
 .import-preview th { min-width: 8rem; }
+.import-preview thead th:first-child,
+.import-errors thead th:first-child {
+  min-width: 8rem;
+  white-space: nowrap;
+}
 .import-center th { overflow-wrap: anywhere; }
 .import-center dd { overflow-wrap: anywhere; }
 .import-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: var(--space-3); }

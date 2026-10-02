@@ -9,6 +9,7 @@ use Tests\TestCase;
 
 class E2EIsolationTest extends TestCase
 {
+    /** @return list<array{0: string, 1: string, 2: bool}> */
     public static function unsafeTargets(): array
     {
         return [

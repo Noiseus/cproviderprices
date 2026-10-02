@@ -769,7 +769,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                 rows.
               </p>
               <DataTableShell caption="import errors">
-                <table>
+                <table className="import-errors">
                   <caption>Source row and field errors</caption>
                   <thead>
                     <tr>

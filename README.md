@@ -73,7 +73,7 @@ The ingestion port is published only for local smoke testing. The intended produ
 - `make typecheck`: run strict TypeScript, PHP, and Python static checks.
 - `make test`: run web, API, and ingestion tests.
 - `make contract`: validate OpenAPI and verify generated TypeScript client reproducibility.
-- `make e2e`: smoke-test all HTTP endpoints and the Mailpit UI.
+- `make e2e`: run isolated Docker Compose Playwright acceptance, including health checks and real browser workflows.
 - `make migrate`: run Laravel migrations against PostgreSQL.
 - `make seed`: run the intentionally empty Laravel seeder.
 - `make logs`: follow recent logs for all local services.
