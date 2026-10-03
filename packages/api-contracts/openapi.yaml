@@ -1,13 +1,217 @@
 openapi: 3.1.0
 info:
   title: CProviderPrices API
-  version: 0.9.0
+  version: 0.11.0
   description: Versioned API contract for operational, invite-only authentication, tenant-context, entitlement, and explicit platform-administration endpoints.
 security: []
 servers:
   - url: /api/v1
     description: Versioned API base path
 paths:
+  /organizations/{organization}/imports:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    get:
+      operationId: listImports
+      summary: List authorized historical imports
+      description: >-
+        Active members may read history even when manual imports are disabled. Organization identifiers in body/query are prohibited. Pagination follows the shared contract.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: List authorized historical imports.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportListResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createImport
+      summary: Upload a private CSV or XLSX import
+      description: >-
+        Owners and buyers only. Requires manual_imports_enabled and subscription access after tenant authorization. Server checks location/account ancestry. 10 MiB hard maximum, configurable lower ceiling. CSV is UTF-8, single physical line per record, comma/semicolon/tab delimited. XLSX supports one sheet with no formulas or external references. Preview reads at most 20 data rows under ZIP/XML/row/cell bounds; late structural defects are detected asynchronously. SHA-256 duplicate identity is organization + supplier account (which fixes location), independent of filename. No permanent storage URLs or object keys are returned.
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { multipart/form-data: { schema: { $ref: "#/components/schemas/ImportUploadRequest" } } }
+      responses:
+        "201":
+          description: Upload a private CSV or XLSX import.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportDetailResponse" } } }
+        "403": { $ref: "#/components/responses/ManualImportDisabled" }
+        "409": { $ref: "#/components/responses/DuplicateImport" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+    get:
+      operationId: getImport
+      summary: Get import status and bounded preview
+      description: >-
+        Includes at most 20 sample rows and 100 safe errors. Full errors are available through authorized download. Mapping validation remains needs_mapping until Start; timestamps distinguish validation progress. Queued awaits bounded Python delivery. Processing counters are updated at batch boundaries, not dispatch time.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Get import status and bounded preview.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportDetailResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}/mapping:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+    put:
+      operationId: confirmImportMapping
+      summary: Create update or select the mapping snapshot
+      description: >-
+        Requires needs_mapping with validation not yet started. Template selection requires identical ordered headers and the same organization/account. Saving the same template_name updates the reusable template but never changes existing run snapshots. Mapping only copies strings; no normalization.
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ImportMappingRequest" } } }
+      responses:
+        "200":
+          description: Create update or select the mapping snapshot.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportDetailResponse" } } }
+        "403": { $ref: "#/components/responses/ManualImportDisabled" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}/validate:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+    post:
+      operationId: validateImport
+      summary: Queue bounded mapped-row validation
+      description: >-
+        Requires a confirmed mapping. Idempotent replay resumes incomplete validation or returns finished validation. Each Redis job writes at most 100 rows; invalid rows get stable errors while valid raw records remain eligible. Mapping becomes immutable.
+      security: [{ cookieSession: [] }]
+      responses:
+        "202":
+          description: Queue bounded mapped-row validation.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportDetailResponse" } } }
+        "403": { $ref: "#/components/responses/ManualImportDisabled" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}/start:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+    post:
+      operationId: startImport
+      summary: Queue validated records for normalization
+      description: >-
+        Requires finished validation and at least one valid raw record. Returns 409 import_not_ready or invalid_import_transition otherwise. Queued or processing retries safely redispatch the bounded tenant/run pointer to import-normalization. Previously completed rows are skipped; terminal imports cannot restart. The same owner/buyer and entitlement checks apply to resume.
+      security: [{ cookieSession: [] }]
+      responses:
+        "202":
+          description: Queue validated records for normalization.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportDetailResponse" } } }
+        "403": { $ref: "#/components/responses/ManualImportDisabled" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+    post:
+      operationId: cancelImport
+      summary: Cancel an import without deleting its evidence
+      description: >-
+        Owners and buyers may cancel even if the feature was disabled. Canceled replay is idempotent; other terminal states reject cancellation. Pending jobs recheck locked lifecycle state before writing.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Cancel an import without deleting its evidence.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportDetailResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}/downloads:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+    post:
+      operationId: authorizeImportDownloads
+      summary: Issue five-minute private download links
+      description: >-
+        Any current authorized member may obtain relative signed application URLs. Redemption requires a current session, active tenant membership, complete ancestry and an unexpired signature. Links are not object-store URLs.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Issue five-minute private download links.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportDownloadsResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/import-mapping-templates:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - { name: supplier_account_id, in: query, required: true, schema: { type: string, format: uuid } }
+      - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    get:
+      operationId: listImportMappingTemplates
+      summary: List account-scoped mapping templates
+      description: >-
+        Twenty templates per page, ordered by name. Account ancestry is checked before querying; filename alone never selects a template.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: List account-scoped mapping templates.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportTemplateListResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}/files/{file}/download:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+      - { name: file, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: expires, in: query, required: true, schema: { type: integer } }
+      - { name: signature, in: query, required: true, schema: { type: string } }
+    get:
+      operationId: downloadImportFile
+      summary: Stream an authorized private source file
+      description: Requires current session/tenant authorization and a five-minute relative signature issued by authorizeImportDownloads. Response is an attachment with private no-store caching and nosniff. Error CSV neutralizes spreadsheet formulas and does not echo raw values. Invalid or expired signatures return 403; wrong ancestry returns 404.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Private attachment.
+          headers:
+            Cache-Control: { schema: { type: string, const: "private, no-store" } }
+            Content-Disposition: { schema: { type: string } }
+            X-Request-ID: { $ref: "#/components/headers/RequestId" }
+          content: { application/octet-stream: { schema: { type: string, format: binary } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/imports/{import}/errors/download:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - $ref: "#/components/parameters/ImportId"
+      - { name: expires, in: query, required: true, schema: { type: integer } }
+      - { name: signature, in: query, required: true, schema: { type: string } }
+    get:
+      operationId: downloadImportErrors
+      summary: Stream an authorized private error report
+      description: Requires current session/tenant authorization and a five-minute relative signature issued by authorizeImportDownloads. Response is an attachment with private no-store caching and nosniff. Error CSV neutralizes spreadsheet formulas and does not echo raw values. Invalid or expired signatures return 403; wrong ancestry returns 404.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Private attachment.
+          headers:
+            Cache-Control: { schema: { type: string, const: "private, no-store" } }
+            Content-Disposition: { schema: { type: string } }
+            X-Request-ID: { $ref: "#/components/headers/RequestId" }
+          content: { text/csv: { schema: { type: string, format: binary } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /health:
     get:
       operationId: getHealth
@@ -755,6 +959,11 @@ components:
       name: cproviderprices_session
       description: HttpOnly Laravel browser session. State-changing requests also require the X-XSRF-TOKEN header.
   parameters:
+    ImportId:
+      name: import
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     RequestId:
       name: X-Request-ID
       in: header
@@ -811,6 +1020,30 @@ components:
       schema:
         $ref: "#/components/schemas/RequestId"
   responses:
+    ManualImportDisabled:
+      description: Manual import mutation is forbidden. Role denial uses forbidden; disabled entitlement uses feature_disabled with manual_imports_enabled. Subscription access failures use the established subscription error.
+      headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example:
+            error:
+              code: feature_disabled
+              message: This feature is not available for the current plan.
+              request_id: import-request-1
+              details: { entitlement_key: manual_imports_enabled }
+    DuplicateImport:
+      description: Identical bytes already exist in the same organization and supplier account/location. No new object or run is created; details.import_id identifies the authorized existing run.
+      headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+          example:
+            error:
+              code: duplicate_import
+              message: This file has already been imported for this supplier account.
+              request_id: import-request-1
+              details: { import_id: 550e8400-e29b-41d4-a716-446655440000 }
     ErrorResponse:
       description: Request failed using the standard API error envelope.
       headers:
@@ -859,6 +1092,162 @@ components:
                     limit: 1
                     current_usage: 1
   schemas:
+    ImportStatus:
+      type: string
+      enum: [uploaded, validating, needs_mapping, queued, processing, partially_completed, completed, failed, canceled]
+      description: Phase B ends at queued. Failed/canceled are terminal; later phases own normalization and successful terminal states.
+    ImportUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [restaurant_location_id, supplier_account_id, file]
+      properties:
+        restaurant_location_id: { type: string, format: uuid }
+        supplier_account_id: { type: string, format: uuid }
+        file: { type: string, format: binary, description: "Nonempty CSV/XLSX, at most 10485760 bytes (or configured lower limit)." }
+    ImportMappingFields:
+      type: object
+      additionalProperties: false
+      required: [supplier_sku, description]
+      description: Values name exact detected source headers; each column may be selected only once. All source values remain strings.
+      properties:
+        supplier_sku: { type: string, minLength: 1, maxLength: 4096 }
+        description: { type: string, minLength: 1, maxLength: 4096 }
+        brand: { type: string, minLength: 1, maxLength: 4096 }
+        pack_size_text: { type: string, minLength: 1, maxLength: 4096 }
+        quantity: { type: string, minLength: 1, maxLength: 4096 }
+        weight: { type: string, minLength: 1, maxLength: 4096 }
+        volume: { type: string, minLength: 1, maxLength: 4096 }
+        unit: { type: string, minLength: 1, maxLength: 4096 }
+        price: { type: string, minLength: 1, maxLength: 4096 }
+        currency: { type: string, minLength: 1, maxLength: 4096 }
+        gtin: { type: string, minLength: 1, maxLength: 4096 }
+    ImportSourceConventions:
+      type: object
+      additionalProperties: false
+      properties:
+        volume_system: { type: string, enum: [us_liquid] }
+        produce_size_code: { type: boolean }
+        pound_sign_is_weight: { type: boolean }
+    ImportMappingRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [mapping]
+          properties:
+            mapping: { $ref: "#/components/schemas/ImportMappingFields" }
+            source_conventions: { $ref: "#/components/schemas/ImportSourceConventions" }
+            template_name: { type: string, minLength: 1, maxLength: 100 }
+        - type: object
+          additionalProperties: false
+          required: [template_id]
+          properties:
+            template_id: { type: string, format: uuid }
+    ImportMappingSnapshot:
+      type: object
+      additionalProperties: false
+      required: [version, headers, mapping, source_conventions]
+      properties:
+        version: { type: integer, const: 1 }
+        headers: { type: array, minItems: 1, maxItems: 100, items: { type: string } }
+        mapping: { $ref: "#/components/schemas/ImportMappingFields" }
+        source_conventions: { $ref: "#/components/schemas/ImportSourceConventions" }
+    ImportSummary:
+      type: object
+      additionalProperties: false
+      required: [id, restaurant_location_id, supplier_account_id, status, mapping_snapshot, mapping_template_id, validation_started_at, validation_completed_at, validated_through_row, valid_rows, processed_count, warning_count, failed_count, normalization_failed_count, remaining_count, retry_count, created_at, finished_at]
+      properties:
+        id: { type: string, format: uuid }
+        restaurant_location_id: { type: string, format: uuid }
+        supplier_account_id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/ImportStatus" }
+        mapping_snapshot:
+          oneOf:
+            - { $ref: "#/components/schemas/ImportMappingSnapshot" }
+            - { type: "null" }
+        mapping_template_id: { type: [string, "null"], format: uuid }
+        validation_started_at: { type: [string, "null"], format: date-time }
+        validation_completed_at: { type: [string, "null"], format: date-time }
+        validated_through_row: { type: integer, minimum: 1 }
+        valid_rows: { type: integer, minimum: 0 }
+        processed_count: { type: integer, minimum: 0, description: "Persisted successful rows for parser version 1.0.0, including warning-bearing rows." }
+        warning_count: { type: integer, minimum: 0 }
+        failed_count: { type: integer, minimum: 0, description: "Distinct failed source rows across validation and normalization, not error objects." }
+        normalization_failed_count: { type: integer, minimum: 0, description: "Eligible raw rows permanently failed during normalization." }
+        remaining_count: { type: integer, minimum: 0, description: "Eligible rows minus persisted success and normalization failure counts; retained after cancellation." }
+        retry_count: { type: integer, minimum: 0, description: "Transient service attempts eligible for queue retry; excludes final exhausted attempt." }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+    ImportPreviewFile:
+      type: object
+      additionalProperties: false
+      required: [id, original_filename, size_bytes, format, headers, sample_rows]
+      properties:
+        id: { type: string, format: uuid }
+        original_filename: { type: string, maxLength: 200 }
+        size_bytes: { type: integer, minimum: 1, maximum: 10485760 }
+        format: { type: string, enum: [csv, xlsx] }
+        headers: { type: array, minItems: 1, maxItems: 100, items: { type: string } }
+        sample_rows:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [source_row, values]
+            properties:
+              source_row: { type: integer, minimum: 2 }
+              values: { type: array, maxItems: 100, items: { type: string, maxLength: 4096 } }
+    ImportRowError:
+      type: object
+      additionalProperties: false
+      required: [source_row, field, code, message]
+      properties:
+        source_row: { type: [integer, "null"], minimum: 1 }
+        field: { type: [string, "null"] }
+        code: { type: string, enum: [missing_supplier_sku, missing_description, column_count_mismatch, invalid_import_file, validation_unavailable] }
+        message: { type: string, description: "Safe explanation; never source contents or a stack trace." }
+    ImportDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [import, file, errors]
+      properties:
+        import: { $ref: "#/components/schemas/ImportSummary" }
+        file: { $ref: "#/components/schemas/ImportPreviewFile" }
+        errors: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/ImportRowError" } }
+    ImportListResponse:
+      type: object
+      additionalProperties: false
+      required: [imports, pagination]
+      properties:
+        imports: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/ImportSummary" } }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+    ImportTemplateListResponse:
+      type: object
+      additionalProperties: false
+      required: [templates, pagination]
+      properties:
+        pagination: { $ref: "#/components/schemas/Pagination" }
+        templates:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, name, headers, mapping, source_conventions]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string, maxLength: 100 }
+              headers: { type: array, maxItems: 100, items: { type: string } }
+              mapping: { $ref: "#/components/schemas/ImportMappingFields" }
+              source_conventions: { $ref: "#/components/schemas/ImportSourceConventions" }
+    ImportDownloadsResponse:
+      type: object
+      additionalProperties: false
+      required: [expires_at, file_url, errors_url]
+      properties:
+        expires_at: { type: string, format: date-time }
+        file_url: { type: string, format: uri-reference }
+        errors_url: { type: string, format: uri-reference }
     RequestId:
       type: string
       minLength: 1

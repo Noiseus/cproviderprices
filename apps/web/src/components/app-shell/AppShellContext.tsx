@@ -3,12 +3,15 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { OrganizationSession, SessionPayload } from "@/lib/server-session";
 import type { SubscriptionStatusPayload } from "@/lib/server-subscription";
+import type { Location } from "@/lib/customer-api";
 
 export type WorkspaceContextValue = {
   user: SessionPayload["session"]["user"];
   organization: OrganizationSession;
   organizations: OrganizationSession[];
   subscription: SubscriptionStatusPayload | null;
+  locations: Location[];
+  locationId: string;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);

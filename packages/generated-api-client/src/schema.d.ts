@@ -4,6 +4,291 @@
  */
 
 export interface paths {
+    "/organizations/{organization}/imports": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List authorized historical imports
+         * @description Active members may read history even when manual imports are disabled. Organization identifiers in body/query are prohibited. Pagination follows the shared contract.
+         */
+        get: operations["listImports"];
+        put?: never;
+        /**
+         * Upload a private CSV or XLSX import
+         * @description Owners and buyers only. Requires manual_imports_enabled and subscription access after tenant authorization. Server checks location/account ancestry. 10 MiB hard maximum, configurable lower ceiling. CSV is UTF-8, single physical line per record, comma/semicolon/tab delimited. XLSX supports one sheet with no formulas or external references. Preview reads at most 20 data rows under ZIP/XML/row/cell bounds; late structural defects are detected asynchronously. SHA-256 duplicate identity is organization + supplier account (which fixes location), independent of filename. No permanent storage URLs or object keys are returned.
+         */
+        post: operations["createImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get import status and bounded preview
+         * @description Includes at most 20 sample rows and 100 safe errors. Full errors are available through authorized download. Mapping validation remains needs_mapping until Start; timestamps distinguish validation progress. Queued awaits bounded Python delivery. Processing counters are updated at batch boundaries, not dispatch time.
+         */
+        get: operations["getImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}/mapping": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Create update or select the mapping snapshot
+         * @description Requires needs_mapping with validation not yet started. Template selection requires identical ordered headers and the same organization/account. Saving the same template_name updates the reusable template but never changes existing run snapshots. Mapping only copies strings; no normalization.
+         */
+        put: operations["confirmImportMapping"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}/validate": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue bounded mapped-row validation
+         * @description Requires a confirmed mapping. Idempotent replay resumes incomplete validation or returns finished validation. Each Redis job writes at most 100 rows; invalid rows get stable errors while valid raw records remain eligible. Mapping becomes immutable.
+         */
+        post: operations["validateImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}/start": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue validated records for normalization
+         * @description Requires finished validation and at least one valid raw record. Returns 409 import_not_ready or invalid_import_transition otherwise. Queued or processing retries safely redispatch the bounded tenant/run pointer to import-normalization. Previously completed rows are skipped; terminal imports cannot restart. The same owner/buyer and entitlement checks apply to resume.
+         */
+        post: operations["startImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}/cancel": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel an import without deleting its evidence
+         * @description Owners and buyers may cancel even if the feature was disabled. Canceled replay is idempotent; other terminal states reject cancellation. Pending jobs recheck locked lifecycle state before writing.
+         */
+        post: operations["cancelImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}/downloads": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue five-minute private download links
+         * @description Any current authorized member may obtain relative signed application URLs. Redemption requires a current session, active tenant membership, complete ancestry and an unexpired signature. Links are not object-store URLs.
+         */
+        post: operations["authorizeImportDownloads"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/import-mapping-templates": {
+        parameters: {
+            query: {
+                supplier_account_id: string;
+                page?: number;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List account-scoped mapping templates
+         * @description Twenty templates per page, ordered by name. Account ancestry is checked before querying; filename alone never selects a template.
+         */
+        get: operations["listImportMappingTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}/files/{file}/download": {
+        parameters: {
+            query: {
+                expires: number;
+                signature: string;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+                file: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Stream an authorized private source file
+         * @description Requires current session/tenant authorization and a five-minute relative signature issued by authorizeImportDownloads. Response is an attachment with private no-store caching and nosniff. Error CSV neutralizes spreadsheet formulas and does not echo raw values. Invalid or expired signatures return 403; wrong ancestry returns 404.
+         */
+        get: operations["downloadImportFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/imports/{import}/errors/download": {
+        parameters: {
+            query: {
+                expires: number;
+                signature: string;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Stream an authorized private error report
+         * @description Requires current session/tenant authorization and a five-minute relative signature issued by authorizeImportDownloads. Response is an attachment with private no-store caching and nosniff. Error CSV neutralizes spreadsheet formulas and does not echo raw values. Invalid or expired signatures return 403; wrong ancestry returns 404.
+         */
+        get: operations["downloadImportErrors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -655,6 +940,139 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Phase B ends at queued. Failed/canceled are terminal; later phases own normalization and successful terminal states.
+         * @enum {string}
+         */
+        ImportStatus: "uploaded" | "validating" | "needs_mapping" | "queued" | "processing" | "partially_completed" | "completed" | "failed" | "canceled";
+        ImportUploadRequest: {
+            /** Format: uuid */
+            restaurant_location_id: string;
+            /** Format: uuid */
+            supplier_account_id: string;
+            /**
+             * Format: binary
+             * @description Nonempty CSV/XLSX, at most 10485760 bytes (or configured lower limit).
+             */
+            file: string;
+        };
+        /** @description Values name exact detected source headers; each column may be selected only once. All source values remain strings. */
+        ImportMappingFields: {
+            supplier_sku: string;
+            description: string;
+            brand?: string;
+            pack_size_text?: string;
+            quantity?: string;
+            weight?: string;
+            volume?: string;
+            unit?: string;
+            price?: string;
+            currency?: string;
+            gtin?: string;
+        };
+        ImportSourceConventions: {
+            /** @enum {string} */
+            volume_system?: "us_liquid";
+            produce_size_code?: boolean;
+            pound_sign_is_weight?: boolean;
+        };
+        ImportMappingRequest: {
+            mapping: components["schemas"]["ImportMappingFields"];
+            source_conventions?: components["schemas"]["ImportSourceConventions"];
+            template_name?: string;
+        } | {
+            /** Format: uuid */
+            template_id: string;
+        };
+        ImportMappingSnapshot: {
+            /** @constant */
+            version: 1;
+            headers: string[];
+            mapping: components["schemas"]["ImportMappingFields"];
+            source_conventions: components["schemas"]["ImportSourceConventions"];
+        };
+        ImportSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            restaurant_location_id: string;
+            /** Format: uuid */
+            supplier_account_id: string;
+            status: components["schemas"]["ImportStatus"];
+            mapping_snapshot: components["schemas"]["ImportMappingSnapshot"] | null;
+            /** Format: uuid */
+            mapping_template_id: string | null;
+            /** Format: date-time */
+            validation_started_at: string | null;
+            /** Format: date-time */
+            validation_completed_at: string | null;
+            validated_through_row: number;
+            valid_rows: number;
+            /** @description Persisted successful rows for parser version 1.0.0, including warning-bearing rows. */
+            processed_count: number;
+            warning_count: number;
+            /** @description Distinct failed source rows across validation and normalization, not error objects. */
+            failed_count: number;
+            /** @description Eligible raw rows permanently failed during normalization. */
+            normalization_failed_count: number;
+            /** @description Eligible rows minus persisted success and normalization failure counts; retained after cancellation. */
+            remaining_count: number;
+            /** @description Transient service attempts eligible for queue retry; excludes final exhausted attempt. */
+            retry_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            finished_at: string | null;
+        };
+        ImportPreviewFile: {
+            /** Format: uuid */
+            id: string;
+            original_filename: string;
+            size_bytes: number;
+            /** @enum {string} */
+            format: "csv" | "xlsx";
+            headers: string[];
+            sample_rows: {
+                source_row: number;
+                values: string[];
+            }[];
+        };
+        ImportRowError: {
+            source_row: number | null;
+            field: string | null;
+            /** @enum {string} */
+            code: "missing_supplier_sku" | "missing_description" | "column_count_mismatch" | "invalid_import_file" | "validation_unavailable";
+            /** @description Safe explanation; never source contents or a stack trace. */
+            message: string;
+        };
+        ImportDetailResponse: {
+            import: components["schemas"]["ImportSummary"];
+            file: components["schemas"]["ImportPreviewFile"];
+            errors: components["schemas"]["ImportRowError"][];
+        };
+        ImportListResponse: {
+            imports: components["schemas"]["ImportSummary"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        ImportTemplateListResponse: {
+            pagination: components["schemas"]["Pagination"];
+            templates: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                headers: string[];
+                mapping: components["schemas"]["ImportMappingFields"];
+                source_conventions: components["schemas"]["ImportSourceConventions"];
+            }[];
+        };
+        ImportDownloadsResponse: {
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: uri-reference */
+            file_url: string;
+            /** Format: uri-reference */
+            errors_url: string;
+        };
         /** @example 550e8400-e29b-41d4-a716-446655440000 */
         RequestId: string;
         HealthResponse: {
@@ -1117,6 +1535,50 @@ export interface components {
         };
     };
     responses: {
+        /** @description Manual import mutation is forbidden. Role denial uses forbidden; disabled entitlement uses feature_disabled with manual_imports_enabled. Subscription access failures use the established subscription error. */
+        ManualImportDisabled: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": {
+                 *         "code": "feature_disabled",
+                 *         "message": "This feature is not available for the current plan.",
+                 *         "request_id": "import-request-1",
+                 *         "details": {
+                 *           "entitlement_key": "manual_imports_enabled"
+                 *         }
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description Identical bytes already exist in the same organization and supplier account/location. No new object or run is created; details.import_id identifies the authorized existing run. */
+        DuplicateImport: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": {
+                 *         "code": "duplicate_import",
+                 *         "message": "This file has already been imported for this supplier account.",
+                 *         "request_id": "import-request-1",
+                 *         "details": {
+                 *           "import_id": "550e8400-e29b-41d4-a716-446655440000"
+                 *         }
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
         /** @description Request failed using the standard API error envelope. */
         ErrorResponse: {
             headers: {
@@ -1149,6 +1611,7 @@ export interface components {
         };
     };
     parameters: {
+        ImportId: string;
         /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
         RequestId: components["schemas"]["RequestId"];
         /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
@@ -1170,6 +1633,355 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listImports: {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List authorized historical imports. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createImport: {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ImportUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload a private CSV or XLSX import. */
+            201: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailResponse"];
+                };
+            };
+            403: components["responses"]["ManualImportDisabled"];
+            409: components["responses"]["DuplicateImport"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getImport: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Get import status and bounded preview. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    confirmImportMapping: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportMappingRequest"];
+            };
+        };
+        responses: {
+            /** @description Create update or select the mapping snapshot. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailResponse"];
+                };
+            };
+            403: components["responses"]["ManualImportDisabled"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    validateImport: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queue bounded mapped-row validation. */
+            202: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailResponse"];
+                };
+            };
+            403: components["responses"]["ManualImportDisabled"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    startImport: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queue validated records for normalization. */
+            202: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailResponse"];
+                };
+            };
+            403: components["responses"]["ManualImportDisabled"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    cancelImport: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancel an import without deleting its evidence. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    authorizeImportDownloads: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Issue five-minute private download links. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDownloadsResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listImportMappingTemplates: {
+        parameters: {
+            query: {
+                supplier_account_id: string;
+                page?: number;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List account-scoped mapping templates. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportTemplateListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    downloadImportFile: {
+        parameters: {
+            query: {
+                expires: number;
+                signature: string;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+                file: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private attachment. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    "Content-Disposition"?: string;
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    downloadImportErrors: {
+        parameters: {
+            query: {
+                expires: number;
+                signature: string;
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                import: components["parameters"]["ImportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private attachment. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "private, no-store";
+                    "Content-Disposition"?: string;
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;

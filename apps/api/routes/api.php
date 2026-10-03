@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\InvitationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\OrganizationContextController;
 use App\Http\Controllers\Api\V1\OrganizationMembershipController;
 use App\Http\Controllers\Api\V1\PlatformContextController;
@@ -46,6 +47,17 @@ Route::prefix('v1')->group(function (): void {
                 Route::get('/status', [OrganizationContextController::class, 'status'])->middleware('tenant:true');
                 Route::get('/subscription', [SubscriptionStatusController::class, 'show'])->middleware('tenant:true');
                 Route::middleware('tenant')->group(function (): void {
+                    Route::get('/imports', [ImportController::class, 'index']);
+                    Route::post('/imports', [ImportController::class, 'store']);
+                    Route::get('/import-mapping-templates', [ImportController::class, 'templates']);
+                    Route::get('/imports/{import}', [ImportController::class, 'show']);
+                    Route::put('/imports/{import}/mapping', [ImportController::class, 'mapping']);
+                    Route::post('/imports/{import}/validate', [ImportController::class, 'validateImport']);
+                    Route::post('/imports/{import}/start', [ImportController::class, 'start']);
+                    Route::post('/imports/{import}/cancel', [ImportController::class, 'cancel']);
+                    Route::post('/imports/{import}/downloads', [ImportController::class, 'downloads']);
+                    Route::get('/imports/{import}/files/{file}/download', [ImportController::class, 'downloadFile'])->middleware('signed:relative')->name('imports.file');
+                    Route::get('/imports/{import}/errors/download', [ImportController::class, 'downloadErrors'])->middleware('signed:relative')->name('imports.errors');
                     Route::get('/context', [OrganizationContextController::class, 'show']);
                     Route::post('/switch', [OrganizationContextController::class, 'switch']);
                     Route::get('/team', [TeamController::class, 'index']);

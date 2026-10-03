@@ -23,6 +23,7 @@ describe("workspace navigation", () => {
       "Lists",
       "Price history",
       "Suppliers",
+      "Imports",
       "Team",
       "Locations",
       "Subscription",

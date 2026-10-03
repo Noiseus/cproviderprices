@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os import environ
 from typing import Literal, cast
 
@@ -9,6 +9,7 @@ EnvironmentName = Literal["local", "test", "staging", "production"]
 class Settings:
     environment: EnvironmentName
     service_name: str
+    service_token: str = field(default="", repr=False)
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -24,4 +25,5 @@ class Settings:
         return cls(
             environment=cast(EnvironmentName, environment),
             service_name=service_name,
+            service_token=environ.get("INGESTION_SERVICE_TOKEN", ""),
         )
