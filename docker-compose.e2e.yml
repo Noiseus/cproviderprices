@@ -25,7 +25,7 @@ services:
       SESSION_COOKIE: cproviderprices_e2e_session
       INGESTION_SERVICE_TOKEN: ${E2E_INGESTION_TOKEN:?Provide a runtime-only E2E service token}
     ports: !override
-      - "127.0.0.1:8180:8080"
+      - "${E2E_HOST_BIND_ADDRESS:-127.0.0.1}:8180:8080"
   worker:
     image: cproviderprices-worker
     environment: *e2e-api
@@ -65,4 +65,4 @@ services:
       INGESTION_HEALTH_URL: http://ingestion:8001/health
       MAILPIT_URL: http://mailpit:8025/
     ports: !override
-      - "127.0.0.1:3100:3000"
+      - "${E2E_HOST_BIND_ADDRESS:-127.0.0.1}:3100:3000"
