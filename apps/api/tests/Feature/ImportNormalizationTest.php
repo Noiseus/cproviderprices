@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ImportStatus;
 use App\Jobs\AwaitImportNormalization;
 use App\Jobs\NormalizeImportBatch;
+use App\Jobs\ProjectVendorItemMatch;
 use App\Models\ImportError;
 use App\Models\NormalizedImportRecord;
 use App\Models\RawImportRecord;
@@ -64,6 +65,7 @@ final class ImportNormalizationTest extends TestCase
         $this->assertSame(ImportStatus::Completed, $run->refresh()->status);
         $this->assertSame(2, $run->processed_count);
         $this->assertNotNull($run->finished_at);
+        Queue::assertPushed(ProjectVendorItemMatch::class, 2);
     }
 
     public function test_warning_and_low_confidence_are_success_not_failure(): void

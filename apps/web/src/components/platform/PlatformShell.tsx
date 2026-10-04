@@ -22,6 +22,7 @@ export function PlatformShell({
   const links = [
     { href: "/platform", label: "Overview", exact: true },
     { href: "/platform/organizations", label: "Organizations", exact: false },
+    { href: "/platform/matching", label: "Matching review", exact: false },
   ];
 
   return (

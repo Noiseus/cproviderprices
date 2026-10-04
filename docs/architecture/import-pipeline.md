@@ -18,6 +18,12 @@ Allowed transitions: uploaded -> validating -> needs_mapping -> queued -> proces
 
 Phases B-F must implement policies/routes, private upload and download, bounded file readers, queue orchestration, service authentication, the deterministic Python parser, typed internal and customer contracts, frontend mapping/progress, and two-file E2E validation. Phase A alone exposes no import endpoint or processing job. Proposed initial bounds for those phases: 10 MiB upload, 20 sample rows, 100 columns, 100 records per normalization batch, 1 MiB internal request, and three attempts with backoff. Enforce expanded XLSX limits and reject formulas/external references instead of evaluating them.
 
+Prompt 13 adds a separate `catalog-matching` queue handoff after a normalized
+record is persisted. It projects one tenant-private vendor item and generates
+bounded, idempotent candidates using immutable normalization evidence. It is not
+part of request-time upload/normalization, does not modify raw/normalized rows,
+and does not publish uncertain candidate mappings.
+
 Phase A validation: the PostgreSQL persistence suite covers tenant/account/location/file/raw ancestry, source-row and parser-version replay keys, mapping snapshots, lifecycle rejection/cancellation, model evidence immutability, and invalid database values. Model immutability follows the existing audit-model convention; trusted direct query-builder writes can bypass model hooks and must never be used to overwrite evidence. No import HTTP policy, queue retry/resume, object access, or parser behavior is claimed by these model tests.
 
 Phase B now implements tenant-scoped import policies and API contracts, private CSV/XLSX upload, bounded detection, mapping/template confirmation, validation, and authenticated downloads. Lifecycle mutation remains behind the transition service. The fixture command supports `--import-fixtures-only` without generating users. The full combined Prompt 11/12 acceptance matrix remains outstanding until the later phases pass.

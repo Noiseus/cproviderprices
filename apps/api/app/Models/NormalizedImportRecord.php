@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property array<string, mixed> $normalized_values
  * @property list<array{code: string, field: string, message: string}> $warnings
+ * @property string $confidence
  */
 class NormalizedImportRecord extends Model
 {
