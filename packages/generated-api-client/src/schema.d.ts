@@ -813,6 +813,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/matching/canonical-products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List bounded canonical products for an explicit platform matching review action
+         * @description Returns global catalog records only; no supplier account, vendor item, raw import, or price data is included.
+         */
+        get: operations["listPlatformCanonicalProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/matching/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List deterministic matching candidates with server pagination and safe review filters
+         * @description Explicit platform-admin scope only. Candidate payloads contain the minimum tenant-private supplier-item context needed for review, never price history or raw import files.
+         */
+        get: operations["listPlatformMatchCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/matching/candidates/{matchCandidate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchCandidate: components["parameters"]["MatchCandidateId"];
+            };
+            cookie?: never;
+        };
+        /** Get evidence, differences, and safe mapping history for one platform-review candidate */
+        get: operations["getPlatformMatchCandidate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/matching/candidates/{matchCandidate}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchCandidate: components["parameters"]["MatchCandidateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept, reject, choose, or create a canonical product through an auditable human review */
+        post: operations["reviewPlatformMatchCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/matching/mappings/{mapping}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mapping: components["parameters"]["VendorItemMappingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reverse a current manual or matcher mapping while retaining its history */
+        post: operations["reversePlatformVendorItemMapping"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/platform/organizations": {
         parameters: {
             query?: never;
@@ -1405,6 +1502,169 @@ export interface components {
             /** @description Required when suspending or canceling a subscription; retained in safe audit metadata. */
             reason?: string;
         };
+        /** @enum {string} */
+        MatchClass: "exact_match" | "equivalent_product" | "comparable_alternative" | "related_product" | "not_comparable";
+        /**
+         * @description Product-match confidence, distinct from parser extraction confidence.
+         * @enum {string}
+         */
+        MatchConfidence: "A" | "B" | "C" | "D" | "E";
+        /** @enum {string} */
+        MatchCandidateStatus: "pending" | "auto_published" | "accepted" | "rejected" | "superseded";
+        PlatformCanonicalProductListResponse: {
+            canonical_products: {
+                /** Format: uuid */
+                id: string;
+                english_name: string;
+                variants: {
+                    /** Format: uuid */
+                    id: string;
+                    code: string | null;
+                }[];
+            }[];
+        };
+        PlatformMatchCandidateListResponse: {
+            candidates: components["schemas"]["PlatformMatchCandidate"][];
+            pagination: components["schemas"]["Pagination"];
+            filters: {
+                /** Format: uuid */
+                supplier_account_id: string | null;
+                confidence: components["schemas"]["MatchConfidence"] | null;
+                /** Format: uuid */
+                category_id: string | null;
+                age_days: number | null;
+                status: components["schemas"]["MatchCandidateStatus"] | null;
+            };
+            filter_options: {
+                suppliers: components["schemas"]["PlatformFilterOption"][];
+                categories: components["schemas"]["PlatformFilterOption"][];
+            };
+        };
+        PlatformFilterOption: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        PlatformMatchCandidate: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["MatchCandidateStatus"];
+            confidence: components["schemas"]["MatchConfidence"];
+            proposed_match_class: components["schemas"]["MatchClass"];
+            score: number;
+            rank: number;
+            /** Format: date-time */
+            generated_at: string;
+            matcher_version: string;
+            vendor_item: {
+                /** Format: uuid */
+                id: string;
+                raw_description: string;
+                supplier: {
+                    /** Format: uuid */
+                    id: string;
+                    display_name: string;
+                    definition_name: string;
+                };
+            } & {
+                [key: string]: unknown;
+            };
+            candidate_product: {
+                /** Format: uuid */
+                id: string;
+                english_name: string;
+                category: {
+                    /** Format: uuid */
+                    id: string;
+                    english_name: string;
+                };
+                /** Format: uuid */
+                variant_id: string | null;
+            } & {
+                [key: string]: unknown;
+            };
+            evidence_summary: {
+                stage: string | null;
+                hard_contradictions: number;
+                attribute_matches: number;
+            };
+        };
+        PlatformMatchCandidateDetailResponse: {
+            match_candidate: components["schemas"]["PlatformMatchCandidate"] & ({
+                evidence: {
+                    [key: string]: unknown;
+                };
+                mapping_history: {
+                    /** Format: uuid */
+                    id: string;
+                    /** Format: uuid */
+                    canonical_product_id: string;
+                    canonical_name: string;
+                    match_class: components["schemas"]["MatchClass"];
+                    confidence: components["schemas"]["MatchConfidence"];
+                    /** @enum {string} */
+                    origin: "matcher" | "manual";
+                    is_current: boolean;
+                    /** Format: date-time */
+                    verified_at: string;
+                    /** Format: date-time */
+                    superseded_at: string | null;
+                }[];
+                review_history: {
+                    /** Format: uuid */
+                    id: string;
+                    /** @enum {string} */
+                    action: "accept" | "reject" | "choose_existing" | "create_canonical" | "reverse";
+                    /** Format: email */
+                    actor: string;
+                    reason: string | null;
+                    /** Format: date-time */
+                    reviewed_at: string;
+                }[];
+            } & {
+                [key: string]: unknown;
+            });
+        };
+        ReviewMatchCandidateRequest: {
+            /** @enum {string} */
+            action: "accept" | "reject" | "choose_existing" | "create_canonical";
+            reason?: string;
+            /** Format: uuid */
+            canonical_product_id?: string;
+            /** Format: uuid */
+            product_variant_id?: string;
+            match_class?: components["schemas"]["MatchClass"];
+            confidence?: components["schemas"]["MatchConfidence"];
+            new_canonical?: {
+                english_name: string;
+                /** Format: uuid */
+                category_id: string;
+                attributes?: {
+                    [key: string]: unknown;
+                };
+                aliases?: {
+                    locale: string;
+                    alias: string;
+                }[];
+                variant?: {
+                    code: string;
+                    normalized_key?: string;
+                    attributes?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        PlatformMappingReverseResponse: {
+            mapping: {
+                /** Format: uuid */
+                id: string;
+                /** @constant */
+                is_current: false;
+                /** Format: date-time */
+                superseded_at: string | null;
+            };
+        };
         PlatformOverviewResponse: {
             platform_overview: {
                 organization_counts: {
@@ -1611,6 +1871,8 @@ export interface components {
         };
     };
     parameters: {
+        MatchCandidateId: string;
+        VendorItemMappingId: string;
         ImportId: string;
         /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
         RequestId: components["schemas"]["RequestId"];
@@ -2820,6 +3082,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformOverviewResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listPlatformCanonicalProducts: {
+        parameters: {
+            query?: {
+                query?: string;
+                category_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bounded active canonical-product choices. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformCanonicalProductListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listPlatformMatchCandidates: {
+        parameters: {
+            query?: {
+                supplier_account_id?: string;
+                confidence?: components["schemas"]["MatchConfidence"];
+                category_id?: string;
+                age_days?: number;
+                status?: components["schemas"]["MatchCandidateStatus"];
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A stable page of platform-review matching candidates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformMatchCandidateListResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getPlatformMatchCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchCandidate: components["parameters"]["MatchCandidateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Candidate detail scoped to an explicit platform review. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformMatchCandidateDetailResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    reviewPlatformMatchCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchCandidate: components["parameters"]["MatchCandidateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewMatchCandidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Review recorded idempotently; mapping history is retained. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformMatchCandidateDetailResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    reversePlatformVendorItemMapping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mapping: components["parameters"]["VendorItemMappingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Mapping marked historical and audit/review history retained. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformMappingReverseResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

@@ -5,6 +5,7 @@ use App\Enums\InvitationStatus;
 use App\Enums\OrganizationStatus;
 use App\Enums\Role;
 use App\Enums\SubscriptionStatus;
+use App\Models\CanonicalProduct;
 use App\Models\ImportFile;
 use App\Models\Invitation;
 use App\Models\NormalizedImportRecord;
@@ -16,6 +17,10 @@ use App\Models\RestaurantLocation;
 use App\Models\Subscription;
 use App\Models\SupplierAccount;
 use App\Models\User;
+use App\Models\VendorItem;
+use App\Services\CatalogMatcher;
+use App\Support\CatalogText;
+use Database\Seeders\CatalogTaxonomySeeder;
 use Database\Seeders\SupplierDefinitionSeeder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -58,6 +63,7 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
     }
     Subscription::factory()->for($loginOrganization)->for($plan)->create();
     Artisan::call('db:seed', ['--class' => SupplierDefinitionSeeder::class, '--force' => true]);
+    Artisan::call('db:seed', ['--class' => CatalogTaxonomySeeder::class, '--force' => true]);
 
     $switchOrganization = Organization::factory()->create();
     OrganizationMembership::factory()->for($loginUser)->for($switchOrganization)->create(['role' => Role::OrganizationOwner]);
@@ -119,6 +125,24 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
     ]);
     Organization::factory()->count(5)->create();
 
+    // Matching fixtures are platform-review-only. They contain no price or raw
+    // file data and reuse the normal catalog matcher rather than a browser fake.
+    $beefsteak = CanonicalProduct::query()->where('normalized_key', 'beefsteak tomato')->sole();
+    $matcher = app(CatalogMatcher::class);
+    $matching = [];
+    foreach (['accept' => 'TOM BEEFSTEAK 25#', 'reject' => 'TOM BEEF 5X6 1/25 LB CS', 'choose' => 'TOM BEEFSTEAK FRESH 25#', 'create' => 'UNUSUAL VINE TOMATO'] as $key => $description) {
+        $vendor = VendorItem::factory()->create([
+            'raw_description' => $description,
+            'normalized_description' => CatalogText::normalize($description),
+            'normalized_attributes' => ['size_code' => str_contains($description, '5X6') ? '5X6' : null, 'variable_weight' => false, 'measurements' => [], 'packs' => [], 'case_quantity' => null, 'dimensions' => [], 'identifiers' => [], 'parser_confidence' => 'high', 'parser_warnings' => []],
+        ]);
+        $candidate = $matcher->generate($vendor)->firstWhere('canonical_product_id', $beefsteak->id) ?? $matcher->generate($vendor)->first();
+        if ($candidate === null) {
+            throw new RuntimeException('The matching E2E fixture did not generate a candidate.');
+        }
+        $matching[$key] = ['candidate_id' => $candidate->id, 'supplier_account_id' => $vendor->supplier_account_id, 'description' => $description, 'category_id' => $beefsteak->category_id];
+    }
+
     // Dedicated import identities keep prior workspace tests independent.
     $importOrganization = Organization::factory()->create(['name' => 'Import E2E workspace']);
     Subscription::factory()->for($importOrganization)->for($plan)->create();
@@ -162,6 +186,7 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
             'password' => $platformPassword,
             'organization_id' => $platformOrganization->id,
             'organization_name' => $platformOrganization->name,
+            'matching' => $matching,
         ],
     ], JSON_THROW_ON_ERROR));
 

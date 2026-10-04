@@ -783,6 +783,123 @@ paths:
                 $ref: "#/components/schemas/PlatformOverviewResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /platform/matching/canonical-products:
+    get:
+      operationId: listPlatformCanonicalProducts
+      summary: List bounded canonical products for an explicit platform matching review action
+      description: Returns global catalog records only; no supplier account, vendor item, raw import, or price data is included.
+      security:
+        - cookieSession: []
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: category_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Bounded active canonical-product choices.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformCanonicalProductListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /platform/matching/candidates:
+    get:
+      operationId: listPlatformMatchCandidates
+      summary: List deterministic matching candidates with server pagination and safe review filters
+      description: Explicit platform-admin scope only. Candidate payloads contain the minimum tenant-private supplier-item context needed for review, never price history or raw import files.
+      security:
+        - cookieSession: []
+      parameters:
+        - name: supplier_account_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: confidence
+          in: query
+          schema: { $ref: "#/components/schemas/MatchConfidence" }
+        - name: category_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: age_days
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 3650 }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/MatchCandidateStatus" }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100000, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, minimum: 10, maximum: 100, default: 25 }
+      responses:
+        "200":
+          description: A stable page of platform-review matching candidates.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformMatchCandidateListResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /platform/matching/candidates/{matchCandidate}:
+    parameters:
+      - $ref: "#/components/parameters/MatchCandidateId"
+    get:
+      operationId: getPlatformMatchCandidate
+      summary: Get evidence, differences, and safe mapping history for one platform-review candidate
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Candidate detail scoped to an explicit platform review.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformMatchCandidateDetailResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /platform/matching/candidates/{matchCandidate}/review:
+    parameters:
+      - $ref: "#/components/parameters/MatchCandidateId"
+    post:
+      operationId: reviewPlatformMatchCandidate
+      summary: Accept, reject, choose, or create a canonical product through an auditable human review
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewMatchCandidateRequest" }
+      responses:
+        "200":
+          description: Review recorded idempotently; mapping history is retained.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformMatchCandidateDetailResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /platform/matching/mappings/{mapping}/reverse:
+    parameters:
+      - $ref: "#/components/parameters/VendorItemMappingId"
+    post:
+      operationId: reversePlatformVendorItemMapping
+      summary: Reverse a current manual or matcher mapping while retaining its history
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 1000 }
+      responses:
+        "200":
+          description: Mapping marked historical and audit/review history retained.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformMappingReverseResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /platform/organizations:
     get:
       operationId: listPlatformOrganizations
@@ -959,6 +1076,16 @@ components:
       name: cproviderprices_session
       description: HttpOnly Laravel browser session. State-changing requests also require the X-XSRF-TOKEN header.
   parameters:
+    MatchCandidateId:
+      name: matchCandidate
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    VendorItemMappingId:
+      name: mapping
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     ImportId:
       name: import
       in: path
@@ -1838,6 +1965,221 @@ components:
           minLength: 3
           maxLength: 1000
           description: Required when suspending or canceling a subscription; retained in safe audit metadata.
+    MatchClass:
+      type: string
+      enum: [exact_match, equivalent_product, comparable_alternative, related_product, not_comparable]
+    MatchConfidence:
+      type: string
+      description: Product-match confidence, distinct from parser extraction confidence.
+      enum: [A, B, C, D, E]
+    MatchCandidateStatus:
+      type: string
+      enum: [pending, auto_published, accepted, rejected, superseded]
+    PlatformCanonicalProductListResponse:
+      type: object
+      additionalProperties: false
+      required: [canonical_products]
+      properties:
+        canonical_products:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, english_name, variants]
+            properties:
+              id: { type: string, format: uuid }
+              english_name: { type: string }
+              variants:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [id, code]
+                  properties:
+                    id: { type: string, format: uuid }
+                    code: { type: [string, "null"] }
+    PlatformMatchCandidateListResponse:
+      type: object
+      additionalProperties: false
+      required: [candidates, pagination, filters, filter_options]
+      properties:
+        candidates:
+          type: array
+          items: { $ref: "#/components/schemas/PlatformMatchCandidate" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+        filters:
+          type: object
+          additionalProperties: false
+          required: [supplier_account_id, confidence, category_id, age_days, status]
+          properties:
+            supplier_account_id: { type: [string, "null"], format: uuid }
+            confidence:
+              oneOf: [{ $ref: "#/components/schemas/MatchConfidence" }, { type: "null" }]
+            category_id: { type: [string, "null"], format: uuid }
+            age_days: { type: [integer, "null"], minimum: 1 }
+            status:
+              oneOf: [{ $ref: "#/components/schemas/MatchCandidateStatus" }, { type: "null" }]
+        filter_options:
+          type: object
+          additionalProperties: false
+          required: [suppliers, categories]
+          properties:
+            suppliers:
+              type: array
+              items: { $ref: "#/components/schemas/PlatformFilterOption" }
+            categories:
+              type: array
+              items: { $ref: "#/components/schemas/PlatformFilterOption" }
+    PlatformFilterOption:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    PlatformMatchCandidate:
+      type: object
+      additionalProperties: false
+      required: [id, status, confidence, proposed_match_class, score, rank, generated_at, matcher_version, vendor_item, candidate_product, evidence_summary]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/MatchCandidateStatus" }
+        confidence: { $ref: "#/components/schemas/MatchConfidence" }
+        proposed_match_class: { $ref: "#/components/schemas/MatchClass" }
+        score: { type: integer, minimum: 0 }
+        rank: { type: integer, minimum: 1 }
+        generated_at: { type: string, format: date-time }
+        matcher_version: { type: string }
+        vendor_item:
+          type: object
+          additionalProperties: true
+          required: [id, raw_description, supplier]
+          properties:
+            id: { type: string, format: uuid }
+            raw_description: { type: string }
+            supplier:
+              type: object
+              additionalProperties: false
+              required: [id, display_name, definition_name]
+              properties:
+                id: { type: string, format: uuid }
+                display_name: { type: string }
+                definition_name: { type: string }
+        candidate_product:
+          type: object
+          additionalProperties: true
+          required: [id, english_name, category, variant_id]
+          properties:
+            id: { type: string, format: uuid }
+            english_name: { type: string }
+            category:
+              type: object
+              additionalProperties: false
+              required: [id, english_name]
+              properties:
+                id: { type: string, format: uuid }
+                english_name: { type: string }
+            variant_id: { type: [string, "null"], format: uuid }
+        evidence_summary:
+          type: object
+          additionalProperties: false
+          required: [stage, hard_contradictions, attribute_matches]
+          properties:
+            stage: { type: [string, "null"] }
+            hard_contradictions: { type: integer, minimum: 0 }
+            attribute_matches: { type: integer, minimum: 0 }
+    PlatformMatchCandidateDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [match_candidate]
+      properties:
+        match_candidate:
+          allOf:
+            - $ref: "#/components/schemas/PlatformMatchCandidate"
+            - type: object
+              additionalProperties: true
+              required: [evidence, mapping_history, review_history]
+              properties:
+                evidence: { type: object, additionalProperties: true }
+                mapping_history:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, canonical_product_id, canonical_name, match_class, confidence, origin, is_current, verified_at, superseded_at]
+                    properties:
+                      id: { type: string, format: uuid }
+                      canonical_product_id: { type: string, format: uuid }
+                      canonical_name: { type: string }
+                      match_class: { $ref: "#/components/schemas/MatchClass" }
+                      confidence: { $ref: "#/components/schemas/MatchConfidence" }
+                      origin: { type: string, enum: [matcher, manual] }
+                      is_current: { type: boolean }
+                      verified_at: { type: string, format: date-time }
+                      superseded_at: { type: [string, "null"], format: date-time }
+                review_history:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, action, actor, reason, reviewed_at]
+                    properties:
+                      id: { type: string, format: uuid }
+                      action: { type: string, enum: [accept, reject, choose_existing, create_canonical, reverse] }
+                      actor: { type: string, format: email }
+                      reason: { type: [string, "null"] }
+                      reviewed_at: { type: string, format: date-time }
+    ReviewMatchCandidateRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [accept, reject, choose_existing, create_canonical] }
+        reason: { type: string, minLength: 3, maxLength: 1000 }
+        canonical_product_id: { type: string, format: uuid }
+        product_variant_id: { type: string, format: uuid }
+        match_class: { $ref: "#/components/schemas/MatchClass" }
+        confidence: { $ref: "#/components/schemas/MatchConfidence" }
+        new_canonical:
+          type: object
+          additionalProperties: false
+          required: [english_name, category_id]
+          properties:
+            english_name: { type: string, minLength: 2, maxLength: 255 }
+            category_id: { type: string, format: uuid }
+            attributes: { type: object, additionalProperties: true }
+            aliases:
+              type: array
+              maxItems: 10
+              items:
+                type: object
+                additionalProperties: false
+                required: [locale, alias]
+                properties:
+                  locale: { type: string, minLength: 2, maxLength: 10 }
+                  alias: { type: string, minLength: 1, maxLength: 255 }
+            variant:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: { type: string, minLength: 1, maxLength: 100 }
+                normalized_key: { type: string, maxLength: 255 }
+                attributes: { type: object, additionalProperties: true }
+    PlatformMappingReverseResponse:
+      type: object
+      additionalProperties: false
+      required: [mapping]
+      properties:
+        mapping:
+          type: object
+          additionalProperties: false
+          required: [id, is_current, superseded_at]
+          properties:
+            id: { type: string, format: uuid }
+            is_current: { type: boolean, const: false }
+            superseded_at: { type: [string, "null"], format: date-time }
     PlatformOverviewResponse:
       type: object
       additionalProperties: false

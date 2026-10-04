@@ -11,6 +11,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([PlanSeeder::class, SupplierDefinitionSeeder::class]);
+        $this->call([PlanSeeder::class, SupplierDefinitionSeeder::class, CatalogTaxonomySeeder::class]);
     }
 }

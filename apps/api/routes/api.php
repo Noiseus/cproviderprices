@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\OrganizationContextController;
 use App\Http\Controllers\Api\V1\OrganizationMembershipController;
 use App\Http\Controllers\Api\V1\PlatformContextController;
 use App\Http\Controllers\Api\V1\PlatformInvitationController;
+use App\Http\Controllers\Api\V1\PlatformMatchingController;
 use App\Http\Controllers\Api\V1\PlatformOrganizationController;
 use App\Http\Controllers\Api\V1\PlatformOverviewController;
 use App\Http\Controllers\Api\V1\PlatformSubscriptionController;
@@ -82,6 +83,11 @@ Route::prefix('v1')->group(function (): void {
                 ->middleware('platform.scope')->name('platform.context');
             Route::prefix('platform')->middleware('platform.scope')->name('platform.')->group(function (): void {
                 Route::get('/overview', [PlatformOverviewController::class, 'show'])->name('overview');
+                Route::get('/matching/canonical-products', [PlatformMatchingController::class, 'canonicalProducts'])->name('matching.canonical-products');
+                Route::get('/matching/candidates', [PlatformMatchingController::class, 'index'])->name('matching.index');
+                Route::get('/matching/candidates/{matchCandidate}', [PlatformMatchingController::class, 'show'])->name('matching.show');
+                Route::post('/matching/candidates/{matchCandidate}/review', [PlatformMatchingController::class, 'review'])->name('matching.review');
+                Route::post('/matching/mappings/{mapping}/reverse', [PlatformMatchingController::class, 'reverse'])->name('matching.reverse');
                 Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('organizations.index');
                 Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('organizations.store');
                 Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('organizations.show');

@@ -75,10 +75,11 @@ final class NormalizeImportBatch implements ShouldQueue
                 }
                 foreach ($results as $result) {
                     $raw = $rows->firstWhere('id', $result['record_id']);
-                    NormalizedImportRecord::query()->firstOrCreate([
+                    $normalized = NormalizedImportRecord::query()->firstOrCreate([
                         'organization_id' => $run->organization_id, 'import_run_id' => $run->id,
                         'raw_import_record_id' => $raw->id, 'parser_version' => ImportNormalizer::VERSION,
                     ], ['normalized_values' => $result, 'warnings' => $result['warnings'], 'confidence' => $result['confidence']]);
+                    ProjectVendorItemMatch::dispatch($normalized->id)->onConnection('redis')->onQueue('catalog-matching')->afterCommit();
                     $raw->update(['status' => 'normalized']);
                 }
                 $this->continue($run, $progress);
