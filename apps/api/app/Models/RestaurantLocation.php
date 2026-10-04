@@ -49,4 +49,10 @@ class RestaurantLocation extends Model
     {
         return $this->hasMany(SupplierAccount::class);
     }
+
+    /** @return HasMany<SupplierOffer, $this> */
+    public function supplierOffers(): HasMany
+    {
+        return $this->hasMany(SupplierOffer::class);
+    }
 }

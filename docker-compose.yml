@@ -127,7 +127,7 @@ services:
       dockerfile: infra/docker/api.Dockerfile
     command: >-
       sh -c "php artisan app:validate-environment &&
-      php artisan queue:work redis --queue=default,import-normalization --sleep=1 --tries=3 --timeout=60"
+      php artisan queue:work redis --queue=default,import-normalization,catalog-matching --sleep=1 --tries=3 --timeout=60"
     env_file:
       - apps/api/.env
     environment:

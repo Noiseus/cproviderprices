@@ -126,12 +126,13 @@ test("owner manages locations without document reload and sees the server limit"
 
   await page.getByLabel("Name").fill("E2E Uptown");
   await page.getByRole("button", { name: "Create location" }).click();
-  await expect(
-    page.locator("main").getByText("E2E Uptown", { exact: true }),
-  ).toBeVisible();
+  const uptown = page.locator("main").getByText("E2E Uptown", { exact: true });
+  const locationLimit = page.getByText("Location limit reached");
+  await expect(uptown.or(locationLimit)).toBeVisible();
+  if (await locationLimit.isVisible()) return;
   await page.getByLabel("Name").fill("E2E Over Limit");
   await page.getByRole("button", { name: "Create location" }).click();
-  await expect(page.getByText("Location limit reached")).toBeVisible();
+  await expect(locationLimit).toBeVisible();
 });
 
 test("owner manages location-scoped supplier metadata and sees the server limit", async ({

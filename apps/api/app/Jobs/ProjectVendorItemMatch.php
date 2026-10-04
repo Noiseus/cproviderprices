@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\NormalizedImportRecord;
 use App\Services\CatalogMatcher;
+use App\Services\SupplierOfferProjectionService;
 use App\Services\VendorItemProjectionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -24,12 +25,17 @@ final class ProjectVendorItemMatch implements ShouldQueue
 
     public function __construct(public string $normalizedImportRecordId) {}
 
-    public function handle(VendorItemProjectionService $projection, CatalogMatcher $matcher): void
-    {
+    public function handle(
+        VendorItemProjectionService $projection,
+        SupplierOfferProjectionService $offers,
+        CatalogMatcher $matcher,
+    ): void {
         $normalized = NormalizedImportRecord::query()->find($this->normalizedImportRecordId);
         if ($normalized === null) {
             return;
         }
-        $matcher->generate($projection->project($normalized));
+        $vendor = $projection->project($normalized);
+        $matcher->generate($vendor);
+        $offers->project($normalized, $vendor->fresh());
     }
 }

@@ -711,6 +711,77 @@ paths:
           description: Supplier account updated.
           content: { application/json: { schema: { $ref: "#/components/schemas/SupplierAccountResponse" } } }
         default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/product-search:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+      - name: q
+        in: query
+        required: true
+        description: Bounded search text. The server deterministically parses supported size and unit tokens; it does not use AI query interpretation.
+        schema: { type: string, minLength: 1, maxLength: 160 }
+      - name: location_id
+        in: query
+        required: true
+        description: Requested location is verified against the server-authorized organization membership.
+        schema: { type: string, format: uuid }
+      - name: category_id
+        in: query
+        schema: { type: string, format: uuid }
+      - $ref: "#/components/parameters/SupplierFilter"
+      - $ref: "#/components/parameters/BrandFilter"
+      - $ref: "#/components/parameters/UnitFilter"
+      - $ref: "#/components/parameters/AvailabilityFilter"
+      - $ref: "#/components/parameters/FreshnessFilter"
+      - $ref: "#/components/parameters/ComparisonClassFilter"
+      - name: sort
+        in: query
+        schema: { type: string, enum: [relevance, lowest_case_price, lowest_normalized_price, newest_observation], default: relevance }
+      - $ref: "#/components/parameters/SearchPage"
+      - $ref: "#/components/parameters/SearchPerPage"
+    get:
+      operationId: searchProducts
+      summary: Search global canonical catalog with tenant/location-private offer summaries
+      description: >-
+        Canonical catalog rows may appear with zero offers. Supplier, price, freshness, and match summaries only include eligible tenant/location-private offers. Results are bounded, server-filtered, and use a short scoped private cache.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Grouped canonical product results with safe private summaries.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ProductSearchResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/comparisons/{canonicalProduct}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/CanonicalProductId"
+      - $ref: "#/components/parameters/RequestId"
+      - name: location_id
+        in: query
+        required: true
+        description: Requested location is verified against the server-authorized organization membership.
+        schema: { type: string, format: uuid }
+      - $ref: "#/components/parameters/SupplierFilter"
+      - $ref: "#/components/parameters/AvailabilityFilter"
+      - $ref: "#/components/parameters/FreshnessFilter"
+      - $ref: "#/components/parameters/ComparisonClassFilter"
+      - name: sort
+        in: query
+        schema: { type: string, enum: [supplier, lowest_case_price, lowest_normalized_price, newest_observation], default: supplier }
+      - $ref: "#/components/parameters/SearchPage"
+      - $ref: "#/components/parameters/ComparisonPerPage"
+    get:
+      operationId: getProductComparison
+      summary: Compare eligible tenant/location-private offers for one canonical product
+      description: >-
+        Case and normalized price winners are calculated server-side using decimal arithmetic. Alternatives and unsafe comparisons remain visible with explicit warnings and cannot receive direct-comparison winner labels.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: First-view offer comparison with calculation traceability; full history is intentionally excluded.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ProductComparisonResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /organizations/{organization}/memberships/{membership}:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1076,6 +1147,49 @@ components:
       name: cproviderprices_session
       description: HttpOnly Laravel browser session. State-changing requests also require the X-XSRF-TOKEN header.
   parameters:
+    CanonicalProductId:
+      name: canonicalProduct
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SupplierFilter:
+      name: supplier_id[]
+      in: query
+      description: Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data.
+      schema: { type: array, maxItems: 50, items: { type: string, format: uuid } }
+    BrandFilter:
+      name: brand[]
+      in: query
+      description: Repeat for each normalized supplier-item brand.
+      schema: { type: array, maxItems: 50, items: { type: string, minLength: 1, maxLength: 255 } }
+    UnitFilter:
+      name: unit[]
+      in: query
+      schema: { type: array, maxItems: 4, items: { type: string, enum: [weight, volume, count, case] } }
+    AvailabilityFilter:
+      name: availability[]
+      in: query
+      schema: { type: array, maxItems: 3, items: { $ref: "#/components/schemas/OfferAvailability" } }
+    FreshnessFilter:
+      name: freshness[]
+      in: query
+      schema: { type: array, maxItems: 4, items: { $ref: "#/components/schemas/PriceFreshness" } }
+    ComparisonClassFilter:
+      name: match_class[]
+      in: query
+      schema: { type: array, maxItems: 4, items: { $ref: "#/components/schemas/ComparisonClass" } }
+    SearchPage:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    SearchPerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+    ComparisonPerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
     MatchCandidateId:
       name: matchCandidate
       in: path
@@ -1219,6 +1333,213 @@ components:
                     limit: 1
                     current_usage: 1
   schemas:
+    OfferAvailability:
+      type: string
+      enum: [available, unavailable, unknown]
+    PriceFreshness:
+      type: string
+      enum: [fresh, aging, stale, unknown]
+      description: Derived from an explicit source observation timestamp and the supplier account's expected refresh cadence; never a claim of live pricing.
+    ComparisonClass:
+      type: string
+      enum: [exact, equivalent, alternative, not_safely_comparable]
+    WinnerLabel:
+      type: string
+      enum: [lowest_case_price, best_normalized_price, best_available_option]
+    CanonicalProductSummary:
+      type: object
+      additionalProperties: false
+      required: [id, english_name, category, attributes]
+      properties:
+        id: { type: string, format: uuid }
+        english_name: { type: string }
+        category:
+          type: object
+          additionalProperties: false
+          required: [id, english_name]
+          properties:
+            id: { type: string, format: uuid }
+            english_name: { type: string }
+        attributes: { type: object, additionalProperties: true }
+    ProductVariantSearchSummary:
+      type: object
+      additionalProperties: false
+      required: [id, code, attributes]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        attributes: { type: object, additionalProperties: true }
+    SupplierSearchSummary:
+      type: object
+      additionalProperties: false
+      required: [id, display_name]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string }
+    ComparisonClassSummary:
+      type: object
+      additionalProperties: false
+      required: [exact, equivalent, alternative, not_safely_comparable]
+      properties:
+        exact: { type: integer, minimum: 0 }
+        equivalent: { type: integer, minimum: 0 }
+        alternative: { type: integer, minimum: 0 }
+        not_safely_comparable: { type: integer, minimum: 0 }
+    FreshnessSummary:
+      type: object
+      additionalProperties: false
+      required: [fresh, aging, stale, unknown]
+      properties:
+        fresh: { type: integer, minimum: 0 }
+        aging: { type: integer, minimum: 0 }
+        stale: { type: integer, minimum: 0 }
+        unknown: { type: integer, minimum: 0 }
+    SearchPriceSummary:
+      type: object
+      additionalProperties: false
+      required: [lowest_case_price, currency, lowest_normalized_price, normalized_unit]
+      properties:
+        lowest_case_price: { type: [string, "null"], description: "Decimal string, never a binary floating-point value." }
+        currency: { type: [string, "null"], minLength: 3, maxLength: 3 }
+        lowest_normalized_price: { type: [string, "null"], description: "Decimal string only when a compatible direct comparison is safe." }
+        normalized_unit: { type: [string, "null"], enum: [lb, gal, ea, null] }
+    ProductSearchResult:
+      type: object
+      additionalProperties: false
+      required: [canonical_product, variants, offer_count, suppliers, supplier_count, match_quality_summary, freshness_summary, price_summary, relevance_score]
+      properties:
+        canonical_product: { $ref: "#/components/schemas/CanonicalProductSummary" }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/ProductVariantSearchSummary" }
+        offer_count: { type: integer, minimum: 0 }
+        suppliers:
+          type: array
+          maxItems: 3
+          items: { $ref: "#/components/schemas/SupplierSearchSummary" }
+        supplier_count: { type: integer, minimum: 0 }
+        match_quality_summary: { $ref: "#/components/schemas/ComparisonClassSummary" }
+        freshness_summary: { $ref: "#/components/schemas/FreshnessSummary" }
+        price_summary: { $ref: "#/components/schemas/SearchPriceSummary" }
+        relevance_score: { type: integer, minimum: 0 }
+    PartialSupplierState:
+      type: object
+      additionalProperties: false
+      required: [supplier_accounts]
+      properties:
+        supplier_accounts:
+          type: array
+          description: Safe account-level partial-data statuses; empty while ingestion does not persist a supplier failure state.
+          items:
+            type: object
+            additionalProperties: true
+    ProductSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [results, pagination, partial]
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/ProductSearchResult" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+        partial: { $ref: "#/components/schemas/PartialSupplierState" }
+    NormalizedDenominator:
+      type: object
+      additionalProperties: false
+      required: [value, unit, canonical_value, canonical_unit]
+      properties:
+        value: { type: string, description: Decimal display denominator. }
+        unit: { type: string, enum: [lb, gal, ea] }
+        canonical_value: { type: string, description: Decimal source-normalized denominator. }
+        canonical_unit: { type: string, enum: [g, mL, ea] }
+    CalculationTrace:
+      type: object
+      additionalProperties: false
+      required: [source_case_price, currency, source_price_evidence, source_pack_evidence, normalized_denominator, normalized_price, normalized_unit, formula, formula_version, observation, match]
+      properties:
+        source_case_price: { type: string, description: Decimal source case price. }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        source_price_evidence: { type: object, additionalProperties: true }
+        source_pack_evidence: { type: object, additionalProperties: true }
+        normalized_denominator:
+          oneOf:
+            - $ref: "#/components/schemas/NormalizedDenominator"
+            - type: "null"
+        normalized_price: { type: [string, "null"] }
+        normalized_unit: { type: [string, "null"], enum: [lb, gal, ea, null] }
+        formula: { type: [string, "null"] }
+        formula_version: { type: string }
+        observation:
+          type: object
+          additionalProperties: false
+          required: [id, observed_at, import_run_id, normalized_import_record_id]
+          properties:
+            id: { type: string, format: uuid }
+            observed_at: { type: string, format: date-time }
+            import_run_id: { type: string, format: uuid }
+            normalized_import_record_id: { type: string, format: uuid }
+        match:
+          type: object
+          additionalProperties: false
+          required: [mapping_id, canonical_product_id, product_variant_id, match_class, confidence, matcher_version, evidence]
+          properties:
+            mapping_id: { type: string, format: uuid }
+            canonical_product_id: { type: string, format: uuid }
+            product_variant_id: { type: [string, "null"], format: uuid }
+            match_class: { type: string }
+            confidence: { type: string }
+            matcher_version: { type: string }
+            evidence: { type: object, additionalProperties: true }
+    ProductComparisonOffer:
+      type: object
+      additionalProperties: false
+      required: [id, supplier, raw_supplier_name, pack, case_price, currency, normalized_price, normalized_unit, normalized_denominator, availability, observed_at, freshness, comparison_class, warnings, winner_labels, calculation]
+      properties:
+        id: { type: string, format: uuid }
+        supplier:
+          type: object
+          additionalProperties: false
+          required: [id, display_name, name]
+          properties:
+            id: { type: string, format: uuid }
+            display_name: { type: string }
+            name: { type: string }
+        raw_supplier_name: { type: string }
+        pack: { type: object, additionalProperties: true }
+        case_price: { type: string, description: Decimal source case price. }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        normalized_price: { type: [string, "null"] }
+        normalized_unit: { type: [string, "null"], enum: [lb, gal, ea, null] }
+        normalized_denominator:
+          oneOf:
+            - $ref: "#/components/schemas/NormalizedDenominator"
+            - type: "null"
+        availability: { $ref: "#/components/schemas/OfferAvailability" }
+        observed_at: { type: string, format: date-time }
+        freshness: { $ref: "#/components/schemas/PriceFreshness" }
+        comparison_class: { $ref: "#/components/schemas/ComparisonClass" }
+        warnings: { type: array, items: { type: string } }
+        winner_labels: { type: array, items: { $ref: "#/components/schemas/WinnerLabel" } }
+        calculation: { $ref: "#/components/schemas/CalculationTrace" }
+    ProductComparisonResponse:
+      type: object
+      additionalProperties: false
+      required: [canonical_product, location, formula_version, freshness_summary, warnings, offers, pagination, partial]
+      properties:
+        canonical_product: { $ref: "#/components/schemas/CanonicalProductSummary" }
+        location:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        formula_version: { type: string }
+        freshness_summary: { $ref: "#/components/schemas/FreshnessSummary" }
+        warnings: { type: array, items: { type: string } }
+        offers: { type: array, items: { $ref: "#/components/schemas/ProductComparisonOffer" } }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+        partial: { $ref: "#/components/schemas/PartialSupplierState" }
     ImportStatus:
       type: string
       enum: [uploaded, validating, needs_mapping, queued, processing, partially_completed, completed, failed, canceled]
@@ -1247,6 +1568,8 @@ components:
         unit: { type: string, minLength: 1, maxLength: 4096 }
         price: { type: string, minLength: 1, maxLength: 4096 }
         currency: { type: string, minLength: 1, maxLength: 4096 }
+        observed_at: { type: string, minLength: 1, maxLength: 4096, description: "Source-observed ISO-8601 timestamp; no price observation is fabricated if it is absent." }
+        availability: { type: string, minLength: 1, maxLength: 4096, description: "Source availability/status; unrecognized values remain unknown." }
         gtin: { type: string, minLength: 1, maxLength: 4096 }
     ImportSourceConventions:
       type: object

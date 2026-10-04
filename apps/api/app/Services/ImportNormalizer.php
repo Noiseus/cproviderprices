@@ -12,7 +12,7 @@ final class ImportNormalizer
 {
     public const VERSION = '1.0.0';
 
-    public const FIELDS = ['supplier_sku', 'description', 'brand', 'pack_size_text', 'quantity', 'weight', 'volume', 'unit', 'price', 'currency', 'gtin'];
+    public const FIELDS = ['supplier_sku', 'description', 'brand', 'pack_size_text', 'quantity', 'weight', 'volume', 'unit', 'price', 'currency', 'observed_at', 'availability', 'gtin'];
 
     /** @return array<string, mixed> */
     public function record(ImportRun $run, RawImportRecord $raw): array

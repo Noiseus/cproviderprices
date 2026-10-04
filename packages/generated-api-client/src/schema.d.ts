@@ -757,6 +757,87 @@ export interface paths {
         patch: operations["updateSupplierAccount"];
         trace?: never;
     };
+    "/organizations/{organization}/product-search": {
+        parameters: {
+            query: {
+                /** @description Bounded search text. The server deterministically parses supported size and unit tokens; it does not use AI query interpretation. */
+                q: string;
+                /** @description Requested location is verified against the server-authorized organization membership. */
+                location_id: string;
+                category_id?: string;
+                /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
+                "supplier_id[]"?: components["parameters"]["SupplierFilter"];
+                /** @description Repeat for each normalized supplier-item brand. */
+                "brand[]"?: components["parameters"]["BrandFilter"];
+                "unit[]"?: components["parameters"]["UnitFilter"];
+                "availability[]"?: components["parameters"]["AvailabilityFilter"];
+                "freshness[]"?: components["parameters"]["FreshnessFilter"];
+                "match_class[]"?: components["parameters"]["ComparisonClassFilter"];
+                sort?: "relevance" | "lowest_case_price" | "lowest_normalized_price" | "newest_observation";
+                page?: components["parameters"]["SearchPage"];
+                per_page?: components["parameters"]["SearchPerPage"];
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Search global canonical catalog with tenant/location-private offer summaries
+         * @description Canonical catalog rows may appear with zero offers. Supplier, price, freshness, and match summaries only include eligible tenant/location-private offers. Results are bounded, server-filtered, and use a short scoped private cache.
+         */
+        get: operations["searchProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/comparisons/{canonicalProduct}": {
+        parameters: {
+            query: {
+                /** @description Requested location is verified against the server-authorized organization membership. */
+                location_id: string;
+                /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
+                "supplier_id[]"?: components["parameters"]["SupplierFilter"];
+                "availability[]"?: components["parameters"]["AvailabilityFilter"];
+                "freshness[]"?: components["parameters"]["FreshnessFilter"];
+                "match_class[]"?: components["parameters"]["ComparisonClassFilter"];
+                sort?: "supplier" | "lowest_case_price" | "lowest_normalized_price" | "newest_observation";
+                page?: components["parameters"]["SearchPage"];
+                per_page?: components["parameters"]["ComparisonPerPage"];
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                canonicalProduct: components["parameters"]["CanonicalProductId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Compare eligible tenant/location-private offers for one canonical product
+         * @description Case and normalized price winners are calculated server-side using decimal arithmetic. Alternatives and unsafe comparisons remain visible with explicit warnings and cannot receive direct-comparison winner labels.
+         */
+        get: operations["getProductComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{organization}/memberships/{membership}": {
         parameters: {
             query?: never;
@@ -1037,6 +1118,180 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        OfferAvailability: "available" | "unavailable" | "unknown";
+        /**
+         * @description Derived from an explicit source observation timestamp and the supplier account's expected refresh cadence; never a claim of live pricing.
+         * @enum {string}
+         */
+        PriceFreshness: "fresh" | "aging" | "stale" | "unknown";
+        /** @enum {string} */
+        ComparisonClass: "exact" | "equivalent" | "alternative" | "not_safely_comparable";
+        /** @enum {string} */
+        WinnerLabel: "lowest_case_price" | "best_normalized_price" | "best_available_option";
+        CanonicalProductSummary: {
+            /** Format: uuid */
+            id: string;
+            english_name: string;
+            category: {
+                /** Format: uuid */
+                id: string;
+                english_name: string;
+            };
+            attributes: {
+                [key: string]: unknown;
+            };
+        };
+        ProductVariantSearchSummary: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            attributes: {
+                [key: string]: unknown;
+            };
+        };
+        SupplierSearchSummary: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        ComparisonClassSummary: {
+            exact: number;
+            equivalent: number;
+            alternative: number;
+            not_safely_comparable: number;
+        };
+        FreshnessSummary: {
+            fresh: number;
+            aging: number;
+            stale: number;
+            unknown: number;
+        };
+        SearchPriceSummary: {
+            /** @description Decimal string, never a binary floating-point value. */
+            lowest_case_price: string | null;
+            currency: string | null;
+            /** @description Decimal string only when a compatible direct comparison is safe. */
+            lowest_normalized_price: string | null;
+            /** @enum {string|null} */
+            normalized_unit: "lb" | "gal" | "ea" | null;
+        };
+        ProductSearchResult: {
+            canonical_product: components["schemas"]["CanonicalProductSummary"];
+            variants: components["schemas"]["ProductVariantSearchSummary"][];
+            offer_count: number;
+            suppliers: components["schemas"]["SupplierSearchSummary"][];
+            supplier_count: number;
+            match_quality_summary: components["schemas"]["ComparisonClassSummary"];
+            freshness_summary: components["schemas"]["FreshnessSummary"];
+            price_summary: components["schemas"]["SearchPriceSummary"];
+            relevance_score: number;
+        };
+        PartialSupplierState: {
+            /** @description Safe account-level partial-data statuses; empty while ingestion does not persist a supplier failure state. */
+            supplier_accounts: {
+                [key: string]: unknown;
+            }[];
+        };
+        ProductSearchResponse: {
+            results: components["schemas"]["ProductSearchResult"][];
+            pagination: components["schemas"]["Pagination"];
+            partial: components["schemas"]["PartialSupplierState"];
+        };
+        NormalizedDenominator: {
+            /** @description Decimal display denominator. */
+            value: string;
+            /** @enum {string} */
+            unit: "lb" | "gal" | "ea";
+            /** @description Decimal source-normalized denominator. */
+            canonical_value: string;
+            /** @enum {string} */
+            canonical_unit: "g" | "mL" | "ea";
+        };
+        CalculationTrace: {
+            /** @description Decimal source case price. */
+            source_case_price: string;
+            currency: string;
+            source_price_evidence: {
+                [key: string]: unknown;
+            };
+            source_pack_evidence: {
+                [key: string]: unknown;
+            };
+            normalized_denominator: components["schemas"]["NormalizedDenominator"] | null;
+            normalized_price: string | null;
+            /** @enum {string|null} */
+            normalized_unit: "lb" | "gal" | "ea" | null;
+            formula: string | null;
+            formula_version: string;
+            observation: {
+                /** Format: uuid */
+                id: string;
+                /** Format: date-time */
+                observed_at: string;
+                /** Format: uuid */
+                import_run_id: string;
+                /** Format: uuid */
+                normalized_import_record_id: string;
+            };
+            match: {
+                /** Format: uuid */
+                mapping_id: string;
+                /** Format: uuid */
+                canonical_product_id: string;
+                /** Format: uuid */
+                product_variant_id: string | null;
+                match_class: string;
+                confidence: string;
+                matcher_version: string;
+                evidence: {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        ProductComparisonOffer: {
+            /** Format: uuid */
+            id: string;
+            supplier: {
+                /** Format: uuid */
+                id: string;
+                display_name: string;
+                name: string;
+            };
+            raw_supplier_name: string;
+            pack: {
+                [key: string]: unknown;
+            };
+            /** @description Decimal source case price. */
+            case_price: string;
+            currency: string;
+            normalized_price: string | null;
+            /** @enum {string|null} */
+            normalized_unit: "lb" | "gal" | "ea" | null;
+            normalized_denominator: components["schemas"]["NormalizedDenominator"] | null;
+            availability: components["schemas"]["OfferAvailability"];
+            /** Format: date-time */
+            observed_at: string;
+            freshness: components["schemas"]["PriceFreshness"];
+            comparison_class: components["schemas"]["ComparisonClass"];
+            warnings: string[];
+            winner_labels: components["schemas"]["WinnerLabel"][];
+            calculation: components["schemas"]["CalculationTrace"];
+        };
+        ProductComparisonResponse: {
+            canonical_product: components["schemas"]["CanonicalProductSummary"];
+            location: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            formula_version: string;
+            freshness_summary: components["schemas"]["FreshnessSummary"];
+            warnings: string[];
+            offers: components["schemas"]["ProductComparisonOffer"][];
+            pagination: components["schemas"]["Pagination"];
+            partial: components["schemas"]["PartialSupplierState"];
+        };
         /**
          * @description Phase B ends at queued. Failed/canceled are terminal; later phases own normalization and successful terminal states.
          * @enum {string}
@@ -1065,6 +1320,10 @@ export interface components {
             unit?: string;
             price?: string;
             currency?: string;
+            /** @description Source-observed ISO-8601 timestamp; no price observation is fabricated if it is absent. */
+            observed_at?: string;
+            /** @description Source availability/status; unrecognized values remain unknown. */
+            availability?: string;
             gtin?: string;
         };
         ImportSourceConventions: {
@@ -1871,6 +2130,18 @@ export interface components {
         };
     };
     parameters: {
+        CanonicalProductId: string;
+        /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
+        SupplierFilter: string[];
+        /** @description Repeat for each normalized supplier-item brand. */
+        BrandFilter: string[];
+        UnitFilter: ("weight" | "volume" | "count" | "case")[];
+        AvailabilityFilter: components["schemas"]["OfferAvailability"][];
+        FreshnessFilter: components["schemas"]["PriceFreshness"][];
+        ComparisonClassFilter: components["schemas"]["ComparisonClass"][];
+        SearchPage: number;
+        SearchPerPage: number;
+        ComparisonPerPage: number;
         MatchCandidateId: string;
         VendorItemMappingId: string;
         ImportId: string;
@@ -2981,6 +3252,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupplierAccountResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    searchProducts: {
+        parameters: {
+            query: {
+                /** @description Bounded search text. The server deterministically parses supported size and unit tokens; it does not use AI query interpretation. */
+                q: string;
+                /** @description Requested location is verified against the server-authorized organization membership. */
+                location_id: string;
+                category_id?: string;
+                /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
+                "supplier_id[]"?: components["parameters"]["SupplierFilter"];
+                /** @description Repeat for each normalized supplier-item brand. */
+                "brand[]"?: components["parameters"]["BrandFilter"];
+                "unit[]"?: components["parameters"]["UnitFilter"];
+                "availability[]"?: components["parameters"]["AvailabilityFilter"];
+                "freshness[]"?: components["parameters"]["FreshnessFilter"];
+                "match_class[]"?: components["parameters"]["ComparisonClassFilter"];
+                sort?: "relevance" | "lowest_case_price" | "lowest_normalized_price" | "newest_observation";
+                page?: components["parameters"]["SearchPage"];
+                per_page?: components["parameters"]["SearchPerPage"];
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Grouped canonical product results with safe private summaries. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSearchResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getProductComparison: {
+        parameters: {
+            query: {
+                /** @description Requested location is verified against the server-authorized organization membership. */
+                location_id: string;
+                /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
+                "supplier_id[]"?: components["parameters"]["SupplierFilter"];
+                "availability[]"?: components["parameters"]["AvailabilityFilter"];
+                "freshness[]"?: components["parameters"]["FreshnessFilter"];
+                "match_class[]"?: components["parameters"]["ComparisonClassFilter"];
+                sort?: "supplier" | "lowest_case_price" | "lowest_normalized_price" | "newest_observation";
+                page?: components["parameters"]["SearchPage"];
+                per_page?: components["parameters"]["ComparisonPerPage"];
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                canonicalProduct: components["parameters"]["CanonicalProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description First-view offer comparison with calculation traceability; full history is intentionally excluded. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductComparisonResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

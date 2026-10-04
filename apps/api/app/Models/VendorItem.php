@@ -79,4 +79,10 @@ class VendorItem extends Model
     {
         return $this->hasMany(MatchReview::class);
     }
+
+    /** @return HasMany<SupplierOffer, $this> */
+    public function supplierOffers(): HasMany
+    {
+        return $this->hasMany(SupplierOffer::class);
+    }
 }
