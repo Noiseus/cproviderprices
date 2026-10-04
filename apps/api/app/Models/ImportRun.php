@@ -7,6 +7,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property ImportStatus $status
@@ -48,5 +49,11 @@ class ImportRun extends Model
     public function mappingTemplate(): BelongsTo
     {
         return $this->belongsTo(ImportMappingTemplate::class);
+    }
+
+    /** @return HasMany<PriceObservation, $this> */
+    public function priceObservations(): HasMany
+    {
+        return $this->hasMany(PriceObservation::class);
     }
 }

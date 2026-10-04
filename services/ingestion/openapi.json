@@ -112,6 +112,18 @@
       "MappedValues": {
         "additionalProperties": false,
         "properties": {
+          "availability": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability"
+          },
           "brand": {
             "anyOf": [
               {
@@ -153,6 +165,18 @@
               }
             ],
             "title": "Gtin"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
           },
           "pack_size_text": {
             "anyOf": [

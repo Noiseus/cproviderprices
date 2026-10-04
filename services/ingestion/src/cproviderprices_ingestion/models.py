@@ -41,6 +41,8 @@ class MappedValues(StrictModel):
     unit: Text | None = None
     price: Text | None = None
     currency: Text | None = None
+    observed_at: Text | None = None
+    availability: Text | None = None
     gtin: Text | None = None
 
     @field_validator("supplier_sku", "description")

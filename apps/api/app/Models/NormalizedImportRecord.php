@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property array<string, mixed> $normalized_values
@@ -53,5 +54,11 @@ class NormalizedImportRecord extends Model
     public function rawImportRecord(): BelongsTo
     {
         return $this->belongsTo(RawImportRecord::class);
+    }
+
+    /** @return HasMany<PriceObservation, $this> */
+    public function priceObservations(): HasMany
+    {
+        return $this->hasMany(PriceObservation::class);
     }
 }

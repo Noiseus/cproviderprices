@@ -1,9 +1,4 @@
-import { RoutePlaceholder } from "@/components/app-shell/RoutePlaceholder";
+import { SearchWorkspace } from "@/components/search/SearchWorkspace";
 export default function SearchPage() {
-  return (
-    <RoutePlaceholder
-      title="Search"
-      description="The future product and price search workspace."
-    />
-  );
+  return <SearchWorkspace />;
 }

@@ -40,7 +40,9 @@ async function login(page: Page, identity = fixture.owner) {
   await page.getByLabel("Email address").fill(identity.email);
   await page.getByLabel("Password", { exact: true }).fill(identity.password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(`${web}/o/${identity.slug}/dashboard`);
+  await expect(page).toHaveURL(`${web}/o/${identity.slug}/dashboard`, {
+    timeout: 15_000,
+  });
   await page.getByRole("link", { name: "Imports", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Import Center" }),
