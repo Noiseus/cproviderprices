@@ -42,9 +42,17 @@ test("an authenticated buyer can use Spanish without losing route, filters, cont
   await page.getByRole("link", { name: "Search", exact: true }).click();
   const searchInput = page.getByLabel("Search products");
   await searchInput.fill("tomate");
-  await page
-    .getByRole("combobox", { name: "Sort" })
-    .selectOption("lowest_case_price");
+  await Promise.all([
+    page.waitForURL(
+      (url) =>
+        url.pathname.endsWith("/search") &&
+        url.searchParams.get("q") === "tomate" &&
+        url.searchParams.get("sort") === "lowest_case_price",
+    ),
+    page
+      .getByRole("combobox", { name: "Sort" })
+      .selectOption("lowest_case_price"),
+  ]);
   await expect(
     page.getByRole("heading", { name: "Tomato", exact: true }),
   ).toBeVisible();

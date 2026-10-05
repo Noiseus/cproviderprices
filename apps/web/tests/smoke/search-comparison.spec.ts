@@ -132,7 +132,24 @@ test("price history keeps an accessible table fallback and refreshes only CProvi
     (window as Window & { historyMarker?: string }).historyMarker =
       "same-document";
   });
-  await page.getByRole("link", { name: "View price history" }).click();
+  const priceHistoryLink = page.getByRole("link", {
+    name: "View price history",
+  });
+  const expectedHistoryPath = `/o/${fixture.search_login.slug}/price-history?product=${fixture.search_comparison.canonical_product_id}`;
+  await expect(priceHistoryLink).toHaveAttribute("href", expectedHistoryPath);
+  const historyLoaded = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes(
+          `/price-history/${fixture.search_comparison.canonical_product_id}`,
+        ) && response.request().method() === "GET",
+  );
+  await Promise.all([
+    page.waitForURL(`${web}${expectedHistoryPath}`),
+    priceHistoryLink.click(),
+  ]);
+  expect((await historyLoaded).status()).toBe(200);
   await expect(page).toHaveURL(
     new RegExp(
       `/price-history\\?product=${fixture.search_comparison.canonical_product_id}`,

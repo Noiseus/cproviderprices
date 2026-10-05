@@ -151,7 +151,14 @@ test("owner workspace configuration uses client navigation", async ({
           .__configurationMarker,
     ),
   ).toBe("preserved");
+  const locationsLoaded = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/restaurant-locations") &&
+      response.request().method() === "GET",
+  );
   await page.getByRole("link", { name: "Locations" }).click();
+  expect((await locationsLoaded).status()).toBe(200);
+  await expect(page).toHaveURL(`${webUrl}/o/${fixture.login.slug}/locations`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Locations" }),
   ).toBeVisible();
