@@ -12,6 +12,24 @@ type Fixture = {
   saved_lists: { unavailable_selection_id: string };
 };
 
+type SavedListDetailPayload = {
+  saved_list: {
+    items: Array<{
+      canonical_product: { id: string };
+      selected_offer_id: string | null;
+      best_normalized_option: {
+        id: string;
+        normalized_price: string | null;
+        normalized_unit: string | null;
+        availability: string;
+        freshness: string;
+        comparison_class: string;
+      } | null;
+      best_available_option: { id: string } | null;
+    }>;
+  };
+};
+
 const fixture = JSON.parse(
   readFileSync(
     resolve(process.cwd(), "../api/storage/app/private/auth-e2e-isolated.json"),
@@ -64,10 +82,43 @@ test("buyer saves Beefsteak intent, chooses an offer, updates it, and preserves 
       () => (window as Window & { savedListMarker?: string }).savedListMarker,
     ),
   ).toBe("same-document");
-  await page
-    .getByRole("link", { name: "Beefsteak buyer list", exact: true })
-    .click();
-  await expect(page.getByText("Best normalized option")).toBeVisible();
+  const savedListLink = page.getByRole("link", {
+    name: "Beefsteak buyer list",
+    exact: true,
+  });
+  const savedListHref = await savedListLink.getAttribute("href");
+  const savedListId = savedListHref?.split("/").at(-1);
+  if (!savedListId) throw new Error("Created saved-list link had no list ID.");
+  const detailResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname.endsWith(`/saved-lists/${savedListId}`),
+    { timeout: 15_000 },
+  );
+  await savedListLink.click();
+  const detail = await detailResponse;
+  expect(detail.status()).toBe(200);
+  const detailPayload = (await detail.json()) as SavedListDetailPayload;
+  const [item] = detailPayload.saved_list.items;
+  expect(item).toBeDefined();
+  expect(item.canonical_product.id).toBe(
+    fixture.search_comparison.canonical_product_id,
+  );
+  expect(item.selected_offer_id).toBeNull();
+  expect(item.best_normalized_option).toMatchObject({
+    id: fixture.search_comparison.offers.best_normalized,
+    normalized_price: "0.6",
+    normalized_unit: "lb",
+    availability: "unavailable",
+    freshness: "manual_import",
+    comparison_class: "equivalent",
+  });
+  expect(item.best_available_option).toMatchObject({
+    id: fixture.search_comparison.offers.best_available,
+  });
+  await expect(page.getByText("Best normalized option")).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByText("Best available option")).toBeVisible();
   await page.getByLabel("Preferred unit").selectOption("lb");
   await page.getByLabel("Private notes").fill("Use ripe tomatoes");
