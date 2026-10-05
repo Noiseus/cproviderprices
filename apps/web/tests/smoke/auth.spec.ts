@@ -42,7 +42,17 @@ test("invitation acceptance reaches its organization shell", async ({
     .getByLabel("Password", { exact: true })
     .fill(fixture.invitation.password);
   await page.getByLabel("Confirm password").fill(fixture.invitation.password);
+  const acceptance = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/auth/invitations/accept") &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Accept invitation" }).click();
+  const acceptanceResponse = await acceptance;
+  expect(acceptanceResponse.status()).toBe(200);
+  await expect(acceptanceResponse.json()).resolves.toMatchObject({
+    destination: `/o/${fixture.invitation.slug}/dashboard`,
+  });
   await expect(page).toHaveURL(
     `${webUrl}/o/${fixture.invitation.slug}/dashboard`,
   );

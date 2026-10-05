@@ -56,7 +56,17 @@ test("an authenticated buyer can use Spanish without losing route, filters, cont
   );
   const pathBeforeSwitch = new URL(page.url()).pathname;
 
+  const preferenceUpdate = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/auth/preferences") &&
+      response.request().method() === "PATCH",
+  );
   await page.getByRole("combobox", { name: "Language" }).selectOption("es");
+  const preferenceResponse = await preferenceUpdate;
+  expect(preferenceResponse.status()).toBe(200);
+  await expect(preferenceResponse.json()).resolves.toMatchObject({
+    session: { user: { preferred_language: "es" } },
+  });
   await expect(
     page.getByRole("link", { name: "Buscar", exact: true }),
   ).toBeVisible();
@@ -121,7 +131,14 @@ test("an authenticated buyer can use Spanish without losing route, filters, cont
   await expect(
     page.getByRole("heading", { name: "Plan", exact: true }),
   ).toBeVisible();
+  const importsLoaded = page.waitForResponse(
+    (response) =>
+      response.url().includes("/imports?page=1") &&
+      response.request().method() === "GET",
+  );
   await page.getByRole("link", { name: "Importaciones", exact: true }).click();
+  expect((await importsLoaded).status()).toBe(200);
+  await expect(page).toHaveURL(`${web}/o/${fixture.search_login.slug}/imports`);
   await expect(
     page.getByRole("heading", { name: "Centro de importaciones", exact: true }),
   ).toBeVisible();
