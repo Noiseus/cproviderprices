@@ -76,3 +76,8 @@ There is no global browser polling loop, cross-tab price cache or data stored in
 local storage. Import progress keeps its existing polling contract. “Refresh
 CProviderPrices data” rereads authorized internal records; “Sync supplier” is
 explicitly a future connector action and performs no supplier call.
+
+Saved purchasing-list detail follows the same derived-read rule. It refreshes
+visible stale data after 60 seconds, retains an old selected-offer ID if it
+later becomes unavailable, and presents current alternatives without modifying
+durable purchasing intent. See [saved purchasing lists](saved-purchasing-lists.md).

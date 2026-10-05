@@ -47,6 +47,12 @@ class Organization extends Model
         return $this->hasMany(SupplierAccount::class);
     }
 
+    /** @return HasMany<SavedList, $this> */
+    public function savedLists(): HasMany
+    {
+        return $this->hasMany(SavedList::class);
+    }
+
     /** @return HasMany<Invitation, $this> */
     public function invitations(): HasMany
     {

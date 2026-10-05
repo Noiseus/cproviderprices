@@ -876,6 +876,218 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{organization}/saved-lists": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** List organization-scoped saved purchasing lists */
+        get: operations["listSavedLists"];
+        put?: never;
+        /** Create an active saved purchasing list for an authorized location */
+        post: operations["createSavedList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Read durable purchasing intent with batched current-offer summaries
+         * @description The list item remains canonical-product intent. Current selected, normalized-best, and available-best offers are derived at read time and are never persisted into the item.
+         */
+        get: operations["getSavedList"];
+        put?: never;
+        post?: never;
+        /** Explicitly delete a saved list and its items after confirmation */
+        delete: operations["deleteSavedList"];
+        options?: never;
+        head?: never;
+        /** Rename a saved list with an optimistic-lock version precondition */
+        patch: operations["renameSavedList"];
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duplicate purchasing intent without duplicating prices or catalog records */
+        post: operations["duplicateSavedList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a saved list without destroying purchasing-intent history */
+        post: operations["archiveSavedList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore an archived saved list */
+        post: operations["restoreSavedList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}/items": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add canonical-product purchasing intent with an optional current offer selection */
+        post: operations["addSavedListItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}/items/{savedListItem}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+                savedListItem: components["parameters"]["SavedListItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove one saved-list item with an optimistic-lock precondition */
+        delete: operations["removeSavedListItem"];
+        options?: never;
+        head?: never;
+        /** Update one item quantity, compatible preferred unit, or private note */
+        patch: operations["updateSavedListItem"];
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}/items/{savedListItem}/selected-offer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+                savedListItem: components["parameters"]["SavedListItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Select, change, or clear a compatible current supplier offer */
+        put: operations["selectSavedListItemOffer"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{organization}/saved-lists/{savedList}/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Apply a complete, stable item ordering with a list version precondition */
+        put: operations["reorderSavedListItems"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{organization}/memberships/{membership}": {
         parameters: {
             query?: never;
@@ -1429,6 +1641,161 @@ export interface components {
             };
             series: components["schemas"]["PriceHistorySeriesPoint"][];
             observations: components["schemas"]["PriceHistoryObservation"][];
+        };
+        /** @enum {string} */
+        SavedListStatus: "active" | "archived";
+        SavedListLocation: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        SavedListVersion: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+        };
+        SavedListSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            status: components["schemas"]["SavedListStatus"];
+            version: number;
+            location: components["schemas"]["SavedListLocation"];
+            item_count: number;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SavedListPagination: components["schemas"]["Pagination"];
+        SavedListIndexResponse: {
+            saved_lists: components["schemas"]["SavedListSummary"][];
+            pagination: components["schemas"]["SavedListPagination"];
+        };
+        SavedListIndexSingleResponse: {
+            saved_list: components["schemas"]["SavedListSummary"];
+        };
+        SavedListProduct: {
+            /** Format: uuid */
+            id: string;
+            english_name: string;
+            attributes: {
+                [key: string]: unknown;
+            };
+            category: {
+                /** Format: uuid */
+                id: string;
+                english_name: string;
+            };
+        };
+        SavedListVariant: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            attributes: {
+                [key: string]: unknown;
+            };
+        };
+        SavedListItem: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+            sort_order: number;
+            canonical_product: components["schemas"]["SavedListProduct"];
+            product_variant: components["schemas"]["SavedListVariant"] | null;
+            /** @description Exact decimal quantity target. */
+            quantity_target: string;
+            /** @enum {string|null} */
+            preferred_unit: "lb" | "gal" | "ea" | null;
+            /** @description Private user-entered content; clients render it as text. */
+            notes: string | null;
+            /** Format: uuid */
+            selected_offer_id: string | null;
+            selected_offer: components["schemas"]["ProductComparisonOffer"] | null;
+            selected_offer_unavailable: boolean;
+            best_normalized_option: components["schemas"]["ProductComparisonOffer"] | null;
+            best_available_option: components["schemas"]["ProductComparisonOffer"] | null;
+            alternative_offer_count: number;
+            offer_choices: components["schemas"]["ProductComparisonOffer"][];
+            warnings: string[];
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SavedListDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            status: components["schemas"]["SavedListStatus"];
+            version: number;
+            location: components["schemas"]["SavedListLocation"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            items: components["schemas"]["SavedListItem"][];
+        };
+        SavedListDetailResponse: {
+            saved_list: components["schemas"]["SavedListDetail"];
+        };
+        CreateSavedListRequest: {
+            name: string;
+            /** Format: uuid */
+            location_id: string;
+        };
+        ExpectedVersionRequest: {
+            expected_version: number;
+        };
+        RenameSavedListRequest: components["schemas"]["ExpectedVersionRequest"] & {
+            name: string;
+        };
+        DuplicateSavedListRequest: components["schemas"]["ExpectedVersionRequest"] & {
+            name?: string;
+        };
+        AddSavedListItemRequest: {
+            /** Format: uuid */
+            canonical_product_id: string;
+            /** Format: uuid */
+            product_variant_id?: string | null;
+            /** Format: uuid */
+            selected_offer_id?: string | null;
+            quantity_target?: string;
+            /** @enum {string|null} */
+            preferred_unit?: "lb" | "gal" | "ea" | null;
+            notes?: string | null;
+            expected_list_version: number;
+        };
+        UpdateSavedListItemRequest: {
+            quantity_target?: string;
+            /** @enum {string|null} */
+            preferred_unit?: "lb" | "gal" | "ea" | null;
+            notes?: string | null;
+            expected_version: number;
+        } | unknown | unknown | unknown;
+        SelectSavedListOfferRequest: {
+            /** Format: uuid */
+            selected_offer_id?: string | null;
+            expected_version: number;
+        };
+        SavedListItemMutationResponse: {
+            saved_list: components["schemas"]["SavedListVersion"];
+            item: components["schemas"]["SavedListItem"];
+        };
+        RemoveSavedListItemResponse: {
+            saved_list: components["schemas"]["SavedListVersion"];
+            /** Format: uuid */
+            removed_item_id: string;
+        };
+        ReorderSavedListRequest: {
+            item_ids: string[];
+            expected_list_version: number;
+        };
+        ReorderedSavedListItem: {
+            /** Format: uuid */
+            id: string;
+            sort_order: number;
+            version: number;
+        };
+        ReorderSavedListResponse: {
+            saved_list: components["schemas"]["SavedListVersion"];
+            items: components["schemas"]["ReorderedSavedListItem"][];
         };
         /**
          * @description Phase B ends at queued. Failed/canceled are terminal; later phases own normalization and successful terminal states.
@@ -2275,6 +2642,8 @@ export interface components {
     };
     parameters: {
         CanonicalProductId: string;
+        SavedListId: string;
+        SavedListItemId: string;
         /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
         SupplierFilter: string[];
         /** @description Repeat for each normalized supplier-item brand. */
@@ -3523,6 +3892,421 @@ export interface operations {
                     "application/json": components["schemas"]["PriceHistoryResponse"];
                 };
             };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listSavedLists: {
+        parameters: {
+            query?: {
+                location_id?: string;
+                status?: components["schemas"]["SavedListStatus"];
+                page?: components["parameters"]["SearchPage"];
+                per_page?: components["parameters"]["SearchPerPage"];
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bounded list index without price or offer detail. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListIndexResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createSavedList: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSavedListRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved list created. */
+            201: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListIndexSingleResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getSavedList: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved-list detail and server-authoritative versions. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListDetailResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteSavedList: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved list deleted; immutable audit context remains. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    renameSavedList: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameSavedListRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved list renamed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListIndexSingleResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    duplicateSavedList: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DuplicateSavedListRequest"];
+            };
+        };
+        responses: {
+            /** @description New active saved list with copied item intent. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListIndexSingleResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    archiveSavedList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved list archived. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListIndexSingleResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    restoreSavedList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved list restored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListIndexSingleResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    addSavedListItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSavedListItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Item added; response contains only the changed item and list version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListItemMutationResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    removeSavedListItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+                savedListItem: components["parameters"]["SavedListItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Item removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoveSavedListItemResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateSavedListItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+                savedListItem: components["parameters"]["SavedListItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSavedListItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed item only. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListItemMutationResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    selectSavedListItemOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+                savedListItem: components["parameters"]["SavedListItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectSavedListOfferRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed item only. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListItemMutationResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    reorderSavedListItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                savedList: components["parameters"]["SavedListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderSavedListRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated ordering and versions only. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderSavedListResponse"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
             default: components["responses"]["ErrorResponse"];
         };
     };
