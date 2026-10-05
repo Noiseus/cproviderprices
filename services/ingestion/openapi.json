@@ -214,6 +214,18 @@
             ],
             "title": "Quantity"
           },
+          "source_updated_at": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Updated At"
+          },
           "supplier_sku": {
             "maxLength": 4096,
             "minLength": 1,

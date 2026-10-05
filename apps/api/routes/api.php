@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\PlatformMatchingController;
 use App\Http\Controllers\Api\V1\PlatformOrganizationController;
 use App\Http\Controllers\Api\V1\PlatformOverviewController;
 use App\Http\Controllers\Api\V1\PlatformSubscriptionController;
+use App\Http\Controllers\Api\V1\PriceHistoryController;
 use App\Http\Controllers\Api\V1\ProductComparisonController;
 use App\Http\Controllers\Api\V1\ProductSearchController;
 use App\Http\Controllers\Api\V1\RestaurantLocationController;
@@ -80,6 +81,7 @@ Route::prefix('v1')->group(function (): void {
                     Route::patch('/supplier-accounts/{supplierAccount}', [SupplierAccountController::class, 'update']);
                     Route::get('/product-search', [ProductSearchController::class, 'index']);
                     Route::get('/comparisons/{canonicalProduct}', [ProductComparisonController::class, 'show']);
+                    Route::get('/price-history/{canonicalProduct}', [PriceHistoryController::class, 'show']);
                 });
             });
 

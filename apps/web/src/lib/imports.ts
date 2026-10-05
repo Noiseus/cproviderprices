@@ -23,6 +23,9 @@ export const mappingFields: [keyof ImportMapping, string][] = [
   ["unit", "Unit"],
   ["price", "Price"],
   ["currency", "Currency"],
+  ["source_updated_at", "Source updated at"],
+  ["observed_at", "Source observed at"],
+  ["availability", "Availability"],
   ["gtin", "GTIN"],
 ];
 export function terminal(status: ImportSummary["status"]): boolean {

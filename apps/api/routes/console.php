@@ -12,6 +12,7 @@ use App\Enums\SubscriptionStatus;
 use App\Enums\SupplierAccountStatus;
 use App\Enums\SupplierRefreshCadence;
 use App\Enums\SupplierSourceMethod;
+use App\Jobs\RecalculatePriceFreshness;
 use App\Models\CanonicalProduct;
 use App\Models\ImportFile;
 use App\Models\ImportRun;
@@ -38,6 +39,7 @@ use Database\Seeders\SupplierDefinitionSeeder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\Command;
 
@@ -232,7 +234,9 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
             'normalized_unit' => $quantity === null ? null : 'g',
             'dimension' => $quantity === null ? null : 'weight',
             'availability' => $input['availability'],
+            'source_updated_at' => null,
             'observed_at' => $observedAt,
+            'imported_at' => now(),
             'formula_version' => 'price-comparison-1.0.0',
         ]);
         $offer->update(['current_price_observation_id' => $observation->id]);
@@ -427,3 +431,7 @@ Artisan::command('app:validate-environment', function (): int {
 
     return Command::SUCCESS;
 })->purpose('Validate required API runtime configuration');
+
+Schedule::job(new RecalculatePriceFreshness, 'freshness')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(10);

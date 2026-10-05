@@ -48,7 +48,7 @@ trait BuildsComparisonFixtures
     }
 
     /**
-     * @param  array{price?: string, quantity?: string|null, normalized_unit?: string|null, dimension?: string|null, availability?: OfferAvailability, observed_at?: \DateTimeInterface, match_class?: MatchClass, description?: string, brand?: string|null, sku?: string}  $overrides
+     * @param  array{price?: string, quantity?: string|null, normalized_unit?: string|null, dimension?: string|null, availability?: OfferAvailability, observed_at?: \DateTimeInterface, source_updated_at?: \DateTimeInterface|null, imported_at?: \DateTimeInterface, variable_weight?: bool, match_class?: MatchClass, description?: string, brand?: string|null, sku?: string}  $overrides
      */
     private function comparisonOffer(
         SupplierAccount $account,
@@ -115,7 +115,7 @@ trait BuildsComparisonFixtures
             'first_seen_at' => now(),
             'last_seen_at' => now(),
         ]);
-        VendorItemMapping::query()->create([
+        $mapping = VendorItemMapping::query()->create([
             'vendor_item_id' => $vendor->id,
             'canonical_product_id' => $product->id,
             'product_variant_id' => null,
@@ -148,13 +148,23 @@ trait BuildsComparisonFixtures
             'case_price' => $overrides['price'] ?? '24.50',
             'currency' => 'USD',
             'source_price_evidence' => ['source_price' => $overrides['price'] ?? '24.50', 'source_currency' => 'USD'],
-            'source_pack_evidence' => ['packs' => [['original_text' => '1/25 LB CS']], 'warnings' => []],
+            'source_pack_evidence' => ['packs' => [['original_text' => '1/25 LB CS']], 'variable_weight' => $overrides['variable_weight'] ?? false, 'warnings' => []],
             'normalized_quantity' => $quantity,
             'normalized_unit' => $normalizedUnit,
             'dimension' => $dimension,
             'availability' => $overrides['availability'] ?? OfferAvailability::Available,
+            'source_updated_at' => $overrides['source_updated_at'] ?? null,
             'observed_at' => $overrides['observed_at'] ?? now(),
+            'imported_at' => $overrides['imported_at'] ?? now(),
             'formula_version' => 'price-comparison-1.0.0',
+            'match_evidence' => [
+                'mapping_id' => $mapping->id,
+                'canonical_product_id' => $mapping->canonical_product_id,
+                'product_variant_id' => $mapping->product_variant_id,
+                'match_class' => $mapping->match_class->value,
+                'confidence' => $mapping->confidence->value,
+                'matcher_version' => $mapping->matcher_version,
+            ],
         ]);
         $offer->update(['current_price_observation_id' => $observation->id]);
 

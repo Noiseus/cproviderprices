@@ -70,6 +70,6 @@ final class ProductComparisonController extends Controller
             fn (): array => $comparisons->compare($context->organization->id, $location, $product, $parameters),
         );
 
-        return response()->json($payload);
+        return response()->json($payload)->header('Cache-Control', 'private, no-store');
     }
 }

@@ -127,7 +127,37 @@ services:
       dockerfile: infra/docker/api.Dockerfile
     command: >-
       sh -c "php artisan app:validate-environment &&
-      php artisan queue:work redis --queue=default,import-normalization,catalog-matching --sleep=1 --tries=3 --timeout=60"
+      php artisan queue:work redis --queue=default,import-normalization,catalog-matching,freshness --sleep=1 --tries=3 --timeout=60"
+    env_file:
+      - apps/api/.env
+    environment:
+      DB_HOST: postgres
+      DB_DATABASE: ${POSTGRES_DB:?Copy .env.example to .env}
+      DB_USERNAME: ${POSTGRES_USER:?Copy .env.example to .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+      REDIS_HOST: redis
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Copy .env.example to .env}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env}
+      AWS_BUCKET: ${MINIO_BUCKET:?Copy .env.example to .env}
+      AWS_ENDPOINT: http://minio:9000
+    volumes:
+      - ./apps/api:/var/www/html
+      - api-vendor:/var/www/html/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    command: >-
+      sh -c "php artisan app:validate-environment && php artisan schedule:work"
     env_file:
       - apps/api/.env
     environment:

@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 final class ImportMapping
 {
-    public const FIELDS = ['supplier_sku', 'description', 'brand', 'pack_size_text', 'quantity', 'weight', 'volume', 'unit', 'price', 'currency', 'observed_at', 'availability', 'gtin'];
+    public const FIELDS = ['supplier_sku', 'description', 'brand', 'pack_size_text', 'quantity', 'weight', 'volume', 'unit', 'price', 'currency', 'source_updated_at', 'observed_at', 'availability', 'gtin'];
 
     public function confirm(Request $request, ImportRun $run, ImportFile $file): void
     {

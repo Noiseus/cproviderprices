@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PriceFreshness;
 use Database\Factories\SupplierOfferFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * observations; this model only carries the current-observation pointer.
  *
  * @property bool $is_active
+ * @property PriceFreshness $freshness_state
  * @property PriceObservation|null $currentPriceObservation
  */
 class SupplierOffer extends Model
@@ -29,12 +31,18 @@ class SupplierOffer extends Model
         'vendor_item_id',
         'current_price_observation_id',
         'is_active',
+        'freshness_state',
+        'freshness_calculated_at',
     ];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'freshness_state' => PriceFreshness::class,
+            'freshness_calculated_at' => 'immutable_datetime',
+        ];
     }
 
     /** @return BelongsTo<Organization, $this> */

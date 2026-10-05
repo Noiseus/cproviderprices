@@ -2,12 +2,15 @@
 
 namespace App\Providers;
 
+use App\Events\ImportPriceObservationsCompleted;
+use App\Listeners\RefreshImportPriceState;
 use App\Models\User;
 use App\Services\EntitlementService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -28,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(ImportPriceObservationsCompleted::class, RefreshImportPriceState::class);
         RateLimiter::for('login', fn (Request $request): Limit => Limit::perMinute(5)->by(
             Str::lower((string) $request->input('email')).'|'.$request->ip()
         ));

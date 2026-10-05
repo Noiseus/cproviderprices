@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { Tooltip } from "./feedback";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLElement>) {
   return <section className={cn("ui-card", className)} {...props} />;
@@ -37,17 +38,31 @@ export function Badge({
 
 export function FreshnessBadge({
   state,
+  timestamp,
 }: {
-  state: "fresh" | "aging" | "stale";
+  state: "fresh" | "aging" | "stale" | "connection_failed" | "manual_import";
+  timestamp?: string | null;
 }) {
-  return (
+  const badge = (
     <Badge
       tone={
-        state === "fresh" ? "success" : state === "aging" ? "warning" : "danger"
+        state === "fresh"
+          ? "success"
+          : state === "aging" || state === "manual_import"
+            ? "warning"
+            : "danger"
       }
     >
-      {state}
+      {state.replaceAll("_", " ")}
     </Badge>
+  );
+  if (!timestamp) return badge;
+  return (
+    <Tooltip
+      label={`Source observed ${new Date(timestamp).toLocaleString()}. Freshness is calculated by CProviderPrices; this is not a live quote.`}
+    >
+      {badge}
+    </Tooltip>
   );
 }
 

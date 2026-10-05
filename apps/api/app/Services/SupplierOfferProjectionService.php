@@ -35,7 +35,10 @@ final class SupplierOfferProjectionService
         'variable_weight',
     ];
 
-    public function __construct(private readonly SearchComparisonCache $cache) {}
+    public function __construct(
+        private readonly SearchComparisonCache $cache,
+        private readonly PriceFreshnessService $freshness,
+    ) {}
 
     public function project(NormalizedImportRecord $normalized, VendorItem $vendor): SupplierOffer
     {
@@ -118,8 +121,11 @@ final class SupplierOfferProjectionService
                     'normalized_unit' => $quantity['unit'] ?? null,
                     'dimension' => $quantity['dimension'] ?? null,
                     'availability' => $this->availability($raw->mapped_values['availability'] ?? null),
+                    'source_updated_at' => $this->observedAt($raw->mapped_values['source_updated_at'] ?? null),
                     'observed_at' => $observedAt,
+                    'imported_at' => now(),
                     'formula_version' => self::FORMULA_VERSION,
+                    'match_evidence' => $this->matchEvidence($vendor),
                 ]);
                 $createdObservation = true;
             }
@@ -131,10 +137,19 @@ final class SupplierOfferProjectionService
                 $offer->update(['current_price_observation_id' => $observation->id]);
             }
 
+            $offer->forceFill([
+                'freshness_state' => $this->freshness->classify($offer->supplierAccount()->firstOrFail(), $observation),
+                'freshness_calculated_at' => now(),
+            ])->save();
+
             return ['offer' => $offer->refresh(), 'changed' => $createdObservation || $currentChanged];
         });
         if ($result['changed']) {
-            $this->cache->invalidate($result['offer']->organization_id, $result['offer']->restaurant_location_id);
+            $this->cache->invalidate(
+                $result['offer']->organization_id,
+                $result['offer']->restaurant_location_id,
+                $this->canonicalProductIds($vendor),
+            );
         }
 
         return $result['offer'];
@@ -256,5 +271,31 @@ final class SupplierOfferProjectionService
         }
 
         return strcmp($candidate->id, $current->id) > 0;
+    }
+
+    /** @return array<string, mixed>|null */
+    private function matchEvidence(VendorItem $vendor): ?array
+    {
+        $mapping = $vendor->currentMapping()->first();
+        if ($mapping === null) {
+            return null;
+        }
+
+        return [
+            'mapping_id' => $mapping->id,
+            'canonical_product_id' => $mapping->canonical_product_id,
+            'product_variant_id' => $mapping->product_variant_id,
+            'match_class' => $mapping->match_class->value,
+            'confidence' => $mapping->confidence->value,
+            'matcher_version' => $mapping->matcher_version,
+        ];
+    }
+
+    /** @return list<string> */
+    private function canonicalProductIds(VendorItem $vendor): array
+    {
+        $id = $vendor->currentMapping()->value('canonical_product_id');
+
+        return is_string($id) ? [$id] : [];
     }
 }

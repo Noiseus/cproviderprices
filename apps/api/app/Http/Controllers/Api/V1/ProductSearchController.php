@@ -77,6 +77,6 @@ final class ProductSearchController extends Controller
             fn (): array => $search->search($context->organization->id, $location->id, $filters),
         );
 
-        return response()->json($payload);
+        return response()->json($payload)->header('Cache-Control', 'private, no-store');
     }
 }
