@@ -56,7 +56,10 @@ warnings, but never receive a direct-comparison normalized winner.
 
 The current freshness and historical-read contract is documented in
 [price history and freshness](price-history-freshness.md). The API never calls
-an observation live.
+an observation live. Saved purchasing lists reuse this service for current
+offer summaries; see [saved purchasing lists](saved-purchasing-lists.md). They
+store product intent and optional offer IDs only, never copied prices or
+supplier facts.
 
 ## Search and privacy
 

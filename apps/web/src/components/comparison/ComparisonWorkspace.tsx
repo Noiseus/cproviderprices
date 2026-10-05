@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { ApiClientError, apiRequest } from "@/lib/api";
 import { useVisibleStaleRefresh } from "@/components/refresh/useVisibleRefresh";
+import { AddToSavedListControl } from "@/components/lists/AddToSavedListControl";
 
 type ComparisonResponse = components["schemas"]["ProductComparisonResponse"];
 type Offer = ComparisonResponse["offers"][number];
@@ -187,7 +188,7 @@ export function ComparisonWorkspace({
               Formula {response.formula_version}. Values are source-observed,
               not live quotes.
             </p>
-            <p className="comparison-refresh-actions">
+            <div className="comparison-refresh-actions">
               <Button onClick={() => void refreshNow()} variant="secondary">
                 Refresh CProviderPrices data
               </Button>{" "}
@@ -206,7 +207,8 @@ export function ComparisonWorkspace({
               >
                 View price history
               </Link>
-            </p>
+              <AddToSavedListControl canonicalProductId={canonicalProductId} />
+            </div>
           </div>
         </header>
       )}
@@ -317,7 +319,11 @@ export function ComparisonWorkspace({
               ))}
           </div>
           {response.offers.map((offer) => (
-            <OfferCard key={offer.id} offer={offer} />
+            <OfferCard
+              key={offer.id}
+              offer={offer}
+              canonicalProductId={canonicalProductId}
+            />
           ))}
           {response.pagination.total_pages > 1 && (
             <nav className="ui-pagination" aria-label="Comparison pages">
@@ -349,7 +355,13 @@ export function ComparisonWorkspace({
   );
 }
 
-function OfferCard({ offer }: { offer: Offer }) {
+function OfferCard({
+  offer,
+  canonicalProductId,
+}: {
+  offer: Offer;
+  canonicalProductId: string;
+}) {
   const unsafe =
     offer.comparison_class === "alternative" ||
     offer.comparison_class === "not_safely_comparable" ||
@@ -473,6 +485,11 @@ function OfferCard({ offer }: { offer: Offer }) {
           )}
         </pre>
       </details>
+      <AddToSavedListControl
+        canonicalProductId={canonicalProductId}
+        selectedOfferId={offer.id}
+        label="Add selected offer to list"
+      />
     </Card>
   );
 }

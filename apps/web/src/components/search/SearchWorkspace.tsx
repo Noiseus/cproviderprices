@@ -23,6 +23,7 @@ import {
 } from "@/components/ui";
 import { ApiClientError, apiRequest } from "@/lib/api";
 import type { SupplierAccount } from "@/lib/customer-api";
+import { AddToSavedListControl } from "@/components/lists/AddToSavedListControl";
 
 type SearchResponse = components["schemas"]["ProductSearchResponse"];
 
@@ -484,12 +485,17 @@ export function SearchWorkspace() {
                   <Badge tone="warning">Some offers need review</Badge>
                 )}
               </div>
-              <Link
-                className="ui-button ui-button--primary"
-                href={`/o/${organization.slug}/compare/${result.canonical_product.id}`}
-              >
-                Compare offers
-              </Link>
+              <div className="search-result-card__actions">
+                <Link
+                  className="ui-button ui-button--primary"
+                  href={`/o/${organization.slug}/compare/${result.canonical_product.id}`}
+                >
+                  Compare offers
+                </Link>
+                <AddToSavedListControl
+                  canonicalProductId={result.canonical_product.id}
+                />
+              </div>
             </Card>
           ))}
           {response.pagination.total_pages > 1 && (

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\PriceHistoryController;
 use App\Http\Controllers\Api\V1\ProductComparisonController;
 use App\Http\Controllers\Api\V1\ProductSearchController;
 use App\Http\Controllers\Api\V1\RestaurantLocationController;
+use App\Http\Controllers\Api\V1\SavedListController;
 use App\Http\Controllers\Api\V1\SubscriptionStatusController;
 use App\Http\Controllers\Api\V1\SupplierAccountController;
 use App\Http\Controllers\Api\V1\TeamController;
@@ -82,6 +83,19 @@ Route::prefix('v1')->group(function (): void {
                     Route::get('/product-search', [ProductSearchController::class, 'index']);
                     Route::get('/comparisons/{canonicalProduct}', [ProductComparisonController::class, 'show']);
                     Route::get('/price-history/{canonicalProduct}', [PriceHistoryController::class, 'show']);
+                    Route::get('/saved-lists', [SavedListController::class, 'index']);
+                    Route::post('/saved-lists', [SavedListController::class, 'store']);
+                    Route::get('/saved-lists/{savedList}', [SavedListController::class, 'show']);
+                    Route::patch('/saved-lists/{savedList}', [SavedListController::class, 'update']);
+                    Route::post('/saved-lists/{savedList}/duplicate', [SavedListController::class, 'duplicate']);
+                    Route::post('/saved-lists/{savedList}/archive', [SavedListController::class, 'archive']);
+                    Route::post('/saved-lists/{savedList}/restore', [SavedListController::class, 'restore']);
+                    Route::delete('/saved-lists/{savedList}', [SavedListController::class, 'destroy']);
+                    Route::post('/saved-lists/{savedList}/items', [SavedListController::class, 'addItem']);
+                    Route::patch('/saved-lists/{savedList}/items/{savedListItem}', [SavedListController::class, 'updateItem']);
+                    Route::delete('/saved-lists/{savedList}/items/{savedListItem}', [SavedListController::class, 'removeItem']);
+                    Route::put('/saved-lists/{savedList}/items/{savedListItem}/selected-offer', [SavedListController::class, 'selectOffer']);
+                    Route::put('/saved-lists/{savedList}/reorder', [SavedListController::class, 'reorder']);
                 });
             });
 

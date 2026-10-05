@@ -25,6 +25,8 @@ use App\Models\PlanEntitlement;
 use App\Models\PriceObservation;
 use App\Models\RawImportRecord;
 use App\Models\RestaurantLocation;
+use App\Models\SavedList;
+use App\Models\SavedListItem;
 use App\Models\Subscription;
 use App\Models\SupplierAccount;
 use App\Models\SupplierDefinition;
@@ -249,6 +251,34 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
     $searchOffers['alternative'] = $makeSearchOffer('Alternative produce', ['sku' => 'BEEF-ALT', 'description' => 'TOM BEEF ALT 5X6 1/25 LB CS', 'pack' => '1/25 LB CS', 'price' => '10.00', 'quantity' => '11339.80925', 'availability' => OfferAvailability::Available, 'observed_at' => now()->subHour(), 'match_class' => MatchClass::ComparableAlternative]);
     $searchOffers['unsafe'] = $makeSearchOffer('Variable-weight produce', ['sku' => 'BEEF-VAR', 'description' => 'TOM BEEF 5X6 VARIABLE WEIGHT', 'pack' => 'VARIABLE WEIGHT', 'price' => '15.00', 'quantity' => null, 'availability' => OfferAvailability::Available, 'observed_at' => now()->subHour(), 'match_class' => MatchClass::EquivalentProduct]);
     $searchOffers['stale'] = $makeSearchOffer('Stale produce', ['sku' => 'BEEF-STALE', 'description' => 'TOM BEEF 5X6 1/25 LB CS', 'pack' => '1/25 LB CS', 'price' => '22.00', 'quantity' => '11339.80925', 'availability' => OfferAvailability::Available, 'observed_at' => now()->subDays(15), 'match_class' => MatchClass::EquivalentProduct]);
+    $selectedThenUnavailable = $makeSearchOffer('Later unavailable produce', ['sku' => 'BEEF-LATER-UNAVAILABLE', 'description' => 'TOM BEEF 5X6 1/20 LB CS', 'pack' => '1/20 LB CS', 'price' => '16.00', 'quantity' => '9071.8474', 'availability' => OfferAvailability::Available, 'observed_at' => now()->subHour(), 'match_class' => MatchClass::EquivalentProduct]);
+    $unavailableSelectionList = SavedList::query()->create([
+        'organization_id' => $searchOrganization->id,
+        'restaurant_location_id' => $searchLocation->id,
+        'name' => 'Unavailable Beefsteak selection',
+        'status' => 'active',
+        'version' => 1,
+        'created_by' => $searchUser->id,
+        'updated_by' => $searchUser->id,
+    ]);
+    SavedListItem::query()->create([
+        'saved_list_id' => $unavailableSelectionList->id,
+        'organization_id' => $searchOrganization->id,
+        'restaurant_location_id' => $searchLocation->id,
+        'canonical_product_id' => $beefsteak->id,
+        'product_variant_id' => null,
+        'selected_offer_id' => $selectedThenUnavailable->id,
+        'quantity_target' => '2.000000',
+        'preferred_unit' => 'lb',
+        'notes' => 'Keep this intent when the offer changes.',
+        'sort_order' => 1,
+        'version' => 1,
+        'created_by' => $searchUser->id,
+        'updated_by' => $searchUser->id,
+    ]);
+    // Emulates an offer becoming unavailable after a buyer chose it. Durable
+    // intent must remain visible while current alternatives are derived.
+    $selectedThenUnavailable->update(['is_active' => false]);
 
     $workspaceViewerPassword = Str::password(24);
     $workspaceViewer = User::factory()->create(['password' => Hash::make($workspaceViewerPassword)]);
@@ -341,6 +371,9 @@ Artisan::command('app:prepare-auth-e2e {--import-fixtures-only : Regenerate synt
             'location_id' => $searchLocation->id,
             'canonical_product_id' => $beefsteak->id,
             'offers' => array_map(static fn (SupplierOffer $offer): string => $offer->id, $searchOffers),
+        ],
+        'saved_lists' => [
+            'unavailable_selection_id' => $unavailableSelectionList->id,
         ],
         'workspace_viewer' => ['email' => $workspaceViewer->email, 'password' => $workspaceViewerPassword, 'slug' => $workspaceViewerOrganization->slug],
         'suspended' => ['email' => $suspendedUser->email, 'password' => $suspendedPassword, 'slug' => $suspendedOrganization->slug, 'name' => $suspendedOrganization->name],

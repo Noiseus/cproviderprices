@@ -1320,6 +1320,117 @@ dd {
   font-size: 0.75rem;
 }
 
+.saved-lists,
+.saved-list-detail {
+  display: grid;
+  gap: var(--space-5);
+  padding-block: var(--space-6);
+}
+
+.saved-lists__header,
+.saved-list-detail__header,
+.saved-list-item__header,
+.saved-list-item__actions,
+.saved-list-card__actions,
+.saved-list-add__create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.saved-lists__tabs,
+.saved-list-detail__items,
+.saved-lists__grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.saved-lists__tabs {
+  display: flex;
+}
+
+.saved-lists__grid {
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+
+.saved-list-card,
+.saved-list-item,
+.saved-list-offer {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.saved-list-card h2,
+.saved-list-item h2,
+.saved-list-card p,
+.saved-list-item p {
+  margin: 0;
+}
+
+.saved-list-card__actions {
+  justify-content: flex-start;
+}
+
+.saved-list-item__order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.saved-list-item__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.saved-list-offer {
+  align-content: start;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  overflow-wrap: anywhere;
+}
+
+.saved-list-item__fields {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.5fr) minmax(8rem, 0.5fr) minmax(14rem, 2fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.saved-list-item textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.saved-list-item__warning,
+.saved-list-item__note {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-soft);
+}
+
+.saved-list-item__warning {
+  color: var(--color-warning);
+  font-weight: 650;
+}
+
+.saved-list-item__alternatives {
+  display: grid;
+  gap: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+
+.saved-list-item__alternatives summary {
+  cursor: pointer;
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
 @media (max-width: 48rem) {
   .search-comparison__input-row,
   .search-result-card {
@@ -1330,6 +1441,16 @@ dd {
   }
   .comparison-offer__head {
     flex-direction: column;
+  }
+  .saved-lists__header,
+  .saved-list-detail__header,
+  .saved-list-item__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .saved-list-item__summary,
+  .saved-list-item__fields {
+    grid-template-columns: 1fr;
   }
 }
 

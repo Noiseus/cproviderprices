@@ -817,6 +817,210 @@ paths:
           headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
           content: { application/json: { schema: { $ref: "#/components/schemas/PriceHistoryResponse" } } }
         default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RequestId"
+    get:
+      operationId: listSavedLists
+      summary: List organization-scoped saved purchasing lists
+      security: [{ cookieSession: [] }]
+      parameters:
+        - name: location_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/SavedListStatus", default: active }
+        - $ref: "#/components/parameters/SearchPage"
+        - $ref: "#/components/parameters/SearchPerPage"
+      responses:
+        "200":
+          description: Bounded list index without price or offer detail.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/SavedListIndexResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    post:
+      operationId: createSavedList
+      summary: Create an active saved purchasing list for an authorized location
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateSavedListRequest" } } }
+      responses:
+        "201":
+          description: Saved list created.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/SavedListIndexSingleResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+      - $ref: "#/components/parameters/RequestId"
+    get:
+      operationId: getSavedList
+      summary: Read durable purchasing intent with batched current-offer summaries
+      description: >-
+        The list item remains canonical-product intent. Current selected, normalized-best, and available-best offers are derived at read time and are never persisted into the item.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Saved-list detail and server-authoritative versions.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/SavedListDetailResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    patch:
+      operationId: renameSavedList
+      summary: Rename a saved list with an optimistic-lock version precondition
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RenameSavedListRequest" } } }
+      responses:
+        "200":
+          description: Saved list renamed.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SavedListIndexSingleResponse" } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    delete:
+      operationId: deleteSavedList
+      summary: Explicitly delete a saved list and its items after confirmation
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpectedVersionRequest" } } }
+      responses:
+        "200":
+          description: Saved list deleted; immutable audit context remains.
+          content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}/duplicate:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      operationId: duplicateSavedList
+      summary: Duplicate purchasing intent without duplicating prices or catalog records
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DuplicateSavedListRequest" } } }
+      responses:
+        "201":
+          description: New active saved list with copied item intent.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SavedListIndexSingleResponse" } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}/archive:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+    post:
+      operationId: archiveSavedList
+      summary: Archive a saved list without destroying purchasing-intent history
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpectedVersionRequest" } } }
+      responses:
+        "200": { description: Saved list archived., content: { application/json: { schema: { $ref: "#/components/schemas/SavedListIndexSingleResponse" } } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}/restore:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+    post:
+      operationId: restoreSavedList
+      summary: Restore an archived saved list
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpectedVersionRequest" } } }
+      responses:
+        "200": { description: Saved list restored., content: { application/json: { schema: { $ref: "#/components/schemas/SavedListIndexSingleResponse" } } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}/items:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      operationId: addSavedListItem
+      summary: Add canonical-product purchasing intent with an optional current offer selection
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddSavedListItemRequest" } } }
+      responses:
+        "201":
+          description: Item added; response contains only the changed item and list version.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SavedListItemMutationResponse" } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}/items/{savedListItem}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+      - $ref: "#/components/parameters/SavedListItemId"
+      - $ref: "#/components/parameters/RequestId"
+    patch:
+      operationId: updateSavedListItem
+      summary: Update one item quantity, compatible preferred unit, or private note
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateSavedListItemRequest" } } }
+      responses:
+        "200": { description: Changed item only., content: { application/json: { schema: { $ref: "#/components/schemas/SavedListItemMutationResponse" } } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+    delete:
+      operationId: removeSavedListItem
+      summary: Remove one saved-list item with an optimistic-lock precondition
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpectedVersionRequest" } } }
+      responses:
+        "200": { description: Item removed., content: { application/json: { schema: { $ref: "#/components/schemas/RemoveSavedListItemResponse" } } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}/items/{savedListItem}/selected-offer:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+      - $ref: "#/components/parameters/SavedListItemId"
+    put:
+      operationId: selectSavedListItemOffer
+      summary: Select, change, or clear a compatible current supplier offer
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SelectSavedListOfferRequest" } } }
+      responses:
+        "200": { description: Changed item only., content: { application/json: { schema: { $ref: "#/components/schemas/SavedListItemMutationResponse" } } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/saved-lists/{savedList}/reorder:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SavedListId"
+    put:
+      operationId: reorderSavedListItems
+      summary: Apply a complete, stable item ordering with a list version precondition
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ReorderSavedListRequest" } } }
+      responses:
+        "200": { description: Updated ordering and versions only., content: { application/json: { schema: { $ref: "#/components/schemas/ReorderSavedListResponse" } } } }
+        "409": { $ref: "#/components/responses/ErrorResponse" }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /organizations/{organization}/memberships/{membership}:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1184,6 +1388,16 @@ components:
   parameters:
     CanonicalProductId:
       name: canonicalProduct
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SavedListId:
+      name: savedList
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SavedListItemId:
+      name: savedListItem
       in: path
       required: true
       schema: { type: string, format: uuid }
@@ -1676,6 +1890,222 @@ components:
             excluded_unsafe_count: { type: integer, minimum: 0 }
         series: { type: array, items: { $ref: "#/components/schemas/PriceHistorySeriesPoint" } }
         observations: { type: array, items: { $ref: "#/components/schemas/PriceHistoryObservation" } }
+    SavedListStatus:
+      type: string
+      enum: [active, archived]
+    SavedListLocation:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    SavedListVersion:
+      type: object
+      additionalProperties: false
+      required: [id, version]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+    SavedListSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, version, location, item_count, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 120 }
+        status: { $ref: "#/components/schemas/SavedListStatus" }
+        version: { type: integer, minimum: 1 }
+        location: { $ref: "#/components/schemas/SavedListLocation" }
+        item_count: { type: integer, minimum: 0 }
+        updated_at: { type: string, format: date-time }
+    SavedListPagination:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+    SavedListIndexResponse:
+      type: object
+      additionalProperties: false
+      required: [saved_lists, pagination]
+      properties:
+        saved_lists: { type: array, items: { $ref: "#/components/schemas/SavedListSummary" } }
+        pagination: { $ref: "#/components/schemas/SavedListPagination" }
+    SavedListIndexSingleResponse:
+      type: object
+      additionalProperties: false
+      required: [saved_list]
+      properties:
+        saved_list: { $ref: "#/components/schemas/SavedListSummary" }
+    SavedListProduct:
+      type: object
+      additionalProperties: false
+      required: [id, english_name, attributes, category]
+      properties:
+        id: { type: string, format: uuid }
+        english_name: { type: string }
+        attributes: { type: object, additionalProperties: true }
+        category:
+          type: object
+          additionalProperties: false
+          required: [id, english_name]
+          properties:
+            id: { type: string, format: uuid }
+            english_name: { type: string }
+    SavedListVariant:
+      type: object
+      additionalProperties: false
+      required: [id, code, attributes]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        attributes: { type: object, additionalProperties: true }
+    SavedListItem:
+      type: object
+      additionalProperties: false
+      required: [id, version, sort_order, canonical_product, product_variant, quantity_target, preferred_unit, notes, selected_offer_id, selected_offer, selected_offer_unavailable, best_normalized_option, best_available_option, alternative_offer_count, offer_choices, warnings, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        sort_order: { type: integer, minimum: 1 }
+        canonical_product: { $ref: "#/components/schemas/SavedListProduct" }
+        product_variant:
+          oneOf:
+            - $ref: "#/components/schemas/SavedListVariant"
+            - type: "null"
+        quantity_target: { type: string, pattern: "^\\d{1,12}(?:\\.\\d{1,6})?$", description: Exact decimal quantity target. }
+        preferred_unit: { type: [string, "null"], enum: [lb, gal, ea, null] }
+        notes: { type: [string, "null"], maxLength: 2000, description: Private user-entered content; clients render it as text. }
+        selected_offer_id: { type: [string, "null"], format: uuid }
+        selected_offer:
+          oneOf:
+            - $ref: "#/components/schemas/ProductComparisonOffer"
+            - type: "null"
+        selected_offer_unavailable: { type: boolean }
+        best_normalized_option:
+          oneOf:
+            - $ref: "#/components/schemas/ProductComparisonOffer"
+            - type: "null"
+        best_available_option:
+          oneOf:
+            - $ref: "#/components/schemas/ProductComparisonOffer"
+            - type: "null"
+        alternative_offer_count: { type: integer, minimum: 0 }
+        offer_choices: { type: array, items: { $ref: "#/components/schemas/ProductComparisonOffer" } }
+        warnings: { type: array, items: { type: string } }
+        updated_at: { type: string, format: date-time }
+    SavedListDetail:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, version, location, created_at, updated_at, items]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 120 }
+        status: { $ref: "#/components/schemas/SavedListStatus" }
+        version: { type: integer, minimum: 1 }
+        location: { $ref: "#/components/schemas/SavedListLocation" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        items: { type: array, items: { $ref: "#/components/schemas/SavedListItem" } }
+    SavedListDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [saved_list]
+      properties:
+        saved_list: { $ref: "#/components/schemas/SavedListDetail" }
+    CreateSavedListRequest:
+      type: object
+      additionalProperties: false
+      required: [name, location_id]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        location_id: { type: string, format: uuid }
+    ExpectedVersionRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      properties:
+        expected_version: { type: integer, minimum: 1 }
+    RenameSavedListRequest:
+      allOf:
+        - $ref: "#/components/schemas/ExpectedVersionRequest"
+        - type: object
+          required: [name]
+          properties: { name: { type: string, minLength: 1, maxLength: 120 } }
+    DuplicateSavedListRequest:
+      allOf:
+        - $ref: "#/components/schemas/ExpectedVersionRequest"
+        - type: object
+          properties: { name: { type: string, minLength: 1, maxLength: 120 } }
+    AddSavedListItemRequest:
+      type: object
+      additionalProperties: false
+      required: [canonical_product_id, expected_list_version]
+      properties:
+        canonical_product_id: { type: string, format: uuid }
+        product_variant_id: { type: [string, "null"], format: uuid }
+        selected_offer_id: { type: [string, "null"], format: uuid }
+        quantity_target: { type: string, pattern: "^\\d{1,12}(?:\\.\\d{1,6})?$" }
+        preferred_unit: { type: [string, "null"], enum: [lb, gal, ea, null] }
+        notes: { type: [string, "null"], maxLength: 2000 }
+        expected_list_version: { type: integer, minimum: 1 }
+    UpdateSavedListItemRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      anyOf:
+        - required: [quantity_target]
+        - required: [preferred_unit]
+        - required: [notes]
+      properties:
+        quantity_target: { type: string, pattern: "^\\d{1,12}(?:\\.\\d{1,6})?$" }
+        preferred_unit: { type: [string, "null"], enum: [lb, gal, ea, null] }
+        notes: { type: [string, "null"], maxLength: 2000 }
+        expected_version: { type: integer, minimum: 1 }
+    SelectSavedListOfferRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      properties:
+        selected_offer_id: { type: [string, "null"], format: uuid }
+        expected_version: { type: integer, minimum: 1 }
+    SavedListItemMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [saved_list, item]
+      properties:
+        saved_list: { $ref: "#/components/schemas/SavedListVersion" }
+        item: { $ref: "#/components/schemas/SavedListItem" }
+    RemoveSavedListItemResponse:
+      type: object
+      additionalProperties: false
+      required: [saved_list, removed_item_id]
+      properties:
+        saved_list: { $ref: "#/components/schemas/SavedListVersion" }
+        removed_item_id: { type: string, format: uuid }
+    ReorderSavedListRequest:
+      type: object
+      additionalProperties: false
+      required: [item_ids, expected_list_version]
+      properties:
+        item_ids:
+          type: array
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        expected_list_version: { type: integer, minimum: 1 }
+    ReorderedSavedListItem:
+      type: object
+      additionalProperties: false
+      required: [id, sort_order, version]
+      properties:
+        id: { type: string, format: uuid }
+        sort_order: { type: integer, minimum: 1 }
+        version: { type: integer, minimum: 1 }
+    ReorderSavedListResponse:
+      type: object
+      additionalProperties: false
+      required: [saved_list, items]
+      properties:
+        saved_list: { $ref: "#/components/schemas/SavedListVersion" }
+        items: { type: array, items: { $ref: "#/components/schemas/ReorderedSavedListItem" } }
     ImportStatus:
       type: string
       enum: [uploaded, validating, needs_mapping, queued, processing, partially_completed, completed, failed, canceled]

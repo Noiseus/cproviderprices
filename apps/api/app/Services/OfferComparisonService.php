@@ -111,7 +111,7 @@ final class OfferComparisonService
             ->with('currentPriceObservation')
             ->with([
                 'vendorItem.currentMapping' => function (Relation $mappings) use ($productId): void {
-                    $mappings->where('canonical_product_id', $productId)->with(['productVariant', 'canonicalProduct']);
+                    $mappings->where('canonical_product_id', $productId);
                 },
             ])
             ->orderBy('id');
@@ -211,6 +211,111 @@ final class OfferComparisonService
     public function describeOffer(SupplierOffer $offer): array
     {
         return $this->row($offer);
+    }
+
+    /**
+     * Fetches current offer evidence for several canonical products in one
+     * tenant/location-scoped query. Saved lists use these exact comparison
+     * semantics instead of reimplementing price normalization or winners.
+     *
+     * @param  list<string>  $canonicalProductIds
+     * @return array<string, array{offers: list<array<string, mixed>>, warnings: list<string>}>
+     */
+    public function describeOffersForProducts(
+        string $organizationId,
+        RestaurantLocation $location,
+        array $canonicalProductIds,
+    ): array {
+        $productIds = array_values(array_unique($canonicalProductIds));
+        $descriptions = $this->describeOffersForIntents(
+            $organizationId,
+            $location,
+            array_map(
+                static fn (string $productId): array => ['canonical_product_id' => $productId, 'product_variant_id' => null],
+                $productIds,
+            ),
+        );
+
+        $result = [];
+        foreach ($productIds as $productId) {
+            $result[$productId] = $descriptions[$this->intentKey($productId, null)];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Fetches current offer evidence for several canonical-product/optional-
+     * variant intents in one tenant/location-scoped query. A null variant is
+     * a canonical-product intent; a concrete variant is intentionally exact.
+     *
+     * @param  list<array{canonical_product_id: string, product_variant_id: string|null}>  $intents
+     * @return array<string, array{offers: list<array<string, mixed>>, warnings: list<string>}>
+     */
+    public function describeOffersForIntents(
+        string $organizationId,
+        RestaurantLocation $location,
+        array $intents,
+    ): array {
+        /** @var array<string, array{canonical_product_id: string, product_variant_id: string|null}> $uniqueIntents */
+        $uniqueIntents = [];
+        foreach ($intents as $intent) {
+            $uniqueIntents[$this->intentKey($intent['canonical_product_id'], $intent['product_variant_id'])] = $intent;
+        }
+        if ($uniqueIntents === []) {
+            return [];
+        }
+        $productIds = array_values(array_unique(array_column($uniqueIntents, 'canonical_product_id')));
+
+        $offers = SupplierOffer::query()
+            ->where('organization_id', $organizationId)
+            ->where('restaurant_location_id', $location->id)
+            ->where('is_active', true)
+            ->whereNotNull('current_price_observation_id')
+            ->whereHas('supplierAccount', fn (Builder $accounts): Builder => $accounts->where('status', SupplierAccountStatus::Active->value))
+            ->whereHas('vendorItem.currentMapping', fn (Builder $mappings): Builder => $mappings->whereIn('canonical_product_id', $productIds))
+            ->with('supplierAccount.supplierDefinition')
+            ->with('currentPriceObservation')
+            ->with([
+                'vendorItem.currentMapping' => function (Relation $mappings) use ($productIds): void {
+                    $mappings->whereIn('canonical_product_id', $productIds);
+                },
+            ])
+            ->orderBy('id')
+            ->get();
+
+        /** @var array<string, list<array<string, mixed>>> $grouped */
+        $grouped = array_fill_keys(array_keys($uniqueIntents), []);
+        foreach ($offers as $offer) {
+            $mapping = $offer->vendorItem->currentMapping;
+            if (! $mapping instanceof VendorItemMapping) {
+                continue;
+            }
+            foreach ($uniqueIntents as $key => $intent) {
+                if ($intent['canonical_product_id'] !== $mapping->canonical_product_id
+                    || ($intent['product_variant_id'] !== null && $intent['product_variant_id'] !== $mapping->product_variant_id)) {
+                    continue;
+                }
+                $grouped[$key][] = $this->row($offer);
+            }
+        }
+
+        $result = [];
+        foreach ($grouped as $productId => $rows) {
+            $warnings = $this->applyWinners($rows);
+            $this->sort($rows, 'supplier');
+            $result[$productId] = [
+                'offers' => array_map(fn (array $row): array => $this->publicRow($row), $rows),
+                'warnings' => $warnings,
+            ];
+        }
+
+        return $result;
+    }
+
+    private function intentKey(string $canonicalProductId, ?string $productVariantId): string
+    {
+        return $canonicalProductId.'|'.($productVariantId ?? 'canonical');
     }
 
     /** @return array{price: string, unit: string, denominator: array<string, string>, decimal: BigDecimal}|null */

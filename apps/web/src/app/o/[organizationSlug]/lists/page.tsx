@@ -1,9 +1,5 @@
-import { RoutePlaceholder } from "@/components/app-shell/RoutePlaceholder";
+import { SavedListsWorkspace } from "@/components/lists/SavedListsWorkspace";
+
 export default function ListsPage() {
-  return (
-    <RoutePlaceholder
-      title="Lists"
-      description="Saved purchasing lists will be introduced in a later feature prompt."
-    />
-  );
+  return <SavedListsWorkspace />;
 }
