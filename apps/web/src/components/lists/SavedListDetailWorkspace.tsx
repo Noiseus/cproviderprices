@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { ApiClientError, apiRequest } from "@/lib/api";
 import { AddToSavedListControl } from "./AddToSavedListControl";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 type DetailResponse = components["schemas"]["SavedListDetailResponse"];
 type Detail = DetailResponse["saved_list"];
@@ -29,6 +30,7 @@ type SaveResult = "saved" | "failed" | "conflict";
 
 export function SavedListDetailWorkspace({ listId }: { listId: string }) {
   const { organization } = useWorkspace();
+  const { localizeError, t } = useTranslation();
   const canMutate = organization.role !== "viewer";
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,9 @@ export function SavedListDetailWorkspace({ listId }: { listId: string }) {
         )
           setBlocked(true);
         setError(
-          reason instanceof Error ? reason.message : "List is unavailable.",
+          reason instanceof ApiClientError
+            ? localizeError(reason.code)
+            : localizeError("network_error"),
         );
         return false;
       } finally {
@@ -258,7 +262,7 @@ export function SavedListDetailWorkspace({ listId }: { listId: string }) {
               </p>
             </div>
             <Button variant="secondary" onClick={() => void refreshNow()}>
-              Refresh CProviderPrices data
+              {t("common.refresh")}
             </Button>
           </header>
           {isStale || error ? (
@@ -329,6 +333,7 @@ function SavedListItemCard({
   onRemove: (item: Item) => Promise<SaveResult>;
   onMove: (item: Item, direction: -1 | 1) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [quantity, setQuantity] = useState(item.quantity_target);
   const [unit, setUnit] = useState(item.preferred_unit ?? "");
   const [notes, setNotes] = useState(item.notes ?? "");
@@ -407,7 +412,7 @@ function SavedListItemCard({
       ) : null}
       <div className="saved-list-item__summary">
         <OfferSummary
-          title="Selected option"
+          title={t("lists.selectedOption")}
           offer={item.selected_offer}
           empty={
             item.selected_offer_id
@@ -416,37 +421,37 @@ function SavedListItemCard({
           }
         />
         <OfferSummary
-          title="Best normalized option"
+          title={t("lists.bestNormalizedOption")}
           offer={item.best_normalized_option}
           empty="No safely comparable normalized winner."
         />
         <OfferSummary
-          title="Best available option"
+          title={t("lists.bestAvailableOption")}
           offer={item.best_available_option}
           empty="No current available winner."
         />
       </div>
       <div className="saved-list-item__fields">
         <Input
-          label="Quantity target"
+          label={t("lists.quantity")}
           inputMode="decimal"
           value={quantity}
           disabled={!canMutate || state === "saving"}
           onChange={(event) => setQuantity(event.target.value)}
         />
         <Select
-          label="Preferred unit"
+          label={t("lists.preferredUnit")}
           value={unit}
           disabled={!canMutate || state === "saving"}
           onChange={(event) => setUnit(event.target.value)}
         >
-          <option value="">No preference</option>
+          <option value="">{t("common.none")}</option>
           <option value="lb">lb</option>
           <option value="gal">gal</option>
           <option value="ea">ea</option>
         </Select>
         <label className="ui-field">
-          <span>Private notes</span>
+          <span>{t("lists.notes")}</span>
           <textarea
             className="ui-input"
             value={notes}
@@ -469,17 +474,17 @@ function SavedListItemCard({
             disabled={state === "saving"}
             onClick={() => void save()}
           >
-            {state === "saving" ? "Saving…" : "Save item"}
+            {state === "saving" ? t("common.saving") : t("lists.saveItem")}
           </Button>
         ) : null}
         {canMutate ? (
           <Select
-            label="Selected supplier offer"
+            label={t("lists.selectedOffer")}
             value={item.selected_offer_id ?? ""}
             disabled={state === "saving"}
             onChange={(event) => void changeOffer(event.target.value)}
           >
-            <option value="">No selected offer</option>
+            <option value="">{t("common.none")}</option>
             {item.offer_choices.map((offer) => (
               <option
                 key={offer.id}
@@ -502,20 +507,20 @@ function SavedListItemCard({
             disabled={state === "saving"}
             onClick={() => void remove()}
           >
-            Remove
+            {t("common.remove")}
           </Button>
         ) : null}
         <AddToSavedListControl
           canonicalProductId={item.canonical_product.id}
-          label="Add to another list"
+          label={t("lists.addToList")}
         />
         <span role="status">
           {state === "saved"
-            ? "Saved"
+            ? t("common.saved")
             : state === "failed"
-              ? "Could not save"
+              ? t("errors.request_failed")
               : state === "conflict"
-                ? "Changed elsewhere — reload item"
+                ? t("lists.conflict")
                 : ""}
         </span>
       </div>

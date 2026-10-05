@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { components } from "@cproviderprices/generated-api-client";
 import { useWorkspace } from "@/components/app-shell/AppShellContext";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 import { useVisibleStaleRefresh } from "@/components/refresh/useVisibleRefresh";
 import {
   Button,
@@ -34,7 +35,12 @@ function defaultRange() {
 }
 
 export function PriceHistoryWorkspace() {
-  const { organization, locationId } = useWorkspace();
+  const { organization, locationId, locations } = useWorkspace();
+  const { formatDate, formatDateTime, formatMoney, localizeError, t } =
+    useTranslation();
+  const timeZone =
+    (locations ?? []).find((location) => location.id === locationId)
+      ?.timezone ?? "UTC";
   const searchParams = useSearchParams();
   const productId = searchParams.get("product") ?? "";
   const [draft, setDraft] = useState(defaultRange);
@@ -102,16 +108,16 @@ export function PriceHistoryWorkspace() {
         )
           setBlocked(true);
         setError(
-          reason instanceof Error
-            ? reason.message
-            : "Price history is unavailable.",
+          reason instanceof ApiClientError
+            ? localizeError(reason.code)
+            : localizeError("network_error"),
         );
         return false;
       } finally {
         if (!signal.aborted && current === epoch.current) setLoading(false);
       }
     },
-    [filters, locationId, organization.id, productId],
+    [filters, localizeError, locationId, organization.id, productId],
   );
 
   const { isStale, markFresh, refreshNow } = useVisibleStaleRefresh(
@@ -133,8 +139,8 @@ export function PriceHistoryWorkspace() {
     return (
       <main className="ui-container">
         <EmptyState
-          title="Choose a product to view history"
-          description="Open Price history from a product comparison so CProviderPrices can keep the canonical product and your authorized location in context."
+          title={t("history.chooseProduct")}
+          description={t("history.chooseProductDescription")}
         />
       </main>
     );
@@ -144,28 +150,22 @@ export function PriceHistoryWorkspace() {
     <main className="ui-container price-history">
       <header className="ui-page-header">
         <div>
-          <p className="eyebrow">Price history</p>
+          <p className="eyebrow">{t("history.title")}</p>
           <h1>
-            {response?.canonical_product.english_name ?? "Product history"}
+            {response?.canonical_product.english_name ??
+              t("history.productHistory")}
           </h1>
-          <p>
-            Daily averages are calculated server-side with exact decimals and
-            only within the same supplier, currency, and compatible unit.
-          </p>
+          <p>{t("history.description")}</p>
         </div>
         <div className="price-history__actions">
           <Button onClick={() => void refreshNow()} variant="secondary">
-            Refresh CProviderPrices data
+            {t("history.refresh")}
           </Button>
           <Button
-            onClick={() =>
-              setSyncNotice(
-                "Supplier Sync is a future connector action. Refresh does not contact supplier systems.",
-              )
-            }
+            onClick={() => setSyncNotice(t("history.syncNotice"))}
             variant="quiet"
           >
-            Sync supplier
+            {t("history.syncSupplier")}
           </Button>
         </div>
       </header>
@@ -178,7 +178,7 @@ export function PriceHistoryWorkspace() {
           }}
         >
           <Input
-            label="From"
+            label={t("history.from")}
             type="date"
             value={draft.from}
             onChange={(event) =>
@@ -186,19 +186,19 @@ export function PriceHistoryWorkspace() {
             }
           />
           <Input
-            label="To"
+            label={t("history.to")}
             type="date"
             value={draft.to}
             onChange={(event) => setDraft({ ...draft, to: event.target.value })}
           />
           <Select
-            label="Supplier"
+            label={t("history.supplierFilter")}
             value={draft.supplier}
             onChange={(event) =>
               setDraft({ ...draft, supplier: event.target.value })
             }
           >
-            <option value="">All suppliers</option>
+            <option value="">{t("history.allSuppliers")}</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.display_name}
@@ -206,50 +206,72 @@ export function PriceHistoryWorkspace() {
             ))}
           </Select>
           <Select
-            label="Compatible unit"
+            label={t("history.compatibleUnit")}
             value={draft.dimension}
             onChange={(event) =>
               setDraft({ ...draft, dimension: event.target.value })
             }
           >
-            <option value="">All safe units (isolated)</option>
-            <option value="weight">Weight</option>
-            <option value="volume">Volume</option>
-            <option value="count">Count</option>
+            <option value="">{t("history.allSafeUnits")}</option>
+            <option value="weight">{t("history.weight")}</option>
+            <option value="volume">{t("history.volume")}</option>
+            <option value="count">{t("history.count")}</option>
           </Select>
-          <Button type="submit">Apply filters</Button>
+          <Button type="submit">{t("history.applyFilters")}</Button>
         </form>
       </Card>
       {syncNotice && <PartialDataWarning>{syncNotice}</PartialDataWarning>}
       {response && (isStale || error) && (
         <PartialDataWarning>
-          Showing the last trusted history data. Refresh checks only the
-          CProviderPrices records already available to this workspace.
+          {t("history.trustedDataNotice")}
         </PartialDataWarning>
       )}
       {loading && !response && (
-        <Skeleton lines={8} label="Loading price history" />
+        <Skeleton lines={8} label={t("history.loading")} />
       )}
       {blocked && (
         <ErrorState
-          title="Price history is unavailable"
-          description="Your current workspace context cannot access this product or location."
+          title={t("history.unavailable")}
+          description={t("history.unavailableDescription")}
         />
       )}
       {!loading && error && !blocked && !response && (
-        <ErrorState title="Unable to load price history" description={error} />
+        <ErrorState title={t("history.unableToLoad")} description={error} />
       )}
-      {response && <HistoryData response={response} />}
+      {response && (
+        <HistoryData
+          formatDate={formatDate}
+          formatDateTime={formatDateTime}
+          formatMoney={formatMoney}
+          response={response}
+          timeZone={timeZone}
+        />
+      )}
     </main>
   );
 }
 
-function HistoryData({ response }: { response: PriceHistoryResponse }) {
+function HistoryData({
+  response,
+  timeZone,
+  formatDate,
+  formatDateTime,
+  formatMoney,
+}: {
+  response: PriceHistoryResponse;
+  timeZone: string;
+  formatDate: (value: string | Date, timeZone?: string) => string;
+  formatDateTime: (value: string | Date, timeZone?: string) => string;
+  formatMoney: (value: number | string, currency: string) => string;
+}) {
+  const { t } = useTranslation();
   const chartSummary = useMemo(() => {
-    if (response.series.length === 0)
-      return "No safely normalized price points are available for the selected filters.";
-    return `${response.series.length} daily compatible-unit price point${response.series.length === 1 ? "" : "s"} are shown below with an equivalent data table.`;
-  }, [response.series.length]);
+    if (response.series.length === 0) return t("history.noSafePoints");
+    return t("history.chartSummary", {
+      count: response.series.length,
+      suffix: response.series.length === 1 ? "" : "s",
+    });
+  }, [response.series.length, t]);
   return (
     <>
       <Card className="price-history__summary">
@@ -257,41 +279,41 @@ function HistoryData({ response }: { response: PriceHistoryResponse }) {
         <span>{response.aggregation.method.replaceAll("_", " ")}</span>
         <span>
           {response.aggregation.state === "isolated_incompatible_units"
-            ? "Incompatible units are isolated; no cross-unit value was calculated."
-            : "Compatible units are aggregated separately by supplier."}
+            ? t("history.isolatedUnits")
+            : t("history.aggregatedUnits")}
         </span>
         {response.aggregation.excluded_unsafe_count > 0 && (
           <span>
-            {response.aggregation.excluded_unsafe_count} unsafe observation
-            {response.aggregation.excluded_unsafe_count === 1
-              ? " was"
-              : "s were"}{" "}
-            retained in the table but excluded from the chart.
+            {t("history.excludedUnsafe", {
+              count: response.aggregation.excluded_unsafe_count,
+              suffix:
+                response.aggregation.excluded_unsafe_count === 1 ? "" : "s",
+            })}
           </span>
         )}
       </Card>
       <Card>
-        <h2>Accessible price chart</h2>
+        <h2>{t("history.accessibleChart")}</h2>
         <p id="history-chart-summary">{chartSummary}</p>
         <PriceHistoryChart points={response.series} summary={chartSummary} />
       </Card>
       <Card>
-        <h2>Daily compatible-unit values</h2>
+        <h2>{t("history.dailyValues")}</h2>
         {response.series.length === 0 ? (
           <EmptyState
-            title="No safe chart points"
-            description="The raw observation table remains available below so unavailable, variable-weight, and incompatible evidence is never hidden."
+            title={t("history.noChartPoints")}
+            description={t("history.noChartPointsDescription")}
           />
         ) : (
           <div className="ui-table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Supplier</th>
-                  <th>Normalized price</th>
-                  <th>Unit</th>
-                  <th>Observations</th>
+                  <th>{t("history.date")}</th>
+                  <th>{t("history.supplierFilter")}</th>
+                  <th>{t("history.normalized")}</th>
+                  <th>{t("history.unit")}</th>
+                  <th>{t("history.observations")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -299,10 +321,10 @@ function HistoryData({ response }: { response: PriceHistoryResponse }) {
                   <tr
                     key={`${point.date}-${point.supplier.id}-${point.dimension}`}
                   >
-                    <td>{point.date}</td>
+                    <td>{formatDate(`${point.date}T12:00:00Z`, timeZone)}</td>
                     <td>{point.supplier.display_name}</td>
                     <td>
-                      {point.currency} {point.normalized_price}
+                      {formatMoney(point.normalized_price, point.currency)}
                     </td>
                     <td>{point.normalized_unit}</td>
                     <td>{point.observation_count}</td>
@@ -314,23 +336,23 @@ function HistoryData({ response }: { response: PriceHistoryResponse }) {
         )}
       </Card>
       <Card>
-        <h2>Immutable source observations</h2>
+        <h2>{t("history.immutableObservations")}</h2>
         {response.observations.length === 0 ? (
           <EmptyState
-            title="No price observations"
-            description="Try a wider date range or another supplier."
+            title={t("history.noObservations")}
+            description={t("history.noObservationsDescription")}
           />
         ) : (
           <div className="ui-table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>Observed</th>
-                  <th>Supplier</th>
-                  <th>Case price</th>
-                  <th>Normalized price</th>
-                  <th>Freshness</th>
-                  <th>Aggregation status</th>
+                  <th>{t("history.observed")}</th>
+                  <th>{t("history.supplierFilter")}</th>
+                  <th>{t("history.casePrice")}</th>
+                  <th>{t("history.normalized")}</th>
+                  <th>{t("comparison.freshness")}</th>
+                  <th>{t("history.aggregationStatus")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -338,22 +360,26 @@ function HistoryData({ response }: { response: PriceHistoryResponse }) {
                   <tr key={observation.id}>
                     <td>
                       <time dateTime={observation.observed_at}>
-                        {new Date(observation.observed_at).toLocaleString()}
+                        {formatDateTime(observation.observed_at, timeZone)}
                       </time>
                     </td>
                     <td>{observation.supplier.display_name}</td>
                     <td>
-                      {observation.currency} {observation.case_price}
+                      {formatMoney(
+                        observation.case_price,
+                        observation.currency,
+                      )}
                     </td>
                     <td>
                       {observation.normalized_price
-                        ? `${observation.currency} ${observation.normalized_price}/${observation.normalized_unit}`
-                        : "Not safely available"}
+                        ? `${formatMoney(observation.normalized_price, observation.currency)}/${observation.normalized_unit}`
+                        : t("history.unsafeUnavailable")}
                     </td>
                     <td>
                       <FreshnessBadge
                         state={observation.freshness}
                         timestamp={observation.observed_at}
+                        timeZone={timeZone}
                       />
                     </td>
                     <td>

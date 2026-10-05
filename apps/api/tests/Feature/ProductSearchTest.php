@@ -6,8 +6,10 @@ use App\Enums\MatchClass;
 use App\Enums\OfferAvailability;
 use App\Models\CanonicalProduct;
 use App\Models\Organization;
+use App\Models\ProductAlias;
 use App\Models\RestaurantLocation;
 use App\Models\User;
+use App\Models\VendorItem;
 use App\Services\ProductSearchService;
 use Database\Seeders\CatalogTaxonomySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,6 +49,53 @@ final class ProductSearchTest extends TestCase
         $this->assertSame(1, $structured['results'][0]['offer_count']);
         $this->assertSame('0.98', $structured['results'][0]['price_summary']['lowest_normalized_price']);
         $this->assertGreaterThanOrEqual(1, $typo['pagination']['total']);
+    }
+
+    public function test_required_spanish_aliases_resolve_to_existing_english_canonical_products(): void
+    {
+        [$organization, $location] = $this->context();
+        $service = app(ProductSearchService::class);
+
+        foreach ([
+            'tomate' => ['tomato', 'Tomato'],
+            'pechuga de pollo' => ['chicken breast', 'Chicken Breast'],
+            'aceite de canola' => ['canola oil', 'Canola Oil'],
+            'queso mozzarella' => ['mozzarella cheese', 'Mozzarella Cheese'],
+        ] as $spanish => [$english, $englishName]) {
+            $bySpanish = $service->search($organization->id, $location->id, ['query' => $spanish]);
+            $byEnglish = $service->search($organization->id, $location->id, ['query' => $english]);
+
+            $this->assertSame($byEnglish['results'][0]['canonical_product']['id'], $bySpanish['results'][0]['canonical_product']['id']);
+            $this->assertSame($englishName, $bySpanish['results'][0]['canonical_product']['english_name']);
+            $this->assertSame(1, CanonicalProduct::query()->where('english_name', $englishName)->count());
+        }
+    }
+
+    public function test_spanish_aliases_leave_canonical_and_raw_supplier_data_unchanged(): void
+    {
+        [$organization, $location, $beefsteak] = $this->context();
+        $offer = $this->comparisonOffer(
+            $this->comparisonAccount($organization, $location, 'Original source supplier'),
+            $beefsteak,
+            ['sku' => 'RAW-TOM-25', 'description' => 'TOM BEEF 5X6 1/25 LB CS'],
+        );
+
+        $this->assertSame('Beefsteak Tomato', $beefsteak->refresh()->english_name);
+        $this->assertSame(1, CanonicalProduct::query()->where('english_name', 'Beefsteak Tomato')->count());
+        $this->assertDatabaseHas('product_aliases', [
+            'canonical_product_id' => $beefsteak->id,
+            'locale' => 'es',
+            'alias' => 'tomate beefsteak',
+        ]);
+        $this->assertDatabaseMissing('canonical_products', ['english_name' => 'Tomate Beefsteak']);
+
+        $vendor = VendorItem::query()->findOrFail($offer->vendor_item_id);
+        $this->assertSame('RAW-TOM-25', $vendor->supplier_item_identifier);
+        $this->assertSame('TOM BEEF 5X6 1/25 LB CS', $vendor->raw_description);
+        $this->assertSame(
+            2,
+            ProductAlias::query()->where('canonical_product_id', $beefsteak->id)->where('locale', 'es')->count(),
+        );
     }
 
     public function test_search_filters_sorts_and_pagination_are_server_authoritative_and_stable(): void

@@ -16,6 +16,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { ApiClientError, apiRequest } from "@/lib/api";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 type ListIndexResponse = components["schemas"]["SavedListIndexResponse"];
 type ListSummary = ListIndexResponse["saved_lists"][number];
@@ -24,6 +25,7 @@ type EditorMode = "create" | "rename" | "duplicate" | null;
 
 export function SavedListsWorkspace() {
   const { organization, locationId } = useWorkspace();
+  const { formatDateTime, localizeError, t } = useTranslation();
   const canMutate = organization.role !== "viewer";
   const [status, setStatus] = useState<Status>("active");
   const [data, setData] = useState<ListIndexResponse | null>(null);
@@ -51,7 +53,9 @@ export function SavedListsWorkspace() {
       setError(null);
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : "Lists are unavailable.",
+        reason instanceof ApiClientError
+          ? localizeError(reason.code)
+          : localizeError("network_error"),
       );
     } finally {
       setLoading(false);
@@ -220,21 +224,23 @@ export function SavedListsWorkspace() {
     <main className="ui-container saved-lists">
       <header className="ui-page-header saved-lists__header">
         <div>
-          <p className="eyebrow">Purchasing intent</p>
-          <h1>Saved purchasing lists</h1>
+          <p className="eyebrow">{t("nav.workspace")}</p>
+          <h1>{t("lists.title")}</h1>
           <p>
             Lists keep products and quantities durable while current price and
             availability evidence continues to change.
           </p>
         </div>
         {canMutate ? (
-          <Button onClick={() => openEditor("create")}>Create list</Button>
+          <Button onClick={() => openEditor("create")}>
+            {t("lists.create")}
+          </Button>
         ) : null}
       </header>
       <div
         className="saved-lists__tabs"
         role="tablist"
-        aria-label="List status"
+        aria-label={t("common.status")}
       >
         {(["active", "archived"] as const).map((value) => (
           <Button
@@ -243,7 +249,7 @@ export function SavedListsWorkspace() {
             aria-pressed={status === value}
             onClick={() => setStatus(value)}
           >
-            {value === "active" ? "Active" : "Archived"}
+            {value === "active" ? t("lists.active") : t("lists.archived")}
           </Button>
         ))}
       </div>
@@ -258,9 +264,9 @@ export function SavedListsWorkspace() {
           }
         />
       ) : null}
-      {loading ? <Skeleton lines={5} label="Loading saved lists" /> : null}
+      {loading ? <Skeleton lines={5} label={t("common.loading")} /> : null}
       {!loading && error ? (
-        <ErrorState title="Unable to load lists" description={error} />
+        <ErrorState title={t("lists.title")} description={error} />
       ) : null}
       {!loading && !error && !locationId ? (
         <EmptyState
@@ -280,7 +286,9 @@ export function SavedListsWorkspace() {
           }
           action={
             canMutate && status === "active" ? (
-              <Button onClick={() => openEditor("create")}>Create list</Button>
+              <Button onClick={() => openEditor("create")}>
+                {t("lists.create")}
+              </Button>
             ) : undefined
           }
         />
@@ -304,7 +312,9 @@ export function SavedListsWorkspace() {
                 {list.item_count === 1 ? "item" : "items"}
               </p>
               <small>
-                Updated {new Date(list.updated_at).toLocaleString()}
+                {t("common.updated", {
+                  value: formatDateTime(list.updated_at),
+                })}
               </small>
             </div>
             {canMutate ? (
@@ -314,14 +324,14 @@ export function SavedListsWorkspace() {
                   size="sm"
                   onClick={() => openEditor("rename", list)}
                 >
-                  Rename
+                  {t("lists.rename")}
                 </Button>
                 <Button
                   variant="quiet"
                   size="sm"
                   onClick={() => openEditor("duplicate", list)}
                 >
-                  Duplicate
+                  {t("lists.duplicate")}
                 </Button>
                 <Button
                   variant="quiet"
@@ -334,14 +344,16 @@ export function SavedListsWorkspace() {
                     )
                   }
                 >
-                  {status === "active" ? "Archive" : "Restore"}
+                  {status === "active"
+                    ? t("lists.archive")
+                    : t("lists.restore")}
                 </Button>
                 <Button
                   variant="danger"
                   size="sm"
                   onClick={() => setDeleteTarget(list)}
                 >
-                  Delete
+                  {t("common.delete")}
                 </Button>
               </div>
             ) : (
@@ -379,7 +391,7 @@ export function SavedListsWorkspace() {
             disabled={pending}
             onClick={() => setEditor(null)}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             disabled={pending || (editor !== "duplicate" && !name.trim())}

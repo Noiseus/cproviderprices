@@ -9,6 +9,8 @@ import { buildNavigation, titleForSegment } from "@/lib/navigation";
 import type { OrganizationSession, SessionPayload } from "@/lib/server-session";
 import type { SubscriptionStatusPayload } from "@/lib/server-subscription";
 import { ThemeToggle } from "../ThemeToggle";
+import { I18nProvider, useTranslation } from "../i18n/I18nProvider";
+import { LanguageSelector } from "../i18n/LanguageSelector";
 import {
   Button,
   Drawer,
@@ -30,6 +32,14 @@ type Props = {
 };
 
 export function AppShell(props: Props) {
+  return (
+    <I18nProvider initialLocale={props.user.preferred_language}>
+      <AppShellContent {...props} />
+    </I18nProvider>
+  );
+}
+
+function AppShellContent(props: Props) {
   const {
     user,
     organization,
@@ -41,6 +51,7 @@ export function AppShell(props: Props) {
   } = props;
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useTranslation();
   const [compact, setCompact] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -51,7 +62,7 @@ export function AppShell(props: Props) {
   const [locationId, setLocationId] = useState(activeLocations[0]?.id ?? "");
   const segment = pathname.split("/").filter(Boolean)[2] ?? "dashboard";
   const capabilities = subscription?.capabilities ?? {};
-  const navigation = buildNavigation(organization.role, capabilities);
+  const navigation = buildNavigation(organization.role, capabilities, t);
 
   useEffect(() => {
     setCompact(localStorage.getItem("cproviderprices-sidebar") === "compact");
@@ -65,7 +76,7 @@ export function AppShell(props: Props) {
   const navigationContent = (mobile = false) => (
     <nav
       className="app-nav"
-      aria-label={mobile ? "Mobile workspace" : "Workspace"}
+      aria-label={t(mobile ? "nav.mobileWorkspace" : "nav.workspace")}
     >
       {navigation.map((item) => {
         const href = `/o/${organization.slug}/${item.segment}`;
@@ -127,15 +138,15 @@ export function AppShell(props: Props) {
             <span>CProviderPrices</span>
           </Link>
           <div className="app-sidebar__context">
-            <small>Organization</small>
+            <small>{t("nav.organization")}</small>
             <strong>{organization.name}</strong>
-            <small>{organization.role.replaceAll("_", " ")}</small>
+            <small>{t(`roles.${organization.role}`)}</small>
           </div>
           {navigationContent()}
           <div className="app-sidebar__footer">
             <IconButton
               variant="quiet"
-              label={compact ? "Expand sidebar" : "Collapse sidebar"}
+              label={t(compact ? "nav.expandSidebar" : "nav.collapseSidebar")}
               aria-pressed={compact}
               onClick={() => {
                 const next = !compact;
@@ -156,14 +167,14 @@ export function AppShell(props: Props) {
             <IconButton
               className="app-topbar__mobile-menu"
               variant="secondary"
-              label="Open navigation"
+              label={t("nav.openNavigation")}
               onClick={() => setMobileOpen(true)}
             >
               ☰
             </IconButton>
             <div className="app-topbar__location">
               <Select
-                label="Location context"
+                label={t("nav.locationContext")}
                 value={locationId}
                 onChange={(event) => {
                   const next = event.target.value;
@@ -187,7 +198,7 @@ export function AppShell(props: Props) {
                 }}
               >
                 {activeLocations.length === 0 && (
-                  <option value="">No active locations</option>
+                  <option value="">{t("nav.noActiveLocations")}</option>
                 )}
                 {activeLocations.map((location) => (
                   <option key={location.id} value={location.id}>
@@ -198,6 +209,7 @@ export function AppShell(props: Props) {
             </div>
             <div className="app-topbar__spacer" />
             <ThemeToggle compact />
+            <LanguageSelector compact />
             <Dropdown
               label={
                 <span className="account-summary">
@@ -212,7 +224,7 @@ export function AppShell(props: Props) {
               {organizations.filter((item) => item.status === "active").length >
                 1 && (
                 <Select
-                  label="Organization"
+                  label={t("nav.organization")}
                   value={organization.id}
                   disabled={switching}
                   onChange={async (event) => {
@@ -258,22 +270,19 @@ export function AppShell(props: Props) {
                   }
                 }}
               >
-                Sign out
+                {t("auth.signOut")}
               </Button>
             </Dropdown>
           </header>
 
           <main className="app-content" id="main-content">
-            <nav className="breadcrumbs" aria-label="Breadcrumb">
+            <nav className="breadcrumbs" aria-label={t("nav.breadcrumb")}>
               <span>{organization.name}</span>
               <span aria-hidden="true">/</span>
-              <span>{titleForSegment(segment)}</span>
+              <span>{titleForSegment(segment, t)}</span>
             </nav>
             {subscriptionProblem && (
-              <PartialDataWarning>
-                Plan-based navigation may be limited while subscription status
-                is unavailable.
-              </PartialDataWarning>
+              <PartialDataWarning>{t("nav.unavailable")}</PartialDataWarning>
             )}
             {children}
           </main>
@@ -282,15 +291,16 @@ export function AppShell(props: Props) {
         <Drawer
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
-          title="Workspace navigation"
+          title={t("nav.workspaceNavigation")}
         >
           <div className="mobile-navigation">
             <div className="app-sidebar__context">
-              <small>Organization</small>
+              <small>{t("nav.organization")}</small>
               <strong>{organization.name}</strong>
             </div>
             {navigationContent(true)}
             <ThemeToggle />
+            <LanguageSelector />
           </div>
         </Drawer>
       </div>

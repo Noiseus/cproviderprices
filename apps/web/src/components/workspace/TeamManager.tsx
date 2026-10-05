@@ -5,11 +5,13 @@ import { useWorkspace } from "@/components/app-shell/AppShellContext";
 import { ApiClientError, apiRequest } from "@/lib/api";
 import type { TeamInvitation, TeamMember } from "@/lib/customer-api";
 import { Badge, Button, Card, Input, Select, Toast } from "@/components/ui";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 type Team = { members: TeamMember[]; pending_invitations: TeamInvitation[] };
 
 export function TeamManager() {
   const { organization } = useWorkspace();
+  const { localizeError, t } = useTranslation();
   const owner = organization.role === "organization_owner";
   const [team, setTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,9 @@ export function TeamManager() {
       setError(null);
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "Team could not be loaded.",
+        caught instanceof ApiClientError
+          ? localizeError(caught.code)
+          : localizeError("network_error"),
       );
     }
   }
@@ -36,9 +40,7 @@ export function TeamManager() {
     const role = String(data.get("role"));
     if (
       role === "organization_owner" &&
-      !window.confirm(
-        "Invite this person as an owner? Owners can administer the workspace and team.",
-      )
+      !window.confirm(t("team.ownerInviteConfirm"))
     )
       return;
     setBusy(true);
@@ -75,42 +77,45 @@ export function TeamManager() {
   return (
     <div className="workspace-page">
       <header>
-        <p className="eyebrow">Workspace configuration</p>
-        <h1>Team</h1>
-        <p>Manage active members and pending invitations.</p>
+        <p className="eyebrow">{t("locations.workspaceConfiguration")}</p>
+        <h1>{t("team.title")}</h1>
+        <p>{t("team.description")}</p>
       </header>
       {error && (
-        <Toast title="Team action failed" tone="danger">
+        <Toast title={t("team.teamActionFailed")} tone="danger">
           {error}
         </Toast>
       )}
       {owner && (
         <Card>
-          <h2>Invite a team member</h2>
+          <h2>{t("team.inviteMember")}</h2>
           <form className="platform-form" onSubmit={invite}>
-            <Input label="Email" name="email" type="email" required />
-            <Select label="Role" name="role" defaultValue="buyer">
-              <option value="buyer">Buyer</option>
-              <option value="viewer">Viewer</option>
-              <option value="organization_owner">
-                Organization owner (high risk)
-              </option>
+            <Input
+              label={t("common.email")}
+              name="email"
+              type="email"
+              required
+            />
+            <Select label={t("common.role")} name="role" defaultValue="buyer">
+              <option value="buyer">{t("roles.buyer")}</option>
+              <option value="viewer">{t("roles.viewer")}</option>
+              <option value="organization_owner">{t("team.ownerRisk")}</option>
             </Select>
             <Button type="submit" disabled={busy}>
-              {busy ? "Working…" : "Send invitation"}
+              {busy ? t("common.working") : t("team.sendInvitation")}
             </Button>
           </form>
         </Card>
       )}
       {!owner && (
-        <Toast title="Read-only access" tone="neutral">
-          Only organization owners can change team access.
+        <Toast title={t("common.readOnlyAccess")} tone="neutral">
+          {t("team.readOnlyDescription")}
         </Toast>
       )}
       <Card>
-        <h2>Active members</h2>
+        <h2>{t("team.activeMembers")}</h2>
         {!team ? (
-          <p>Loading…</p>
+          <p>{t("common.loading")}</p>
         ) : (
           team.members.map((member) => (
             <div className="ui-list-row" key={member.id}>
@@ -118,12 +123,19 @@ export function TeamManager() {
                 <strong>{member.name}</strong>
                 <p>{member.email}</p>
               </div>
-              <Badge>{member.role.replaceAll("_", " ")}</Badge>
+              <Badge>
+                {t(
+                  `team.roleBadge${member.role
+                    .split("_")
+                    .map((part) => part[0].toUpperCase() + part.slice(1))
+                    .join("")}`,
+                )}
+              </Badge>
               {owner && member.id !== undefined && (
                 <div>
                   <Select
-                    aria-label={`Role for ${member.name}`}
-                    label="Role"
+                    aria-label={t("team.roleFor", { name: member.name })}
+                    label={t("common.role")}
                     value={member.role}
                     disabled={busy}
                     onChange={(e) =>
@@ -133,21 +145,25 @@ export function TeamManager() {
                       })
                     }
                   >
-                    <option value="organization_owner">Owner</option>
-                    <option value="buyer">Buyer</option>
-                    <option value="viewer">Viewer</option>
+                    <option value="organization_owner">
+                      {t("roles.organization_owner")}
+                    </option>
+                    <option value="buyer">{t("roles.buyer")}</option>
+                    <option value="viewer">{t("roles.viewer")}</option>
                   </Select>
                   <Button
                     variant="danger"
                     disabled={busy}
                     onClick={() =>
-                      window.confirm(`Revoke ${member.name}'s access?`) &&
+                      window.confirm(
+                        t("team.revokeAccess", { name: member.name }),
+                      ) &&
                       void mutate(`${path}/memberships/${member.id}`, {
                         method: "DELETE",
                       })
                     }
                   >
-                    Revoke
+                    {t("team.revoke")}
                   </Button>
                 </div>
               )}
@@ -156,15 +172,15 @@ export function TeamManager() {
         )}
       </Card>
       <Card>
-        <h2>Pending invitations</h2>
+        <h2>{t("team.pendingInvitations")}</h2>
         {team?.pending_invitations.length === 0 && (
-          <p>No pending invitations.</p>
+          <p>{t("team.noPendingInvitations")}</p>
         )}
         {team?.pending_invitations.map((invitation) => (
           <div className="ui-list-row" key={invitation.id}>
             <div>
               <strong>{invitation.intended_email}</strong>
-              <p>{invitation.intended_role.replaceAll("_", " ")}</p>
+              <p>{t(`roles.${invitation.intended_role}`)}</p>
             </div>
             {owner && (
               <div>
@@ -177,7 +193,7 @@ export function TeamManager() {
                     })
                   }
                 >
-                  Resend
+                  {t("team.resend")}
                 </Button>
                 <Button
                   variant="danger"
@@ -188,7 +204,7 @@ export function TeamManager() {
                     })
                   }
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </div>
             )}

@@ -1,4 +1,5 @@
 import type { OrganizationSession } from "./server-session";
+import { translate } from "@cproviderprices/i18n";
 
 export type NavigationItem = {
   label: string;
@@ -9,58 +10,77 @@ export type NavigationItem = {
   prefetch: boolean;
 };
 
-type Definition = Omit<NavigationItem, "available" | "unavailableReason"> & {
+type Translate = (key: string) => string;
+
+type Definition = Omit<
+  NavigationItem,
+  "label" | "available" | "unavailableReason"
+> & {
   roles?: OrganizationSession["role"][];
   entitlement?: string;
 };
 
-const definitions: Definition[] = [
-  { label: "Dashboard", segment: "dashboard", icon: "DB", prefetch: true },
-  { label: "Search", segment: "search", icon: "SE", prefetch: true },
-  { label: "Lists", segment: "lists", icon: "LI", prefetch: false },
+const definitions: (Definition & { translationKey: string })[] = [
   {
-    label: "Price history",
+    translationKey: "nav.dashboard",
+    segment: "dashboard",
+    icon: "DB",
+    prefetch: true,
+  },
+  {
+    translationKey: "nav.search",
+    segment: "search",
+    icon: "SE",
+    prefetch: true,
+  },
+  {
+    translationKey: "nav.lists",
+    segment: "lists",
+    icon: "LI",
+    prefetch: false,
+  },
+  {
+    translationKey: "nav.priceHistory",
     segment: "price-history",
     icon: "PH",
     entitlement: "price_history_enabled",
     prefetch: false,
   },
   {
-    label: "Suppliers",
+    translationKey: "nav.suppliers",
     segment: "suppliers",
     icon: "SU",
     prefetch: false,
   },
   {
-    label: "Imports",
+    translationKey: "nav.imports",
     segment: "imports",
     icon: "IM",
     // Historical imports remain readable by viewers and after feature disablement.
     prefetch: false,
   },
   {
-    label: "Team",
+    translationKey: "nav.team",
     segment: "team",
     icon: "TM",
     prefetch: false,
   },
   {
-    label: "Locations",
+    translationKey: "nav.locations",
     segment: "locations",
     icon: "LO",
     prefetch: false,
   },
   {
-    label: "Subscription",
+    translationKey: "nav.subscription",
     segment: "subscription",
     icon: "SB",
     prefetch: false,
   },
   {
-    label: "Settings",
+    translationKey: "nav.settings",
     segment: "settings",
     icon: "ST",
-    roles: ["organization_owner"],
     prefetch: false,
   },
 ];
@@ -68,11 +88,12 @@ const definitions: Definition[] = [
 export function buildNavigation(
   role: OrganizationSession["role"],
   capabilities: Record<string, boolean>,
+  t: Translate = (key) => translate("en", key),
 ): NavigationItem[] {
   return definitions
     .filter((item) => !item.roles || item.roles.includes(role))
     .map((definition) => ({
-      label: definition.label,
+      label: t(definition.translationKey),
       segment: definition.segment,
       icon: definition.icon,
       prefetch: definition.prefetch,
@@ -81,13 +102,17 @@ export function buildNavigation(
         : true,
       unavailableReason:
         definition.entitlement && capabilities[definition.entitlement] !== true
-          ? "Unavailable on the current plan"
+          ? t("nav.unavailable")
           : undefined,
     }));
 }
 
-export function titleForSegment(segment: string): string {
-  return (
-    definitions.find((item) => item.segment === segment)?.label ?? "Workspace"
+export function titleForSegment(
+  segment: string,
+  t: Translate = (key) => translate("en", key),
+): string {
+  return t(
+    definitions.find((item) => item.segment === segment)?.translationKey ??
+      "nav.workspace",
   );
 }

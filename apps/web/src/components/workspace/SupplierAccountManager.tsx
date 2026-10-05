@@ -9,6 +9,7 @@ import type {
   SupplierDefinition,
 } from "@/lib/customer-api";
 import { Badge, Button, Card, Input, Select, Toast } from "@/components/ui";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 export function SupplierAccountManager({
   locations,
@@ -16,6 +17,7 @@ export function SupplierAccountManager({
   locations: Location[];
 }) {
   const { organization } = useWorkspace();
+  const { formatDateTime, localizeError, t } = useTranslation();
   const owner = organization.role === "organization_owner";
   const base = `/api/v1/organizations/${organization.id}/supplier-accounts`;
   const [locationId, setLocationId] = useState(
@@ -36,7 +38,7 @@ export function SupplierAccountManager({
       setDefinitions(r.supplier_definitions);
       setError(null);
     } catch (e) {
-      setError(message(e));
+      setError(message(e, localizeError));
     }
   }
   useEffect(() => void reload(), [base, locationId]);
@@ -60,13 +62,16 @@ export function SupplierAccountManager({
       f.reset();
       await reload();
     } catch (x) {
-      setError(message(x));
+      setError(message(x, localizeError));
     } finally {
       setBusy(false);
     }
   }
   async function edit(account: SupplierAccount) {
-    const display_name = window.prompt("Display name", account.display_name);
+    const display_name = window.prompt(
+      t("suppliers.displayName"),
+      account.display_name,
+    );
     if (!display_name) return;
     setBusy(true);
     try {
@@ -76,7 +81,7 @@ export function SupplierAccountManager({
       });
       await reload();
     } catch (e) {
-      setError(message(e));
+      setError(message(e, localizeError));
     } finally {
       setBusy(false);
     }
@@ -84,19 +89,16 @@ export function SupplierAccountManager({
   return (
     <div className="workspace-page">
       <header>
-        <p className="eyebrow">Workspace configuration</p>
-        <h1>Suppliers</h1>
-        <p>
-          Account metadata only. Credentials and synchronization are not
-          collected here.
-        </p>
+        <p className="eyebrow">{t("locations.workspaceConfiguration")}</p>
+        <h1>{t("suppliers.title")}</h1>
+        <p>{t("suppliers.description")}</p>
       </header>
       {error && (
         <Toast
           title={
             error.includes("limit")
-              ? "Supplier account limit reached"
-              : "Supplier action failed"
+              ? t("suppliers.limitReached")
+              : t("suppliers.actionFailed")
           }
           tone="danger"
         >
@@ -104,11 +106,11 @@ export function SupplierAccountManager({
         </Toast>
       )}
       <Select
-        label="Location"
+        label={t("suppliers.location")}
         value={locationId}
         onChange={(e) => setLocationId(e.target.value)}
       >
-        <option value="">All locations</option>
+        <option value="">{t("suppliers.allLocations")}</option>
         {locations.map((x) => (
           <option key={x.id} value={x.id}>
             {x.name}
@@ -117,74 +119,90 @@ export function SupplierAccountManager({
       </Select>
       {owner && locationId && (
         <Card>
-          <h2>Add supplier account</h2>
+          <h2>{t("suppliers.addAccount")}</h2>
           <form className="platform-form" onSubmit={submit}>
-            <Select label="Supplier" name="supplier_definition_id" required>
-              <option value="">Choose supplier</option>
+            <Select
+              label={t("comparison.supplier")}
+              name="supplier_definition_id"
+              required
+            >
+              <option value="">{t("suppliers.chooseSupplier")}</option>
               {definitions.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
                 </option>
               ))}
             </Select>
-            <Input label="Display name" name="display_name" required />
             <Input
-              label="Masked account reference"
+              label={t("suppliers.displayName")}
+              name="display_name"
+              required
+            />
+            <Input
+              label={t("suppliers.maskedReference")}
               name="masked_account_reference"
               placeholder="ending 1234"
-              hint="Do not enter passwords, tokens, or full credentials."
+              hint={t("suppliers.maskedReferenceHint")}
             />
             <Select
-              label="Source method"
+              label={t("suppliers.sourceMethod")}
               name="source_method"
               defaultValue="manual_import"
             >
-              <option value="manual_import">Manual import</option>
+              <option value="manual_import">
+                {t("suppliers.manualImport")}
+              </option>
               <option value="future_automatic_sync">
-                Future automatic sync
+                {t("suppliers.automaticSync")}
               </option>
             </Select>
             <Select
-              label="Expected refresh cadence"
+              label={t("suppliers.refreshCadence")}
               name="expected_refresh_cadence"
               defaultValue="weekly"
             >
-              <option value="on_demand">On demand</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
+              <option value="on_demand">{t("suppliers.onDemand")}</option>
+              <option value="daily">{t("suppliers.daily")}</option>
+              <option value="weekly">{t("suppliers.weekly")}</option>
+              <option value="monthly">{t("suppliers.monthly")}</option>
             </Select>
             <Button type="submit" disabled={busy}>
-              Add supplier account
+              {t("suppliers.addAccount")}
             </Button>
           </form>
         </Card>
       )}
       {!owner && (
-        <Toast title="Read-only access" tone="neutral">
-          Only organization owners can change supplier accounts.
+        <Toast title={t("common.readOnlyAccess")} tone="neutral">
+          {t("suppliers.readOnlyDescription")}
         </Toast>
       )}
       <Card>
-        <h2>Supplier accounts</h2>
-        {accounts.length === 0 && (
-          <p>No supplier accounts configured for this selection.</p>
-        )}
+        <h2>{t("suppliers.accounts")}</h2>
+        {accounts.length === 0 && <p>{t("suppliers.noAccounts")}</p>}
         {accounts.map((a) => (
           <div className="ui-list-row" key={a.id}>
             <div>
               <strong>{a.display_name}</strong>
               <p>
                 {a.supplier.name} · {a.location.name} ·{" "}
-                {a.masked_account_reference ?? "No account reference"}
+                {a.masked_account_reference ?? t("suppliers.noReference")}
               </p>
               <small>
                 {a.expected_refresh_cadence.replaceAll("_", " ")} · Last
-                successful sync: {a.last_successful_sync_at ?? "Not yet synced"}
+                successful sync:{" "}
+                {a.last_successful_sync_at
+                  ? formatDateTime(
+                      a.last_successful_sync_at,
+                      locations.find(
+                        (location) => location.id === a.location.id,
+                      )?.timezone ?? "UTC",
+                    )
+                  : t("suppliers.notYetSynced")}
               </small>
             </div>
             <Badge tone={a.status === "active" ? "success" : "neutral"}>
-              {a.status}
+              {t(`locations.${a.status}`)}
             </Badge>
             {owner && (
               <Button
@@ -192,7 +210,7 @@ export function SupplierAccountManager({
                 disabled={busy}
                 onClick={() => void edit(a)}
               >
-                Edit
+                {t("common.edit")}
               </Button>
             )}
           </div>
@@ -201,8 +219,8 @@ export function SupplierAccountManager({
     </div>
   );
 }
-function message(error: unknown) {
+function message(error: unknown, localizeError: (code: string) => string) {
   return error instanceof ApiClientError
-    ? error.message
-    : "The action could not be completed.";
+    ? localizeError(error.code)
+    : localizeError("network_error");
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Select } from "./ui";
+import { useTranslation } from "./i18n/I18nProvider";
 
 export type ThemePreference = "system" | "light" | "dark";
 export const themeStorageKey = "cproviderprices-theme";
@@ -16,6 +17,7 @@ export function applyTheme(preference: ThemePreference) {
 }
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation();
   const [preference, setPreference] = useState<ThemePreference>("system");
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
       className={
         compact ? "theme-toggle theme-toggle--compact" : "theme-toggle"
       }
-      label="Theme"
+      label={t("nav.theme")}
       value={preference}
       onChange={(event) => {
         const next = event.target.value as ThemePreference;
@@ -48,9 +50,9 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
         applyTheme(next);
       }}
     >
-      <option value="system">System</option>
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
+      <option value="system">{t("nav.themeSystem")}</option>
+      <option value="light">{t("nav.themeLight")}</option>
+      <option value="dark">{t("nav.themeDark")}</option>
     </Select>
   );
 }

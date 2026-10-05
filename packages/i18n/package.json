@@ -2,7 +2,12 @@
   "name": "@cproviderprices/i18n",
   "version": "0.1.0",
   "private": true,
+  "types": "./src/index.ts",
   "exports": {
+    ".": "./src/index.ts",
     "./en/common.json": "./locales/en/common.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   }
 }

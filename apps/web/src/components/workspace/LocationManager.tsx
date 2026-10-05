@@ -6,9 +6,11 @@ import { useWorkspace } from "@/components/app-shell/AppShellContext";
 import { ApiClientError, apiRequest } from "@/lib/api";
 import type { Location } from "@/lib/customer-api";
 import { Badge, Button, Card, Input, Toast } from "@/components/ui";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 export function LocationManager() {
   const { organization } = useWorkspace();
+  const { localizeError, t } = useTranslation();
   const router = useRouter();
   const owner = organization.role === "organization_owner";
   const [locations, setLocations] = useState<Location[]>([]);
@@ -23,7 +25,7 @@ export function LocationManager() {
       );
       setError(null);
     } catch (e) {
-      setError(message(e));
+      setError(message(e, localizeError));
     }
   }
   useEffect(() => void reload(), [path]);
@@ -48,7 +50,7 @@ export function LocationManager() {
       await reload();
       router.refresh();
     } catch (e) {
-      setError(message(e));
+      setError(message(e, localizeError));
     } finally {
       setBusy(false);
     }
@@ -63,7 +65,7 @@ export function LocationManager() {
       await reload();
       router.refresh();
     } catch (e) {
-      setError(message(e));
+      setError(message(e, localizeError));
     } finally {
       setBusy(false);
     }
@@ -82,7 +84,7 @@ export function LocationManager() {
         }),
       );
     } catch (e) {
-      setError(message(e));
+      setError(message(e, localizeError));
     } finally {
       setBusy(false);
     }
@@ -90,16 +92,16 @@ export function LocationManager() {
   return (
     <div className="workspace-page">
       <header>
-        <p className="eyebrow">Workspace configuration</p>
-        <h1>Locations</h1>
-        <p>Locations are retained when deactivated.</p>
+        <p className="eyebrow">{t("locations.workspaceConfiguration")}</p>
+        <h1>{t("locations.title")}</h1>
+        <p>{t("locations.description")}</p>
       </header>
       {error && (
         <Toast
           title={
             error.includes("limit")
-              ? "Location limit reached"
-              : "Location action failed"
+              ? t("locations.limitReached")
+              : t("locations.actionFailed")
           }
           tone="danger"
         >
@@ -108,32 +110,32 @@ export function LocationManager() {
       )}
       {owner ? (
         <Card>
-          <h2>Add location</h2>
+          <h2>{t("locations.add")}</h2>
           <form className="platform-form" onSubmit={create}>
-            <Input label="Name" name="name" required />
+            <Input label={t("common.name")} name="name" required />
             <Input
-              label="Timezone"
+              label={t("locations.timezone")}
               name="timezone"
               defaultValue="America/New_York"
               required
             />
-            <Input label="Street address" name="address_line_1" />
-            <Input label="City" name="city" />
-            <Input label="State or region" name="region" />
-            <Input label="Postal code" name="postal_code" />
+            <Input label={t("locations.streetAddress")} name="address_line_1" />
+            <Input label={t("locations.city")} name="city" />
+            <Input label={t("locations.region")} name="region" />
+            <Input label={t("locations.postalCode")} name="postal_code" />
             <Button type="submit" disabled={busy}>
-              Create location
+              {t("locations.createAction")}
             </Button>
           </form>
         </Card>
       ) : (
-        <Toast title="Read-only access" tone="neutral">
-          Only organization owners can change locations.
+        <Toast title={t("common.readOnlyAccess")} tone="neutral">
+          {t("locations.readOnlyDescription")}
         </Toast>
       )}
       <Card>
-        <h2>Locations</h2>
-        {locations.length === 0 && <p>No locations configured.</p>}
+        <h2>{t("locations.title")}</h2>
+        {locations.length === 0 && <p>{t("locations.noneConfigured")}</p>}
         {locations.map((location) => (
           <div className="ui-list-row" key={location.id}>
             <div>
@@ -144,14 +146,14 @@ export function LocationManager() {
               </p>
             </div>
             <Badge tone={location.status === "active" ? "success" : "neutral"}>
-              {location.status}
+              {t(`locations.${location.status}`)}
             </Badge>
             <Button
               variant="secondary"
               disabled={busy || location.status !== "active"}
               onClick={() => void select(location)}
             >
-              Select
+              {t("locations.select")}
             </Button>
             {owner && (
               <>
@@ -159,11 +161,14 @@ export function LocationManager() {
                   variant="secondary"
                   disabled={busy}
                   onClick={() => {
-                    const name = window.prompt("Location name", location.name);
+                    const name = window.prompt(
+                      t("locations.locationName"),
+                      location.name,
+                    );
                     if (name) void patch(location, { name });
                   }}
                 >
-                  Edit
+                  {t("locations.edit")}
                 </Button>
                 <Button
                   variant={
@@ -177,7 +182,9 @@ export function LocationManager() {
                     })
                   }
                 >
-                  {location.status === "active" ? "Deactivate" : "Activate"}
+                  {location.status === "active"
+                    ? t("locations.deactivate")
+                    : t("locations.activate")}
                 </Button>
               </>
             )}
@@ -187,8 +194,8 @@ export function LocationManager() {
     </div>
   );
 }
-function message(error: unknown) {
+function message(error: unknown, localizeError: (code: string) => string) {
   return error instanceof ApiClientError
-    ? error.message
-    : "The action could not be completed.";
+    ? localizeError(error.code)
+    : localizeError("network_error");
 }

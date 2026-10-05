@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { I18nProvider } from "@/components/i18n/I18nProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <I18nProvider>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

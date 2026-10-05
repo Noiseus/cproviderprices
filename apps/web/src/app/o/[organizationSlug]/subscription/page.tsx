@@ -3,26 +3,36 @@
 import { useWorkspace } from "@/components/app-shell/AppShellContext";
 import { EntitlementNotice } from "@/components/EntitlementNotice";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
-const capabilityLabels: Record<string, string> = {
-  manual_imports_enabled: "Manual imports",
-  automatic_sync_enabled: "Automatic sync",
-  price_history_enabled: "Price history",
-  basket_optimizer_enabled: "Basket optimizer",
+const capabilityKeys: Record<string, string> = {
+  manual_imports_enabled: "subscription.manualImports",
+  automatic_sync_enabled: "subscription.automaticSync",
+  price_history_enabled: "subscription.priceHistory",
+  basket_optimizer_enabled: "subscription.basketOptimizer",
 };
-const limitLabels: Record<string, string> = {
-  max_locations: "Restaurant locations",
-  max_users: "Users",
-  max_supplier_accounts: "Supplier accounts",
+const limitKeys: Record<string, string> = {
+  max_locations: "subscription.restaurantLocations",
+  max_users: "subscription.users",
+  max_supplier_accounts: "subscription.supplierAccounts",
 };
 
 export default function SubscriptionPage() {
-  const { organization, subscription: status } = useWorkspace();
+  const {
+    organization,
+    subscription: status,
+    locations,
+    locationId,
+  } = useWorkspace();
+  const { formatDateTime, t } = useTranslation();
+  const timeZone = (locations ?? []).find(
+    (location) => location.id === locationId,
+  )?.timezone;
   if (!status)
     return (
       <EmptyState
-        title="Subscription status unavailable"
-        description="Plan information could not be loaded. The workspace remains safely restricted."
+        title={t("subscription.statusUnavailable")}
+        description={t("subscription.statusUnavailableDescription")}
       />
     );
   const subscription = status.subscription;
@@ -30,95 +40,102 @@ export default function SubscriptionPage() {
   return (
     <div className="route-placeholder">
       <PageHeader
-        eyebrow="Account"
-        title="Subscription"
-        description={`Plan status and capabilities for ${organization.name}.`}
+        eyebrow={t("subscription.account")}
+        title={t("subscription.title")}
+        description={t("subscription.description", { name: organization.name })}
         actions={
           <Badge tone={subscription?.access_available ? "success" : "warning"}>
-            {subscription?.status.replaceAll("_", " ") ?? "not configured"}
+            {subscription?.status
+              ? t(`subscription.${subscription.status}`)
+              : t("subscription.notConfigured")}
           </Badge>
         }
       />
       {subscription?.status === "past_due" && (
-        <EntitlementNotice kind="unavailable" title="Subscription past due">
-          <p>
-            Access remains available during this status. Contact your account
-            administrator.
-          </p>
+        <EntitlementNotice
+          kind="unavailable"
+          title={t("subscription.past_due")}
+        >
+          <p>{t("subscription.pastDueNotice")}</p>
         </EntitlementNotice>
       )}
       {subscription && !subscription.access_available && (
         <EntitlementNotice
           kind="suspended"
-          title={`Subscription ${subscription.status}`}
+          title={`${t("subscription.title")}: ${t(`subscription.${subscription.status}`)}`}
         >
-          <p>
-            Entitlement-gated actions are unavailable. Existing organization
-            data is preserved.
-          </p>
+          <p>{t("subscription.gatedNotice")}</p>
         </EntitlementNotice>
       )}
       {!subscription && (
         <EntitlementNotice
           kind="unavailable"
-          title="No subscription configured"
+          title={t("subscription.noSubscription")}
         >
-          <p>
-            Contact support or your account administrator to enable plan
-            capabilities.
-          </p>
+          <p>{t("subscription.noSubscriptionDescription")}</p>
         </EntitlementNotice>
       )}
 
       <Card>
-        <h2>Plan</h2>
-        <p>{status.plan?.name ?? "Not configured"}</p>
+        <h2>{t("subscription.plan")}</h2>
+        <p>{status.plan?.name ?? t("subscription.notConfigured")}</p>
         <dl>
           <div>
-            <dt>Status</dt>
-            <dd>{subscription?.status.replaceAll("_", " ") ?? "none"}</dd>
+            <dt>{t("common.status")}</dt>
+            <dd>
+              {subscription?.status
+                ? t(`subscription.${subscription.status}`)
+                : t("common.none")}
+            </dd>
           </div>
           {subscription?.status === "trialing" &&
             subscription.trial_ends_at && (
               <div>
-                <dt>Trial ends</dt>
-                <dd>
-                  {new Date(subscription.trial_ends_at).toLocaleString(
-                    "en-US",
-                    { timeZone: "UTC" },
-                  )}{" "}
-                  UTC
-                </dd>
+                <dt>{t("subscription.trialEnds")}</dt>
+                <dd>{formatDateTime(subscription.trial_ends_at, timeZone)}</dd>
               </div>
             )}
         </dl>
       </Card>
       <section>
-        <h2>Capabilities</h2>
+        <h2>{t("subscription.capabilities")}</h2>
         <ul className="capability-list">
           {Object.entries(status.capabilities).map(([key, enabled]) => (
             <li key={key}>
-              <span>{capabilityLabels[key] ?? key.replaceAll("_", " ")}</span>
+              <span>
+                {capabilityKeys[key]
+                  ? t(capabilityKeys[key])
+                  : key.replaceAll("_", " ")}
+              </span>
               <Badge tone={enabled ? "success" : "neutral"}>
-                {enabled ? "Enabled" : "Unavailable"}
+                {enabled
+                  ? t("subscription.enabled")
+                  : t("subscription.unavailable")}
               </Badge>
             </li>
           ))}
         </ul>
       </section>
       <section>
-        <h2>Limits and usage</h2>
+        <h2>{t("subscription.limitsUsage")}</h2>
         <ul className="capability-list">
           {Object.entries(status.limits).map(([key, value]) => (
             <li key={key}>
-              <span>{limitLabels[key] ?? key.replaceAll("_", " ")}</span>
+              <span>
+                {limitKeys[key] ? t(limitKeys[key]) : key.replaceAll("_", " ")}
+              </span>
               <strong>
                 {value.current_usage === null || value.limit === null
-                  ? "Available in a future module"
-                  : `${value.current_usage} of ${value.limit}`}
+                  ? t("subscription.futureModule")
+                  : t("subscription.usageValue", {
+                      current: value.current_usage,
+                      limit: value.limit,
+                    })}
               </strong>
               {value.reached && (
-                <span className="limit-text">Limit reached</span>
+                <span className="limit-text">
+                  {t("subscription.limitReached")}
+                </span>
               )}
             </li>
           ))}
@@ -126,12 +143,9 @@ export default function SubscriptionPage() {
       </section>
       <EntitlementNotice
         kind="unavailable"
-        title="Need a different capability or limit?"
+        title={t("subscription.needCapability")}
       >
-        <p>
-          Contact your account administrator or CProviderPrices support. Online
-          checkout is not available.
-        </p>
+        <p>{t("subscription.contactSupport")}</p>
       </EntitlementNotice>
     </div>
   );

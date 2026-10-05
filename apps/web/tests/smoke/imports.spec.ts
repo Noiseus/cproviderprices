@@ -54,9 +54,14 @@ async function upload(
   file: string | { name: string; mimeType: string; buffer: Buffer },
 ) {
   await page.getByLabel("Import location").selectOption(fixture.location_id);
-  await page
-    .getByRole("combobox", { name: "Supplier account", exact: true })
-    .selectOption(fixture.accounts[supplier]);
+  const supplierAccount = page.getByRole("combobox", {
+    name: "Supplier account",
+    exact: true,
+  });
+  await expect(
+    supplierAccount.locator(`option[value="${fixture.accounts[supplier]}"]`),
+  ).toHaveCount(1);
+  await supplierAccount.selectOption(fixture.accounts[supplier]);
   await page
     .getByRole("combobox", { name: "Supplier account", exact: true })
     .focus();

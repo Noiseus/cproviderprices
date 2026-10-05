@@ -24,6 +24,7 @@ import {
 import { ApiClientError, apiRequest } from "@/lib/api";
 import type { SupplierAccount } from "@/lib/customer-api";
 import { AddToSavedListControl } from "@/components/lists/AddToSavedListControl";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 type SearchResponse = components["schemas"]["ProductSearchResponse"];
 
@@ -57,6 +58,7 @@ function price(result: SearchResponse["results"][number]) {
 
 export function SearchWorkspace() {
   const { organization, locationId } = useWorkspace();
+  const { localizeError, t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -206,7 +208,9 @@ export function SearchWorkspace() {
           setBlocked(true);
         }
         setError(
-          reason instanceof Error ? reason.message : "Search is unavailable.",
+          reason instanceof ApiClientError
+            ? localizeError(reason.code)
+            : localizeError("network_error"),
         );
       })
       .finally(() => {
@@ -246,7 +250,7 @@ export function SearchWorkspace() {
   const filterFields = (
     <div className="search-comparison__filters">
       <Select
-        label="Sort"
+        label={t("search.sorting")}
         value={filters.sort}
         onChange={(event) => updateFilter("sort", event.target.value)}
       >
@@ -257,11 +261,11 @@ export function SearchWorkspace() {
         ))}
       </Select>
       <Select
-        label="Category"
+        label={t("search.category")}
         value={filters.category}
         onChange={(event) => updateFilter("category", event.target.value)}
       >
-        <option value="">All categories</option>
+        <option value="">{t("search.anyCategory")}</option>
         {categories.map((category) => (
           <option key={category.id} value={category.id}>
             {category.english_name}
@@ -269,11 +273,11 @@ export function SearchWorkspace() {
         ))}
       </Select>
       <Select
-        label="Supplier"
+        label={t("search.supplier")}
         value={filters.supplier}
         onChange={(event) => updateFilter("supplier", event.target.value)}
       >
-        <option value="">All suppliers</option>
+        <option value="">{t("search.anySupplier")}</option>
         {accounts.map((account) => (
           <option key={account.id} value={account.id}>
             {account.display_name}
@@ -281,54 +285,58 @@ export function SearchWorkspace() {
         ))}
       </Select>
       <Input
-        label="Brand"
+        label={t("search.brand")}
         value={filters.brand}
         onChange={(event) => updateFilter("brand", event.target.value)}
-        placeholder="Any brand"
+        placeholder={t("search.anyBrand")}
       />
       <Select
-        label="Unit"
+        label={t("search.pack")}
         value={filters.unit}
         onChange={(event) => updateFilter("unit", event.target.value)}
       >
-        <option value="">Any unit</option>
+        <option value="">{t("common.all")}</option>
         <option value="case">Case</option>
         <option value="weight">Weight</option>
         <option value="volume">Volume</option>
         <option value="count">Count</option>
       </Select>
       <Select
-        label="Availability"
+        label={t("search.availability")}
         value={filters.availability}
         onChange={(event) => updateFilter("availability", event.target.value)}
       >
-        <option value="">Any availability</option>
-        <option value="available">Available</option>
-        <option value="unavailable">Unavailable</option>
-        <option value="unknown">Unknown</option>
+        <option value="">{t("search.anyAvailability")}</option>
+        <option value="available">{t("availability.available")}</option>
+        <option value="unavailable">{t("availability.unavailable")}</option>
+        <option value="unknown">{t("availability.unknown")}</option>
       </Select>
       <Select
-        label="Freshness"
+        label={t("search.freshness")}
         value={filters.freshness}
         onChange={(event) => updateFilter("freshness", event.target.value)}
       >
-        <option value="">Any freshness</option>
-        <option value="fresh">Fresh</option>
-        <option value="aging">Aging</option>
-        <option value="stale">Stale</option>
-        <option value="connection_failed">Connection failed</option>
-        <option value="manual_import">Manual import</option>
+        <option value="">{t("search.anyFreshness")}</option>
+        <option value="fresh">{t("freshness.fresh")}</option>
+        <option value="aging">{t("freshness.aging")}</option>
+        <option value="stale">{t("freshness.stale")}</option>
+        <option value="connection_failed">
+          {t("freshness.connection_failed")}
+        </option>
+        <option value="manual_import">{t("freshness.manual_import")}</option>
       </Select>
       <Select
-        label="Match quality"
+        label={t("search.matchClass")}
         value={filters.match_class}
         onChange={(event) => updateFilter("match_class", event.target.value)}
       >
-        <option value="">Any mapping</option>
-        <option value="exact">Exact</option>
-        <option value="equivalent">Equivalent</option>
-        <option value="alternative">Alternative</option>
-        <option value="not_safely_comparable">Not safely comparable</option>
+        <option value="">{t("search.anyMatchClass")}</option>
+        <option value="exact">{t("match.exact")}</option>
+        <option value="equivalent">{t("match.equivalent")}</option>
+        <option value="alternative">{t("match.alternative")}</option>
+        <option value="not_safely_comparable">
+          {t("match.not_safely_comparable")}
+        </option>
       </Select>
     </div>
   );
@@ -337,8 +345,8 @@ export function SearchWorkspace() {
     <main className="ui-container search-comparison">
       <header className="ui-page-header">
         <div>
-          <p className="eyebrow">Catalog discovery</p>
-          <h1>Search products</h1>
+          <p className="eyebrow">{t("nav.workspace")}</p>
+          <h1>{t("search.title")}</h1>
           <p>
             Find canonical products first, then compare only offers available to
             this location.
@@ -348,7 +356,7 @@ export function SearchWorkspace() {
       <FilterBar>
         <div className="search-comparison__input-row">
           <SearchInput
-            label="Search products"
+            label={t("search.title")}
             value={draftQuery}
             placeholder="Try tomato, tomate, or beef tomato 5x6 25 lb"
             onChange={(event) => setDraftQuery(event.target.value)}
@@ -361,11 +369,11 @@ export function SearchWorkspace() {
           />
           {draftQuery && (
             <Button variant="secondary" onClick={() => setDraftQuery("")}>
-              Clear
+              {t("common.clear")}
             </Button>
           )}
           <Button variant="secondary" onClick={() => setFilterOpen(true)}>
-            Filters
+            {t("search.filters")}
           </Button>
         </div>
         <div className="search-comparison__desktop-filters">{filterFields}</div>
@@ -373,7 +381,7 @@ export function SearchWorkspace() {
       <Drawer
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
-        title="Search filters"
+        title={t("search.searchFilters")}
         side="right"
       >
         {filterFields}
@@ -386,7 +394,7 @@ export function SearchWorkspace() {
           />
           {recent.length > 0 && (
             <Card className="search-comparison__recent">
-              <h2>Recent searches</h2>
+              <h2>{t("search.recentSearches")}</h2>
               <div>
                 {recent.map((item) => (
                   <Button
@@ -405,15 +413,15 @@ export function SearchWorkspace() {
           )}
         </>
       )}
-      {loading && <Skeleton lines={6} label="Loading product search" />}
+      {loading && <Skeleton lines={6} label={t("common.loading")} />}
       {blocked && (
         <PermissionState
-          title="Search is unavailable"
+          title={t("common.notAvailable")}
           description="Your current workspace context cannot access this location or search data."
         />
       )}
       {!loading && error && !blocked && (
-        <ErrorState title="Unable to search products" description={error} />
+        <ErrorState title={t("search.title")} description={error} />
       )}
       {response?.partial.supplier_accounts.length ? (
         <PartialDataWarning>
@@ -423,7 +431,7 @@ export function SearchWorkspace() {
       ) : null}
       {response && !loading && response.results.length === 0 && (
         <EmptyState
-          title="No matching products"
+          title={t("search.noResults")}
           description="Try a broader product family, remove a filter, or check the spelling."
         />
       )}
@@ -452,8 +460,8 @@ export function SearchWorkspace() {
               </div>
               <div className="search-result-card__summary">
                 <strong>
-                  {result.offer_count} eligible offer
-                  {result.offer_count === 1 ? "" : "s"}
+                  {result.offer_count}{" "}
+                  {t("availability.available").toLocaleLowerCase()}
                 </strong>
                 <span>{price(result)}</span>
                 <span>
@@ -490,7 +498,7 @@ export function SearchWorkspace() {
                   className="ui-button ui-button--primary"
                   href={`/o/${organization.slug}/compare/${result.canonical_product.id}`}
                 >
-                  Compare offers
+                  {t("comparison.title")}
                 </Link>
                 <AddToSavedListControl
                   canonicalProductId={result.canonical_product.id}
@@ -499,13 +507,13 @@ export function SearchWorkspace() {
             </Card>
           ))}
           {response.pagination.total_pages > 1 && (
-            <nav className="ui-pagination" aria-label="Search result pages">
+            <nav className="ui-pagination" aria-label={t("search.pagination")}>
               <Button
                 variant="secondary"
                 disabled={response.pagination.page <= 1}
                 onClick={() => movePage(response.pagination.page - 1)}
               >
-                Previous
+                {t("common.back")}
               </Button>
               <span>
                 Page {response.pagination.page} of{" "}
@@ -518,7 +526,7 @@ export function SearchWorkspace() {
                 }
                 onClick={() => movePage(response.pagination.page + 1)}
               >
-                Next
+                {t("common.next")}
               </Button>
             </nav>
           )}

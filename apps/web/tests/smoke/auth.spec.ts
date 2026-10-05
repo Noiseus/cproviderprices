@@ -101,7 +101,7 @@ test("viewer gets reduced and entitlement-aware navigation", async ({
   await expect(page.getByRole("link", { name: "Team" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Locations" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Suppliers" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
   await expect(
     page
       .getByRole("navigation", { name: "Workspace" })

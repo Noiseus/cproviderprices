@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiRequest } from "@/lib/api";
 import { Button } from "./ui";
+import { useTranslation } from "./i18n/I18nProvider";
 
 export function LogoutButton() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   return (
     <Button
@@ -22,7 +24,7 @@ export function LogoutButton() {
         }
       }}
     >
-      {loading ? "Signing out…" : "Sign out"}
+      {loading ? t("common.saving") : t("auth.signOut")}
     </Button>
   );
 }

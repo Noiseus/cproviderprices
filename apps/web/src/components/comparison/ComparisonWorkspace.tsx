@@ -20,6 +20,7 @@ import {
 import { ApiClientError, apiRequest } from "@/lib/api";
 import { useVisibleStaleRefresh } from "@/components/refresh/useVisibleRefresh";
 import { AddToSavedListControl } from "@/components/lists/AddToSavedListControl";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 type ComparisonResponse = components["schemas"]["ProductComparisonResponse"];
 type Offer = ComparisonResponse["offers"][number];
@@ -28,6 +29,26 @@ function title(value: string) {
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function comparisonLabel(
+  t: (key: string, values?: Record<string, string | number>) => string,
+  value: string,
+) {
+  const labels: Record<string, string> = {
+    lowest_case_price: "comparison.lowestCasePrice",
+    best_normalized_price: "comparison.bestNormalizedPrice",
+    best_available_option: "comparison.bestAvailableOption",
+    exact: "comparison.classExact",
+    equivalent: "comparison.classEquivalent",
+    alternative: "comparison.classAlternative",
+    not_safely_comparable: "comparison.classNotSafelyComparable",
+    available: "availability.available",
+    unavailable: "availability.unavailable",
+    unknown: "availability.unknown",
+  };
+
+  return labels[value] ? t(labels[value]) : title(value);
 }
 
 function pack(offer: Offer) {
@@ -59,6 +80,7 @@ export function ComparisonWorkspace({
   canonicalProductId: string;
 }) {
   const { organization, locationId } = useWorkspace();
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -190,7 +212,7 @@ export function ComparisonWorkspace({
             </p>
             <div className="comparison-refresh-actions">
               <Button onClick={() => void refreshNow()} variant="secondary">
-                Refresh CProviderPrices data
+                {t("common.refresh")}
               </Button>{" "}
               <Button
                 onClick={() =>
@@ -229,40 +251,44 @@ export function ComparisonWorkspace({
           <option value="newest_observation">Newest observation</option>
         </Select>
         <Select
-          label="Availability"
+          label={t("comparison.availability")}
           value={filters.availability}
           onChange={(event) => setFilter("availability", event.target.value)}
         >
-          <option value="">Any availability</option>
-          <option value="available">Available</option>
-          <option value="unavailable">Unavailable</option>
-          <option value="unknown">Unknown</option>
+          <option value="">{t("search.anyAvailability")}</option>
+          <option value="available">{t("availability.available")}</option>
+          <option value="unavailable">{t("availability.unavailable")}</option>
+          <option value="unknown">{t("availability.unknown")}</option>
         </Select>
         <Select
-          label="Freshness"
+          label={t("comparison.freshness")}
           value={filters.freshness}
           onChange={(event) => setFilter("freshness", event.target.value)}
         >
-          <option value="">Any freshness</option>
-          <option value="fresh">Fresh</option>
-          <option value="aging">Aging</option>
-          <option value="stale">Stale</option>
-          <option value="connection_failed">Connection failed</option>
-          <option value="manual_import">Manual import</option>
+          <option value="">{t("search.anyFreshness")}</option>
+          <option value="fresh">{t("freshness.fresh")}</option>
+          <option value="aging">{t("freshness.aging")}</option>
+          <option value="stale">{t("freshness.stale")}</option>
+          <option value="connection_failed">
+            {t("freshness.connection_failed")}
+          </option>
+          <option value="manual_import">{t("freshness.manual_import")}</option>
         </Select>
         <Select
-          label="Match quality"
+          label={t("search.matchClass")}
           value={filters.matchClass}
           onChange={(event) => setFilter("match_class", event.target.value)}
         >
-          <option value="">Any mapping</option>
-          <option value="exact">Exact</option>
-          <option value="equivalent">Equivalent</option>
-          <option value="alternative">Alternative</option>
-          <option value="not_safely_comparable">Not safely comparable</option>
+          <option value="">{t("search.anyMatchClass")}</option>
+          <option value="exact">{t("match.exact")}</option>
+          <option value="equivalent">{t("match.equivalent")}</option>
+          <option value="alternative">{t("match.alternative")}</option>
+          <option value="not_safely_comparable">
+            {t("match.not_safely_comparable")}
+          </option>
         </Select>
       </div>
-      {loading && <Skeleton lines={7} label="Loading offer comparison" />}
+      {loading && <Skeleton lines={7} label={t("common.loading")} />}
       {blocked && (
         <PermissionState
           title="Comparison is unavailable"
@@ -270,7 +296,7 @@ export function ComparisonWorkspace({
         />
       )}
       {!loading && error && !blocked && (
-        <ErrorState title="Unable to load comparison" description={error} />
+        <ErrorState title={t("comparison.title")} description={error} />
       )}
       {response?.partial.supplier_accounts.length ? (
         <PartialDataWarning>
@@ -300,7 +326,7 @@ export function ComparisonWorkspace({
       {response && !loading && response.offers.length > 0 && (
         <section className="search-comparison__offers" aria-live="polite">
           <div className="search-comparison__freshness">
-            <strong>Price freshness</strong>
+            <strong>{t("comparison.freshness")}</strong>
             {(
               [
                 "fresh",
@@ -362,6 +388,11 @@ function OfferCard({
   offer: Offer;
   canonicalProductId: string;
 }) {
+  const { locations, locationId } = useWorkspace();
+  const { formatDateTime, formatMoney, t } = useTranslation();
+  const timeZone = (locations ?? []).find(
+    (location) => location.id === locationId,
+  )?.timezone;
   const unsafe =
     offer.comparison_class === "alternative" ||
     offer.comparison_class === "not_safely_comparable" ||
@@ -376,50 +407,49 @@ function OfferCard({
         <div className="comparison-offer__badges">
           {offer.winner_labels.map((winner) => (
             <Badge key={winner} tone="accent">
-              {title(winner)}
+              {comparisonLabel(t, winner)}
             </Badge>
           ))}
           <Badge tone={tone(offer.availability)}>
-            {title(offer.availability)}
+            {comparisonLabel(t, offer.availability)}
           </Badge>
           <Badge tone={tone(offer.comparison_class)}>
-            {title(offer.comparison_class)}
+            {comparisonLabel(t, offer.comparison_class)}
           </Badge>
           <FreshnessBadge
             state={offer.freshness}
             timestamp={offer.observed_at}
+            timeZone={timeZone}
           />
         </div>
       </div>
       <dl className="comparison-offer__facts">
         <div>
-          <dt>Pack</dt>
+          <dt>{t("comparison.pack")}</dt>
           <dd>{pack(offer)}</dd>
         </div>
         <div>
-          <dt>Case price</dt>
-          <dd>
-            {offer.currency} {offer.case_price}
-          </dd>
+          <dt>{t("comparison.casePrice")}</dt>
+          <dd>{formatMoney(offer.case_price, offer.currency)}</dd>
         </div>
         <div>
-          <dt>Normalized price</dt>
+          <dt>{t("comparison.normalizedPrice")}</dt>
           <dd>
             {offer.normalized_price
-              ? `${offer.currency} ${offer.normalized_price}/${offer.normalized_unit}`
-              : "Not safely available"}
+              ? `${formatMoney(offer.normalized_price, offer.currency)}/${offer.normalized_unit}`
+              : t("comparison.notSafelyAvailable")}
           </dd>
         </div>
         <div>
-          <dt>Observed</dt>
-          <dd>{new Date(offer.observed_at).toLocaleString()}</dd>
+          <dt>{t("comparison.observationTime")}</dt>
+          <dd>{formatDateTime(offer.observed_at, timeZone)}</dd>
         </div>
         <div>
-          <dt>Imported</dt>
+          <dt>{t("comparison.importedTime")}</dt>
           <dd>
             {offer.imported_at
-              ? new Date(offer.imported_at).toLocaleString()
-              : "Not retained by this legacy observation"}
+              ? formatDateTime(offer.imported_at, timeZone)
+              : t("common.notAvailable")}
           </dd>
         </div>
       </dl>
@@ -431,7 +461,7 @@ function OfferCard({
         </p>
       )}
       <details className="comparison-offer__details">
-        <summary>Calculation details and source evidence</summary>
+        <summary>{t("comparison.calculationDetails")}</summary>
         <dl className="comparison-offer__facts">
           <div>
             <dt>Source case price</dt>
