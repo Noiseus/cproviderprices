@@ -8,6 +8,7 @@ use App\Services\SearchComparisonCache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /** Bounded, idempotent derived-state refresh; immutable observations are never changed. */
 final class RecalculatePriceFreshness implements ShouldQueue
@@ -24,8 +25,11 @@ final class RecalculatePriceFreshness implements ShouldQueue
     {
         $lock = Cache::lock('price-freshness:recalculate', 300);
         if (! $lock->get()) {
+            Log::info('freshness.recalculation.skipped', ['event' => 'freshness.recalculation.skipped', 'reason' => 'lock_unavailable']);
+
             return;
         }
+        $startedAt = hrtime(true);
         try {
             $offers = SupplierOffer::query()
                 ->whereNotNull('current_price_observation_id')
@@ -61,6 +65,15 @@ final class RecalculatePriceFreshness implements ShouldQueue
                     );
                 }
             }
+            Log::info('freshness.recalculation.completed', [
+                'event' => 'freshness.recalculation.completed',
+                'offers_examined' => $offers->count(),
+                'offers_changed' => array_sum(array_map(
+                    static fn (array $locations): int => array_sum(array_map('count', $locations)),
+                    $changed,
+                )),
+                'duration_ms' => (int) ((hrtime(true) - $startedAt) / 1_000_000),
+            ]);
         } finally {
             $lock->release();
         }

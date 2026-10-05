@@ -3,10 +3,12 @@
 namespace App\Support;
 
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -22,6 +24,7 @@ final class ApiErrorResponse
 
         $status = match (true) {
             $exception instanceof ApiProblem => $exception->status,
+            $exception instanceof TokenMismatchException => 419,
             $exception instanceof AuthenticationException => Response::HTTP_UNAUTHORIZED,
             $exception instanceof AuthorizationException => Response::HTTP_FORBIDDEN,
             $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
@@ -37,6 +40,11 @@ final class ApiErrorResponse
             'message' => $message,
             'request_id' => $requestId,
         ];
+
+        if ($exception instanceof TokenMismatchException) {
+            $error['code'] = 'csrf_token_mismatch';
+            $error['message'] = 'The CSRF token is invalid or expired. Refresh and try again.';
+        }
 
         if ($exception instanceof ApiProblem) {
             $error['code'] = $exception->problemCode;
@@ -54,9 +62,21 @@ final class ApiErrorResponse
             $error['details'] = ['fields' => $exception->errors()];
         }
 
-        return response()
+        $response = response()
             ->json(['error' => $error], $status)
             ->header(AssignRequestId::HEADER, $requestId);
+
+        if ($exception instanceof HttpExceptionInterface) {
+            foreach ($exception->getHeaders() as $header => $value) {
+                if (in_array(strtolower($header), ['retry-after', 'x-ratelimit-limit', 'x-ratelimit-remaining'], true)) {
+                    $response->headers->set($header, $value);
+                }
+            }
+        }
+
+        SecurityHeaders::apply($request, $response);
+
+        return $response;
     }
 
     private static function codeFor(int $status): string

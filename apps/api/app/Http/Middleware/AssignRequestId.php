@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -14,8 +16,29 @@ final class AssignRequestId
     public function handle(Request $request, Closure $next): Response
     {
         $requestId = self::for($request);
+        $startedAt = hrtime(true);
+        Log::withContext([
+            'correlation_id' => $requestId,
+            'http_method' => $request->method(),
+            'route' => $request->route()?->getName(),
+        ]);
         $response = $next($request);
         $response->headers->set(self::HEADER, $requestId);
+
+        if ($response->getStatusCode() >= 400) {
+            $context = [
+                'event' => 'http.request.completed',
+                'status' => $response->getStatusCode(),
+                'duration_ms' => (int) ((hrtime(true) - $startedAt) / 1_000_000),
+            ];
+            $tenant = $request->attributes->get(TenantContext::class);
+            if ($tenant instanceof TenantContext) {
+                $context['user_id'] = $tenant->user->id;
+                $context['organization_id'] = $tenant->organization->id;
+            }
+
+            Log::warning('http.request.completed', $context);
+        }
 
         return $response;
     }

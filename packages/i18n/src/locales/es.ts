@@ -516,5 +516,9 @@ export const es = {
     network_error:
       "No se pudo conectar. Revise su conexión e inténtelo de nuevo.",
     internal_error: "Ocurrió un error inesperado.",
+    csrf_token_mismatch:
+      "El token de seguridad de su sesión expiró. Actualice e inténtelo de nuevo.",
+    too_many_requests:
+      "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
   },
 } as const;

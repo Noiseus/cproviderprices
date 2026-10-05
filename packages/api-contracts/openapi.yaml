@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CProviderPrices API
-  version: 0.11.0
+  version: 0.12.0
   description: Versioned API contract for operational, invite-only authentication, tenant-context, entitlement, and explicit platform-administration endpoints.
 security: []
 servers:
@@ -1556,10 +1556,13 @@ components:
               request_id: import-request-1
               details: { import_id: 550e8400-e29b-41d4-a716-446655440000 }
     ErrorResponse:
-      description: Request failed using the standard API error envelope.
+      description: Request failed using the standard API error envelope. Rate-limited endpoints use HTTP 429 with code too_many_requests and include Retry-After.
       headers:
         X-Request-ID:
           $ref: "#/components/headers/RequestId"
+        Retry-After:
+          description: Present for a throttled request; seconds until another attempt may be made.
+          schema: { type: integer, minimum: 1 }
       content:
         application/json:
           schema:
