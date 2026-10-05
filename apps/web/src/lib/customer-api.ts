@@ -41,6 +41,8 @@ export type SupplierAccount = {
   expected_refresh_cadence: "on_demand" | "daily" | "weekly" | "monthly";
   status: "active" | "inactive";
   last_successful_sync_at: string | null;
+  next_expected_sync_at: string | null;
+  last_sync_failed_at: string | null;
 };
 
 export async function tenantServerRequest<T>(

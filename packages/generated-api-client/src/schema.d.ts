@@ -838,6 +838,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{organization}/price-history/{canonicalProduct}": {
+        parameters: {
+            query: {
+                /** @description Requested location is verified against the server-authorized organization membership. */
+                location_id: string;
+                /** @description Inclusive UTC calendar-date start. The range is bounded to 366 days. */
+                from?: string;
+                /** @description Inclusive UTC calendar-date end. The range is bounded to 366 days. */
+                to?: string;
+                /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
+                "supplier_id[]"?: components["parameters"]["SupplierFilter"];
+                /** @description Restricts daily aggregation to a compatible unit dimension. */
+                dimension?: "weight" | "volume" | "count";
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                canonicalProduct: components["parameters"]["CanonicalProductId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Read tenant/location-authorized immutable price history for one canonical product
+         * @description Observations retain source and import timestamps. Daily means are calculated with exact decimal arithmetic only within the same supplier, currency, and compatible unit dimension. Unsafe or incompatible observations remain visible but are not fabricated into a normalized series.
+         */
+        get: operations["getPriceHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{organization}/memberships/{membership}": {
         parameters: {
             query?: never;
@@ -1121,10 +1159,10 @@ export interface components {
         /** @enum {string} */
         OfferAvailability: "available" | "unavailable" | "unknown";
         /**
-         * @description Derived from an explicit source observation timestamp and the supplier account's expected refresh cadence; never a claim of live pricing.
+         * @description Derived server-side from source method, source/observation time, configured cadence, and safe connection state; never a claim of live pricing.
          * @enum {string}
          */
-        PriceFreshness: "fresh" | "aging" | "stale" | "unknown";
+        PriceFreshness: "fresh" | "aging" | "stale" | "connection_failed" | "manual_import";
         /** @enum {string} */
         ComparisonClass: "exact" | "equivalent" | "alternative" | "not_safely_comparable";
         /** @enum {string} */
@@ -1165,7 +1203,8 @@ export interface components {
             fresh: number;
             aging: number;
             stale: number;
-            unknown: number;
+            connection_failed: number;
+            manual_import: number;
         };
         SearchPriceSummary: {
             /** @description Decimal string, never a binary floating-point value. */
@@ -1228,7 +1267,11 @@ export interface components {
                 /** Format: uuid */
                 id: string;
                 /** Format: date-time */
+                source_updated_at: string | null;
+                /** Format: date-time */
                 observed_at: string;
+                /** Format: date-time */
+                imported_at: string | null;
                 /** Format: uuid */
                 import_run_id: string;
                 /** Format: uuid */
@@ -1271,7 +1314,11 @@ export interface components {
             normalized_denominator: components["schemas"]["NormalizedDenominator"] | null;
             availability: components["schemas"]["OfferAvailability"];
             /** Format: date-time */
+            source_updated_at: string | null;
+            /** Format: date-time */
             observed_at: string;
+            /** Format: date-time */
+            imported_at: string | null;
             freshness: components["schemas"]["PriceFreshness"];
             comparison_class: components["schemas"]["ComparisonClass"];
             warnings: string[];
@@ -1291,6 +1338,97 @@ export interface components {
             offers: components["schemas"]["ProductComparisonOffer"][];
             pagination: components["schemas"]["Pagination"];
             partial: components["schemas"]["PartialSupplierState"];
+        };
+        PriceHistoryProduct: {
+            /** Format: uuid */
+            id: string;
+            english_name: string;
+            category: {
+                /** Format: uuid */
+                id: string;
+                english_name: string;
+            };
+        };
+        PriceHistoryObservation: {
+            /** Format: uuid */
+            id: string;
+            supplier: {
+                /** Format: uuid */
+                id: string;
+                display_name: string;
+                name: string;
+            };
+            /** @description Decimal source case price. */
+            case_price: string;
+            currency: string;
+            /** @description Decimal string only for a safe compatible unit. */
+            normalized_price: string | null;
+            /** @enum {string|null} */
+            normalized_unit: "lb" | "gal" | "ea" | null;
+            /** @enum {string|null} */
+            dimension: "weight" | "volume" | "count" | null;
+            availability: components["schemas"]["OfferAvailability"];
+            freshness: components["schemas"]["PriceFreshness"];
+            /** Format: date-time */
+            source_updated_at: string | null;
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: date-time */
+            imported_at: string | null;
+            /** @enum {string} */
+            aggregation_state: "safe" | "unsafe_variable_weight" | "incompatible_or_unsafe_unit" | "not_safely_comparable";
+            provenance: {
+                /** Format: uuid */
+                import_run_id: string;
+                /** Format: uuid */
+                normalized_import_record_id: string;
+                formula_version: string;
+            };
+            match: {
+                [key: string]: unknown;
+            } | null;
+        };
+        PriceHistorySeriesPoint: {
+            /** Format: date */
+            date: string;
+            supplier: {
+                /** Format: uuid */
+                id: string;
+                display_name: string;
+                name: string;
+            };
+            currency: string;
+            /** @enum {string} */
+            dimension: "weight" | "volume" | "count";
+            /** @enum {string} */
+            normalized_unit: "lb" | "gal" | "ea";
+            /** @description Exact-decimal daily mean serialized as a string. */
+            normalized_price: string;
+            observation_count: number;
+        };
+        PriceHistoryResponse: {
+            canonical_product: components["schemas"]["PriceHistoryProduct"];
+            location: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            range: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+            };
+            aggregation: {
+                /** @enum {string} */
+                method: "daily_mean_per_supplier_compatible_unit";
+                /** @enum {string} */
+                state: "compatible_units" | "isolated_incompatible_units";
+                dimensions: ("weight" | "volume" | "count")[];
+                excluded_unsafe_count: number;
+            };
+            series: components["schemas"]["PriceHistorySeriesPoint"][];
+            observations: components["schemas"]["PriceHistoryObservation"][];
         };
         /**
          * @description Phase B ends at queued. Failed/canceled are terminal; later phases own normalization and successful terminal states.
@@ -1320,6 +1458,8 @@ export interface components {
             unit?: string;
             price?: string;
             currency?: string;
+            /** @description Optional source-updated ISO-8601 timestamp. It is preserved separately and never fabricated. */
+            source_updated_at?: string;
             /** @description Source-observed ISO-8601 timestamp; no price observation is fabricated if it is absent. */
             observed_at?: string;
             /** @description Source availability/status; unrecognized values remain unknown. */
@@ -1687,6 +1827,10 @@ export interface components {
             status: "active" | "inactive";
             /** Format: date-time */
             last_successful_sync_at: string | null;
+            /** Format: date-time */
+            next_expected_sync_at: string | null;
+            /** Format: date-time */
+            last_sync_failed_at: string | null;
         };
         SupplierAccountListResponse: {
             supplier_definitions: components["schemas"]["SupplierDefinition"][];
@@ -3337,6 +3481,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductComparisonResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getPriceHistory: {
+        parameters: {
+            query: {
+                /** @description Requested location is verified against the server-authorized organization membership. */
+                location_id: string;
+                /** @description Inclusive UTC calendar-date start. The range is bounded to 366 days. */
+                from?: string;
+                /** @description Inclusive UTC calendar-date end. The range is bounded to 366 days. */
+                to?: string;
+                /** @description Repeat for each supplier account. Unknown or inaccessible accounts simply cannot reveal private offer data. */
+                "supplier_id[]"?: components["parameters"]["SupplierFilter"];
+                /** @description Restricts daily aggregation to a compatible unit dimension. */
+                dimension?: "weight" | "volume" | "count";
+            };
+            header?: {
+                /** @description Optional caller-provided correlation ID. Invalid values are replaced server-side. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                /** @description Route-authoritative organization UUID; authorization is enforced by the route's tenant or explicit platform scope. */
+                organization: components["parameters"]["OrganizationId"];
+                canonicalProduct: components["parameters"]["CanonicalProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bounded price history, safe aggregation, and traceable observation metadata. */
+            200: {
+                headers: {
+                    "X-Request-ID": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceHistoryResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

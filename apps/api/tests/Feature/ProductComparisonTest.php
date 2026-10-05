@@ -63,7 +63,7 @@ final class ProductComparisonTest extends TestCase
         $this->assertSame([], $rows[$alternative->id]['winner_labels']);
         $this->assertNull($rows[$unsafe->id]['normalized_price']);
         $this->assertContains('normalized_price_unavailable', $rows[$unsafe->id]['warnings']);
-        $this->assertSame('stale', $rows[$stale->id]['freshness']);
+        $this->assertSame('manual_import', $rows[$stale->id]['freshness']);
         $this->assertSame('price-comparison-1.0.0', $rows[$bestNormalized->id]['calculation']['formula_version']);
         $this->assertSame('30.00', $rows[$bestNormalized->id]['calculation']['source_price_evidence']['source_price']);
         $this->assertSame('comparison_fixture', $rows[$bestNormalized->id]['calculation']['match']['evidence']['stage']);

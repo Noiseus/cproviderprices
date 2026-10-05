@@ -782,6 +782,41 @@ paths:
           headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
           content: { application/json: { schema: { $ref: "#/components/schemas/ProductComparisonResponse" } } }
         default: { $ref: "#/components/responses/ErrorResponse" }
+  /organizations/{organization}/price-history/{canonicalProduct}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/CanonicalProductId"
+      - $ref: "#/components/parameters/RequestId"
+      - name: location_id
+        in: query
+        required: true
+        description: Requested location is verified against the server-authorized organization membership.
+        schema: { type: string, format: uuid }
+      - name: from
+        in: query
+        description: Inclusive UTC calendar-date start. The range is bounded to 366 days.
+        schema: { type: string, format: date }
+      - name: to
+        in: query
+        description: Inclusive UTC calendar-date end. The range is bounded to 366 days.
+        schema: { type: string, format: date }
+      - $ref: "#/components/parameters/SupplierFilter"
+      - name: dimension
+        in: query
+        description: Restricts daily aggregation to a compatible unit dimension.
+        schema: { type: string, enum: [weight, volume, count] }
+    get:
+      operationId: getPriceHistory
+      summary: Read tenant/location-authorized immutable price history for one canonical product
+      description: >-
+        Observations retain source and import timestamps. Daily means are calculated with exact decimal arithmetic only within the same supplier, currency, and compatible unit dimension. Unsafe or incompatible observations remain visible but are not fabricated into a normalized series.
+      security: [{ cookieSession: [] }]
+      responses:
+        "200":
+          description: Bounded price history, safe aggregation, and traceable observation metadata.
+          headers: { X-Request-ID: { $ref: "#/components/headers/RequestId" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/PriceHistoryResponse" } } }
+        default: { $ref: "#/components/responses/ErrorResponse" }
   /organizations/{organization}/memberships/{membership}:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1173,7 +1208,7 @@ components:
     FreshnessFilter:
       name: freshness[]
       in: query
-      schema: { type: array, maxItems: 4, items: { $ref: "#/components/schemas/PriceFreshness" } }
+      schema: { type: array, maxItems: 5, items: { $ref: "#/components/schemas/PriceFreshness" } }
     ComparisonClassFilter:
       name: match_class[]
       in: query
@@ -1338,8 +1373,8 @@ components:
       enum: [available, unavailable, unknown]
     PriceFreshness:
       type: string
-      enum: [fresh, aging, stale, unknown]
-      description: Derived from an explicit source observation timestamp and the supplier account's expected refresh cadence; never a claim of live pricing.
+      enum: [fresh, aging, stale, connection_failed, manual_import]
+      description: Derived server-side from source method, source/observation time, configured cadence, and safe connection state; never a claim of live pricing.
     ComparisonClass:
       type: string
       enum: [exact, equivalent, alternative, not_safely_comparable]
@@ -1388,12 +1423,13 @@ components:
     FreshnessSummary:
       type: object
       additionalProperties: false
-      required: [fresh, aging, stale, unknown]
+      required: [fresh, aging, stale, connection_failed, manual_import]
       properties:
         fresh: { type: integer, minimum: 0 }
         aging: { type: integer, minimum: 0 }
         stale: { type: integer, minimum: 0 }
-        unknown: { type: integer, minimum: 0 }
+        connection_failed: { type: integer, minimum: 0 }
+        manual_import: { type: integer, minimum: 0 }
     SearchPriceSummary:
       type: object
       additionalProperties: false
@@ -1472,10 +1508,12 @@ components:
         observation:
           type: object
           additionalProperties: false
-          required: [id, observed_at, import_run_id, normalized_import_record_id]
+          required: [id, source_updated_at, observed_at, imported_at, import_run_id, normalized_import_record_id]
           properties:
             id: { type: string, format: uuid }
+            source_updated_at: { type: [string, "null"], format: date-time }
             observed_at: { type: string, format: date-time }
+            imported_at: { type: [string, "null"], format: date-time }
             import_run_id: { type: string, format: uuid }
             normalized_import_record_id: { type: string, format: uuid }
         match:
@@ -1493,7 +1531,7 @@ components:
     ProductComparisonOffer:
       type: object
       additionalProperties: false
-      required: [id, supplier, raw_supplier_name, pack, case_price, currency, normalized_price, normalized_unit, normalized_denominator, availability, observed_at, freshness, comparison_class, warnings, winner_labels, calculation]
+      required: [id, supplier, raw_supplier_name, pack, case_price, currency, normalized_price, normalized_unit, normalized_denominator, availability, source_updated_at, observed_at, imported_at, freshness, comparison_class, warnings, winner_labels, calculation]
       properties:
         id: { type: string, format: uuid }
         supplier:
@@ -1515,7 +1553,9 @@ components:
             - $ref: "#/components/schemas/NormalizedDenominator"
             - type: "null"
         availability: { $ref: "#/components/schemas/OfferAvailability" }
+        source_updated_at: { type: [string, "null"], format: date-time }
         observed_at: { type: string, format: date-time }
+        imported_at: { type: [string, "null"], format: date-time }
         freshness: { $ref: "#/components/schemas/PriceFreshness" }
         comparison_class: { $ref: "#/components/schemas/ComparisonClass" }
         warnings: { type: array, items: { type: string } }
@@ -1540,6 +1580,102 @@ components:
         offers: { type: array, items: { $ref: "#/components/schemas/ProductComparisonOffer" } }
         pagination: { $ref: "#/components/schemas/Pagination" }
         partial: { $ref: "#/components/schemas/PartialSupplierState" }
+    PriceHistoryProduct:
+      type: object
+      additionalProperties: false
+      required: [id, english_name, category]
+      properties:
+        id: { type: string, format: uuid }
+        english_name: { type: string }
+        category:
+          type: object
+          additionalProperties: false
+          required: [id, english_name]
+          properties:
+            id: { type: string, format: uuid }
+            english_name: { type: string }
+    PriceHistoryObservation:
+      type: object
+      additionalProperties: false
+      required: [id, supplier, case_price, currency, normalized_price, normalized_unit, dimension, availability, freshness, source_updated_at, observed_at, imported_at, aggregation_state, provenance, match]
+      properties:
+        id: { type: string, format: uuid }
+        supplier:
+          type: object
+          additionalProperties: false
+          required: [id, display_name, name]
+          properties:
+            id: { type: string, format: uuid }
+            display_name: { type: string }
+            name: { type: string }
+        case_price: { type: string, description: Decimal source case price. }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        normalized_price: { type: [string, "null"], description: Decimal string only for a safe compatible unit. }
+        normalized_unit: { type: [string, "null"], enum: [lb, gal, ea, null] }
+        dimension: { type: [string, "null"], enum: [weight, volume, count, null] }
+        availability: { $ref: "#/components/schemas/OfferAvailability" }
+        freshness: { $ref: "#/components/schemas/PriceFreshness" }
+        source_updated_at: { type: [string, "null"], format: date-time }
+        observed_at: { type: string, format: date-time }
+        imported_at: { type: [string, "null"], format: date-time }
+        aggregation_state: { type: string, enum: [safe, unsafe_variable_weight, incompatible_or_unsafe_unit, not_safely_comparable] }
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [import_run_id, normalized_import_record_id, formula_version]
+          properties:
+            import_run_id: { type: string, format: uuid }
+            normalized_import_record_id: { type: string, format: uuid }
+            formula_version: { type: string }
+        match: { type: [object, "null"], additionalProperties: true }
+    PriceHistorySeriesPoint:
+      type: object
+      additionalProperties: false
+      required: [date, supplier, currency, dimension, normalized_unit, normalized_price, observation_count]
+      properties:
+        date: { type: string, format: date }
+        supplier:
+          type: object
+          additionalProperties: false
+          required: [id, display_name, name]
+          properties:
+            id: { type: string, format: uuid }
+            display_name: { type: string }
+            name: { type: string }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        dimension: { type: string, enum: [weight, volume, count] }
+        normalized_unit: { type: string, enum: [lb, gal, ea] }
+        normalized_price: { type: string, description: Exact-decimal daily mean serialized as a string. }
+        observation_count: { type: integer, minimum: 1 }
+    PriceHistoryResponse:
+      type: object
+      additionalProperties: false
+      required: [canonical_product, location, range, aggregation, series, observations]
+      properties:
+        canonical_product: { $ref: "#/components/schemas/PriceHistoryProduct" }
+        location:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties: { id: { type: string, format: uuid }, name: { type: string } }
+        range:
+          type: object
+          additionalProperties: false
+          required: [from, to]
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+        aggregation:
+          type: object
+          additionalProperties: false
+          required: [method, state, dimensions, excluded_unsafe_count]
+          properties:
+            method: { type: string, enum: [daily_mean_per_supplier_compatible_unit] }
+            state: { type: string, enum: [compatible_units, isolated_incompatible_units] }
+            dimensions: { type: array, items: { type: string, enum: [weight, volume, count] } }
+            excluded_unsafe_count: { type: integer, minimum: 0 }
+        series: { type: array, items: { $ref: "#/components/schemas/PriceHistorySeriesPoint" } }
+        observations: { type: array, items: { $ref: "#/components/schemas/PriceHistoryObservation" } }
     ImportStatus:
       type: string
       enum: [uploaded, validating, needs_mapping, queued, processing, partially_completed, completed, failed, canceled]
@@ -1568,6 +1704,7 @@ components:
         unit: { type: string, minLength: 1, maxLength: 4096 }
         price: { type: string, minLength: 1, maxLength: 4096 }
         currency: { type: string, minLength: 1, maxLength: 4096 }
+        source_updated_at: { type: string, minLength: 1, maxLength: 4096, description: "Optional source-updated ISO-8601 timestamp. It is preserved separately and never fabricated." }
         observed_at: { type: string, minLength: 1, maxLength: 4096, description: "Source-observed ISO-8601 timestamp; no price observation is fabricated if it is absent." }
         availability: { type: string, minLength: 1, maxLength: 4096, description: "Source availability/status; unrecognized values remain unknown." }
         gtin: { type: string, minLength: 1, maxLength: 4096 }
@@ -2148,7 +2285,7 @@ components:
     SupplierAccount:
       type: object
       additionalProperties: false
-      required: [id, supplier, location, display_name, masked_account_reference, source_method, expected_refresh_cadence, status, last_successful_sync_at]
+      required: [id, supplier, location, display_name, masked_account_reference, source_method, expected_refresh_cadence, status, last_successful_sync_at, next_expected_sync_at, last_sync_failed_at]
       properties:
         id: { type: string, format: uuid }
         supplier: { $ref: "#/components/schemas/SupplierDefinition" }
@@ -2163,6 +2300,8 @@ components:
         expected_refresh_cadence: { type: string, enum: [on_demand, daily, weekly, monthly] }
         status: { type: string, enum: [active, inactive] }
         last_successful_sync_at: { type: [string, "null"], format: date-time }
+        next_expected_sync_at: { type: [string, "null"], format: date-time }
+        last_sync_failed_at: { type: [string, "null"], format: date-time }
     SupplierAccountListResponse:
       type: object
       additionalProperties: false

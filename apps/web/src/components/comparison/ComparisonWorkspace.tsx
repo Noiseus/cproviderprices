@@ -18,6 +18,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { ApiClientError, apiRequest } from "@/lib/api";
+import { useVisibleStaleRefresh } from "@/components/refresh/useVisibleRefresh";
 
 type ComparisonResponse = components["schemas"]["ProductComparisonResponse"];
 type Offer = ComparisonResponse["offers"][number];
@@ -64,7 +65,9 @@ export function ComparisonWorkspace({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const epoch = useRef(0);
+  const responseRef = useRef<ComparisonResponse | null>(null);
   const filters = {
     availability: searchParams.get("availability") ?? "",
     freshness: searchParams.get("freshness") ?? "",
@@ -88,37 +91,40 @@ export function ComparisonWorkspace({
     [pathname, router, searchParams],
   );
 
-  useEffect(() => {
-    if (!locationId) {
-      setResponse(null);
-      return;
-    }
-    const controller = new AbortController();
-    const current = ++epoch.current;
-    const parameters = new URLSearchParams({
-      location_id: locationId,
-      sort: filters.sort,
-    });
-    if (filters.availability)
-      parameters.append("availability[]", filters.availability);
-    if (filters.freshness) parameters.append("freshness[]", filters.freshness);
-    if (filters.matchClass)
-      parameters.append("match_class[]", filters.matchClass);
-    if (filters.page > 1) parameters.set("page", String(filters.page));
-    setLoading(true);
-    setBlocked(false);
-    void apiRequest<ComparisonResponse>(
-      `/api/v1/organizations/${organization.id}/comparisons/${encodeURIComponent(canonicalProductId)}?${parameters.toString()}`,
-      { signal: controller.signal },
-    )
-      .then((payload) => {
-        if (controller.signal.aborted || current !== epoch.current) return;
-        setResponse(payload);
-        setError(null);
-      })
-      .catch((reason: unknown) => {
-        if (controller.signal.aborted || current !== epoch.current) return;
+  const load = useCallback(
+    async (signal: AbortSignal): Promise<boolean> => {
+      if (!locationId) {
         setResponse(null);
+        responseRef.current = null;
+        return false;
+      }
+      const current = ++epoch.current;
+      const parameters = new URLSearchParams({
+        location_id: locationId,
+        sort: filters.sort,
+      });
+      if (filters.availability)
+        parameters.append("availability[]", filters.availability);
+      if (filters.freshness)
+        parameters.append("freshness[]", filters.freshness);
+      if (filters.matchClass)
+        parameters.append("match_class[]", filters.matchClass);
+      if (filters.page > 1) parameters.set("page", String(filters.page));
+      setLoading(true);
+      setBlocked(false);
+      try {
+        const payload = await apiRequest<ComparisonResponse>(
+          `/api/v1/organizations/${organization.id}/comparisons/${encodeURIComponent(canonicalProductId)}?${parameters.toString()}`,
+          { signal },
+        );
+        if (signal.aborted || current !== epoch.current) return false;
+        setResponse(payload);
+        responseRef.current = payload;
+        setError(null);
+        return true;
+      } catch (reason: unknown) {
+        if (signal.aborted || current !== epoch.current) return false;
+        if (responseRef.current === null) setResponse(null);
         if (
           reason instanceof ApiClientError &&
           [401, 403, 404].includes(reason.status)
@@ -129,22 +135,36 @@ export function ComparisonWorkspace({
             ? reason.message
             : "Comparison is unavailable.",
         );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted && current === epoch.current)
-          setLoading(false);
-      });
+        return false;
+      } finally {
+        if (!signal.aborted && current === epoch.current) setLoading(false);
+      }
+    },
+    [
+      canonicalProductId,
+      filters.availability,
+      filters.freshness,
+      filters.matchClass,
+      filters.page,
+      filters.sort,
+      locationId,
+      organization.id,
+    ],
+  );
+
+  const { isStale, markFresh, refreshNow } = useVisibleStaleRefresh(
+    60_000,
+    load,
+    Boolean(locationId),
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal).then((succeeded) => {
+      if (succeeded && !controller.signal.aborted) markFresh();
+    });
     return () => controller.abort();
-  }, [
-    canonicalProductId,
-    filters.availability,
-    filters.freshness,
-    filters.matchClass,
-    filters.page,
-    filters.sort,
-    locationId,
-    organization.id,
-  ]);
+  }, [load, markFresh]);
 
   const setFilter = (
     key: "availability" | "freshness" | "match_class" | "sort",
@@ -166,6 +186,26 @@ export function ComparisonWorkspace({
             <p>
               Formula {response.formula_version}. Values are source-observed,
               not live quotes.
+            </p>
+            <p className="comparison-refresh-actions">
+              <Button onClick={() => void refreshNow()} variant="secondary">
+                Refresh CProviderPrices data
+              </Button>{" "}
+              <Button
+                onClick={() =>
+                  setSyncNotice(
+                    "Supplier Sync is not configured. Refresh only reloads CProviderPrices data already stored by the backend.",
+                  )
+                }
+                variant="quiet"
+              >
+                Sync supplier
+              </Button>{" "}
+              <Link
+                href={`/o/${organization.slug}/price-history?product=${canonicalProductId}`}
+              >
+                View price history
+              </Link>
             </p>
           </div>
         </header>
@@ -205,7 +245,8 @@ export function ComparisonWorkspace({
           <option value="fresh">Fresh</option>
           <option value="aging">Aging</option>
           <option value="stale">Stale</option>
-          <option value="unknown">Unknown</option>
+          <option value="connection_failed">Connection failed</option>
+          <option value="manual_import">Manual import</option>
         </Select>
         <Select
           label="Match quality"
@@ -235,6 +276,13 @@ export function ComparisonWorkspace({
           available evidence.
         </PartialDataWarning>
       ) : null}
+      {syncNotice && <PartialDataWarning>{syncNotice}</PartialDataWarning>}
+      {response && (isStale || error) && (
+        <PartialDataWarning>
+          Showing the last trusted comparison data. Refresh to check the
+          existing CProviderPrices records again.
+        </PartialDataWarning>
+      )}
       {response?.warnings.length ? (
         <Card className="search-comparison__warning">
           <strong>Comparison caution</strong>
@@ -251,7 +299,15 @@ export function ComparisonWorkspace({
         <section className="search-comparison__offers" aria-live="polite">
           <div className="search-comparison__freshness">
             <strong>Price freshness</strong>
-            {(["fresh", "aging", "stale"] as const)
+            {(
+              [
+                "fresh",
+                "aging",
+                "stale",
+                "connection_failed",
+                "manual_import",
+              ] as const
+            )
               .filter((state) => response.freshness_summary[state] > 0)
               .map((state) => (
                 <span key={state}>
@@ -317,13 +373,10 @@ function OfferCard({ offer }: { offer: Offer }) {
           <Badge tone={tone(offer.comparison_class)}>
             {title(offer.comparison_class)}
           </Badge>
-          {offer.freshness === "fresh" ||
-          offer.freshness === "aging" ||
-          offer.freshness === "stale" ? (
-            <FreshnessBadge state={offer.freshness} />
-          ) : (
-            <Badge tone="warning">Freshness unknown</Badge>
-          )}
+          <FreshnessBadge
+            state={offer.freshness}
+            timestamp={offer.observed_at}
+          />
         </div>
       </div>
       <dl className="comparison-offer__facts">
@@ -348,6 +401,14 @@ function OfferCard({ offer }: { offer: Offer }) {
         <div>
           <dt>Observed</dt>
           <dd>{new Date(offer.observed_at).toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt>Imported</dt>
+          <dd>
+            {offer.imported_at
+              ? new Date(offer.imported_at).toLocaleString()
+              : "Not retained by this legacy observation"}
+          </dd>
         </div>
       </dl>
       {unsafe && (

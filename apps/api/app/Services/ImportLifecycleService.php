@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ImportStatus;
+use App\Events\ImportPriceObservationsCompleted;
 use App\Models\ImportRun;
 use App\Models\Organization;
 use App\Support\ApiProblem;
@@ -30,6 +31,14 @@ final class ImportLifecycleService
                 $run->finished_at = now();
             }
             $run->save();
+
+            if (in_array($next, [ImportStatus::Completed, ImportStatus::PartiallyCompleted], true)) {
+                DB::afterCommit(fn (): mixed => event(new ImportPriceObservationsCompleted(
+                    $run->organization_id,
+                    $run->restaurant_location_id,
+                    $run->id,
+                )));
+            }
 
             return $run;
         });

@@ -7,7 +7,6 @@ use App\Enums\MatchClass;
 use App\Enums\OfferAvailability;
 use App\Enums\PriceFreshness;
 use App\Enums\SupplierAccountStatus;
-use App\Enums\SupplierRefreshCadence;
 use App\Models\CanonicalProduct;
 use App\Models\PriceObservation;
 use App\Models\RestaurantLocation;
@@ -34,6 +33,8 @@ final class OfferComparisonService
         'volume' => ['unit' => 'gal', 'factor' => '3785.411784'],
         'count' => ['unit' => 'ea', 'factor' => '1'],
     ];
+
+    public function __construct(private readonly PriceFreshnessService $freshness) {}
 
     /**
      * @param  array{supplier_ids?: list<string>, availability?: list<string>, freshness?: list<string>, match_classes?: list<string>, sort?: string, page?: int, per_page?: int}  $filters
@@ -130,7 +131,7 @@ final class OfferComparisonService
             throw new \LogicException('Eligible offer query returned incomplete comparison relations.');
         }
         $class = $this->comparisonClass($mapping->match_class);
-        $freshness = $this->freshness($observation->observed_at, $offer->supplierAccount->expected_refresh_cadence);
+        $freshness = $this->freshness->classify($offer->supplierAccount, $observation);
         $normalized = $this->normalized($observation, $class);
         $rowWarnings = [];
         if ($class === ComparisonClass::Alternative) {
@@ -158,7 +159,9 @@ final class OfferComparisonService
             'normalized_unit' => $normalized['unit'] ?? null,
             'normalized_denominator' => $normalized['denominator'] ?? null,
             'availability' => $observation->availability->value,
+            'source_updated_at' => $observation->source_updated_at?->toIso8601String(),
             'observed_at' => $observation->observed_at->toIso8601String(),
+            'imported_at' => $observation->imported_at?->toIso8601String(),
             'freshness' => $freshness->value,
             'comparison_class' => $class->value,
             'warnings' => $rowWarnings,
@@ -175,7 +178,9 @@ final class OfferComparisonService
                 'formula_version' => self::FORMULA_VERSION,
                 'observation' => [
                     'id' => $observation->id,
+                    'source_updated_at' => $observation->source_updated_at?->toIso8601String(),
                     'observed_at' => $observation->observed_at->toIso8601String(),
+                    'imported_at' => $observation->imported_at?->toIso8601String(),
                     'import_run_id' => $observation->import_run_id,
                     'normalized_import_record_id' => $observation->normalized_import_record_id,
                 ],
@@ -269,7 +274,8 @@ final class OfferComparisonService
             $this->label($rows, $winner['id'], 'best_normalized_price');
         }
 
-        $available = array_values(array_filter($normalized, static fn (array $row): bool => $row['availability'] === OfferAvailability::Available->value && $row['freshness'] !== PriceFreshness::Stale->value));
+        $available = array_values(array_filter($normalized, static fn (array $row): bool => $row['availability'] === OfferAvailability::Available->value
+            && ! in_array($row['freshness'], [PriceFreshness::Stale->value, PriceFreshness::ConnectionFailed->value], true)));
         if (count($currencies) === 1 && count($dimensions) === 1 && ($winner = $this->winner($available, '_normalized_decimal')) !== null) {
             $this->label($rows, $winner['id'], 'best_available_option');
         }
@@ -386,28 +392,6 @@ final class OfferComparisonService
         }
 
         return $summary;
-    }
-
-    private function freshness(CarbonImmutable $observedAt, SupplierRefreshCadence $cadence): PriceFreshness
-    {
-        $hours = match ($cadence) {
-            SupplierRefreshCadence::Daily => 24,
-            SupplierRefreshCadence::Weekly => 24 * 7,
-            SupplierRefreshCadence::Monthly => 24 * 31,
-            SupplierRefreshCadence::OnDemand => null,
-        };
-        if ($hours === null) {
-            return PriceFreshness::Unknown;
-        }
-        $age = $observedAt->diffInHours(now());
-        if ($age <= $hours) {
-            return PriceFreshness::Fresh;
-        }
-        if ($age <= $hours * 2) {
-            return PriceFreshness::Aging;
-        }
-
-        return PriceFreshness::Stale;
     }
 
     private function comparisonClass(MatchClass $matchClass): ComparisonClass

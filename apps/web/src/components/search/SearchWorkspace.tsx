@@ -315,7 +315,8 @@ export function SearchWorkspace() {
         <option value="fresh">Fresh</option>
         <option value="aging">Aging</option>
         <option value="stale">Stale</option>
-        <option value="unknown">Unknown</option>
+        <option value="connection_failed">Connection failed</option>
+        <option value="manual_import">Manual import</option>
       </Select>
       <Select
         label="Match quality"
@@ -463,9 +464,19 @@ export function SearchWorkspace() {
                 </span>
               </div>
               <div className="search-result-card__badges">
-                {result.freshness_summary.stale > 0 && (
-                  <FreshnessBadge state="stale" />
-                )}
+                {(
+                  [
+                    "fresh",
+                    "aging",
+                    "stale",
+                    "connection_failed",
+                    "manual_import",
+                  ] as const
+                )
+                  .filter((state) => result.freshness_summary[state] > 0)
+                  .map((state) => (
+                    <FreshnessBadge key={state} state={state} />
+                  ))}
                 {result.match_quality_summary.alternative > 0 && (
                   <Badge tone="warning">Alternatives included</Badge>
                 )}

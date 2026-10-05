@@ -18,7 +18,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array<string, mixed> $source_price_evidence
  * @property array<string, mixed> $source_pack_evidence
  * @property OfferAvailability $availability
+ * @property CarbonImmutable|null $source_updated_at
  * @property CarbonImmutable $observed_at
+ * @property CarbonImmutable|null $imported_at
  */
 class PriceObservation extends Model
 {
@@ -49,8 +51,11 @@ class PriceObservation extends Model
         'normalized_unit',
         'dimension',
         'availability',
+        'source_updated_at',
         'observed_at',
+        'imported_at',
         'formula_version',
+        'match_evidence',
     ];
 
     /** @return array<string, string> */
@@ -62,7 +67,10 @@ class PriceObservation extends Model
             'source_price_evidence' => 'array',
             'source_pack_evidence' => 'array',
             'availability' => OfferAvailability::class,
+            'source_updated_at' => 'immutable_datetime',
             'observed_at' => 'immutable_datetime',
+            'imported_at' => 'immutable_datetime',
+            'match_evidence' => 'array',
         ];
     }
 

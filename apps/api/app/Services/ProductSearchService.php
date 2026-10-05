@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PriceFreshness;
 use App\Enums\SupplierAccountStatus;
 use App\Models\CanonicalProduct;
 use App\Models\SupplierOffer;
@@ -307,7 +308,10 @@ final class ProductSearchService
     {
         $suppliers = [];
         $classes = ['exact' => 0, 'equivalent' => 0, 'alternative' => 0, 'not_safely_comparable' => 0];
-        $freshness = ['fresh' => 0, 'aging' => 0, 'stale' => 0, 'unknown' => 0];
+        $freshness = array_fill_keys(
+            array_map(static fn (PriceFreshness $state): string => $state->value, PriceFreshness::cases()),
+            0,
+        );
         foreach ($rows as $row) {
             $suppliers[$row['supplier']['id']] = ['id' => $row['supplier']['id'], 'display_name' => $row['supplier']['display_name']];
             $classes[$row['comparison_class']]++;

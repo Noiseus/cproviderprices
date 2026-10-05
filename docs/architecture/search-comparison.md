@@ -11,8 +11,9 @@ organization, location, supplier account and vendor item. It deliberately does
 not duplicate a canonical product or treat a price as identity. A
 `price_observations` row is an immutable source fact attached to that offer.
 It retains the import run, normalized import row, original price/currency/time
-mapping, pack evidence, safely normalized quantity, availability and the
-stable `price-comparison-1.0.0` formula version.
+mapping, pack evidence, safely normalized quantity, availability, source match
+snapshot, source-update/import timestamps and the stable
+`price-comparison-1.0.0` formula version.
 
 An observation is only created when the mapped source has a strict decimal
 price, ISO-8601 source-observed timestamp, three-letter currency, and an
@@ -24,8 +25,9 @@ the current-observation pointer belongs to the same offer and organization.
 
 The current observation is the newest observed timestamp; UUID is its stable
 tie-breaker. Earlier observations are neither updated nor deleted. A completed
-projection that creates an observation or changes this pointer invalidates only
-the organization/location response-cache version.
+projection that creates an observation or changes this pointer invalidates the
+organization/location search version and the affected product-scoped
+comparison/history version after transaction commit.
 
 ## Server calculation policy
 
@@ -52,10 +54,9 @@ then newest observation timestamp, then offer UUID is the deterministic
 tie-breaker. Alternatives and unsafe offers stay visible with explicit
 warnings, but never receive a direct-comparison normalized winner.
 
-Freshness derives from the source timestamp and supplier refresh cadence:
-daily: fresh through 24 hours and aging through 48; weekly: 7/14 days;
-monthly: 31/62 days; on-demand: unknown. The API never calls an observation
-live.
+The current freshness and historical-read contract is documented in
+[price history and freshness](price-history-freshness.md). The API never calls
+an observation live.
 
 ## Search and privacy
 
@@ -77,10 +78,12 @@ leaking another tenant's supplier presence or price. Request telemetry records
 only organization/location IDs, latency, a zero-result flag and a result-count
 bucket—not query text or prices.
 
-Responses use a 30-second Laravel cache. Every key includes the
-server-authorized organization and location plus a scoped version, so cache
-hits cannot cross a tenant/location boundary. Offer projection invalidates only
-the affected scope after transaction commit.
+Search and comparison responses use a 30-second Laravel cache; price-history
+responses use a five-minute cache. Every key includes the server-authorized
+organization and location plus a scoped version (and the canonical product for
+comparison/history), so cache hits cannot cross a tenant/location boundary.
+Offer projection and accepted import completion invalidate only affected scopes
+after transaction commit.
 
 The browser keeps, per organization, at most eight recent query strings as a
 local convenience. It never persists results, offers, supplier identities or

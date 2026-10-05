@@ -104,7 +104,7 @@ test("bilingual structured search opens a traceable Beefsteak comparison with cl
   ).toBeVisible();
   await expect(page.getByText("Not safely available")).toBeVisible();
   await expect(
-    page.locator(".ui-badge--danger", { hasText: "stale" }).first(),
+    page.locator(".ui-badge--warning", { hasText: "manual import" }).first(),
   ).toBeVisible();
   await page
     .getByText("Calculation details and source evidence")
@@ -116,6 +116,67 @@ test("bilingual structured search opens a traceable Beefsteak comparison with cl
     "beef tomato 5x6 25 lb",
   );
   await expect(page).toHaveURL(/q=beef(?:%20|\+)tomato/);
+});
+
+test("price history keeps an accessible table fallback and refreshes only CProviderPrices data", async ({
+  page,
+}) => {
+  await login(page, fixture.search_login);
+  await page.goto(
+    `${web}/o/${fixture.search_login.slug}/compare/${fixture.search_comparison.canonical_product_id}`,
+  );
+  await expect(
+    page.getByRole("link", { name: "View price history" }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    (window as Window & { historyMarker?: string }).historyMarker =
+      "same-document";
+  });
+  await page.getByRole("link", { name: "View price history" }).click();
+  await expect(page).toHaveURL(
+    new RegExp(
+      `/price-history\\?product=${fixture.search_comparison.canonical_product_id}`,
+    ),
+  );
+  expect(
+    await page.evaluate(
+      () => (window as Window & { historyMarker?: string }).historyMarker,
+    ),
+  ).toBe("same-document");
+  await expect(
+    page.getByRole("heading", { name: "Accessible price chart" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Daily compatible-unit values" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /daily compatible-unit/i }),
+  ).toBeVisible();
+
+  let historyRequests = 0;
+  page.on("request", (request) => {
+    if (
+      request.url().includes("/api/v1/organizations/") &&
+      request.url().includes("/price-history/")
+    ) {
+      historyRequests += 1;
+    }
+  });
+  const beforeSync = historyRequests;
+  await page.getByRole("button", { name: "Sync supplier" }).click();
+  await expect(page.getByText(/future connector action/i)).toBeVisible();
+  expect(historyRequests).toBe(beforeSync);
+
+  const refreshed = page.waitForRequest(
+    (request) =>
+      request.url().includes("/api/v1/organizations/") &&
+      request.url().includes("/price-history/"),
+  );
+  await page
+    .getByRole("button", { name: "Refresh CProviderPrices data" })
+    .click();
+  await refreshed;
+  expect(historyRequests).toBeGreaterThan(beforeSync);
 });
 
 test("mobile filter drawer is usable and a foreign workspace never receives private Beefsteak offers", async ({

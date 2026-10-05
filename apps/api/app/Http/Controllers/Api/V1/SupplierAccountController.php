@@ -128,6 +128,8 @@ final class SupplierAccountController extends Controller
             'expected_refresh_cadence' => $account->expected_refresh_cadence->value,
             'status' => $account->status->value,
             'last_successful_sync_at' => $account->last_successful_sync_at?->toIso8601String(),
+            'next_expected_sync_at' => $account->next_expected_sync_at?->toIso8601String(),
+            'last_sync_failed_at' => $account->last_sync_failed_at?->toIso8601String(),
         ];
     }
 }

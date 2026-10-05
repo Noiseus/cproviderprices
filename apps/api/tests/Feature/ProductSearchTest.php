@@ -88,7 +88,7 @@ final class ProductSearchTest extends TestCase
             'brands' => ['acme farms'],
             'units' => ['weight'],
             'availability' => ['available'],
-            'freshness' => ['fresh'],
+            'freshness' => ['manual_import'],
             'match_classes' => ['exact'],
         ]);
         $byCase = $service->search($organization->id, $location->id, ['query' => 'tomato', 'sort' => 'lowest_case_price']);

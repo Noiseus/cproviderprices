@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property SupplierSourceMethod $source_method
  * @property SupplierRefreshCadence $expected_refresh_cadence
  * @property CarbonImmutable|null $last_successful_sync_at
+ * @property CarbonImmutable|null $next_expected_sync_at
+ * @property CarbonImmutable|null $last_sync_failed_at
  * @property SupplierDefinition $supplierDefinition
  * @property RestaurantLocation $restaurantLocation
  */
@@ -36,6 +38,10 @@ class SupplierAccount extends Model
         'source_method',
         'expected_refresh_cadence',
         'status',
+        'last_successful_sync_at',
+        'next_expected_sync_at',
+        'last_sync_failed_at',
+        'last_sync_failure_code',
     ];
 
     /** @return array<string, string> */
@@ -46,6 +52,8 @@ class SupplierAccount extends Model
             'expected_refresh_cadence' => SupplierRefreshCadence::class,
             'status' => SupplierAccountStatus::class,
             'last_successful_sync_at' => 'immutable_datetime',
+            'next_expected_sync_at' => 'immutable_datetime',
+            'last_sync_failed_at' => 'immutable_datetime',
         ];
     }
 

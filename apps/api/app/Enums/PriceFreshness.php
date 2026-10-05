@@ -7,5 +7,6 @@ enum PriceFreshness: string
     case Fresh = 'fresh';
     case Aging = 'aging';
     case Stale = 'stale';
-    case Unknown = 'unknown';
+    case ConnectionFailed = 'connection_failed';
+    case ManualImport = 'manual_import';
 }

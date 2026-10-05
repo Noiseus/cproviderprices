@@ -72,7 +72,13 @@ function searchResponse(name: string, id: string): SearchResponse {
           alternative: 0,
           not_safely_comparable: 0,
         },
-        freshness_summary: { fresh: 1, aging: 0, stale: 0, unknown: 0 },
+        freshness_summary: {
+          fresh: 1,
+          aging: 0,
+          stale: 0,
+          connection_failed: 0,
+          manual_import: 0,
+        },
         price_summary: {
           lowest_case_price: "20",
           currency: "USD",
@@ -97,7 +103,13 @@ function comparisonResponse(): ComparisonResponse {
     },
     location: { id: "location", name: "Kitchen" },
     formula_version: "price-comparison-1.0.0",
-    freshness_summary: { fresh: 1, aging: 0, stale: 1, unknown: 0 },
+    freshness_summary: {
+      fresh: 1,
+      aging: 0,
+      stale: 1,
+      connection_failed: 0,
+      manual_import: 0,
+    },
     warnings: [],
     pagination: { page: 1, per_page: 50, total: 1, total_pages: 1 },
     partial: { supplier_accounts: [] },
@@ -117,7 +129,9 @@ function comparisonResponse(): ComparisonResponse {
         normalized_unit: null,
         normalized_denominator: null,
         availability: "available",
+        source_updated_at: null,
         observed_at: "2026-10-04T12:00:00Z",
+        imported_at: "2026-10-04T12:01:00Z",
         freshness: "stale",
         comparison_class: "alternative",
         warnings: [
@@ -137,7 +151,9 @@ function comparisonResponse(): ComparisonResponse {
           formula_version: "price-comparison-1.0.0",
           observation: {
             id: "observation",
+            source_updated_at: null,
             observed_at: "2026-10-04T12:00:00Z",
+            imported_at: "2026-10-04T12:01:00Z",
             import_run_id: "run",
             normalized_import_record_id: "record",
           },
@@ -269,5 +285,26 @@ describe("comparison workspace", () => {
     );
     expect(screen.getByText("No safe normalization formula")).not.toBeNull();
     expect(screen.getByText("catalog-matcher-1.0.0")).not.toBeNull();
+  });
+
+  it("retains trusted comparison data on a Refresh failure and keeps Sync separate", async () => {
+    vi.mocked(apiRequest).mockImplementation(async (path) => {
+      if (path.includes("comparisons")) return comparisonResponse() as never;
+      return { supplier_accounts: [] } as never;
+    });
+    render(<ComparisonWorkspace canonicalProductId="beef" />);
+    await screen.findByText("Beefsteak Tomato");
+    const callsBeforeSync = vi.mocked(apiRequest).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Sync supplier" }));
+    expect(vi.mocked(apiRequest).mock.calls).toHaveLength(callsBeforeSync);
+
+    vi.mocked(apiRequest).mockRejectedValueOnce(
+      new Error("Backend unavailable"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Refresh CProviderPrices data" }),
+    );
+    await screen.findByText(/last trusted comparison data/i);
+    expect(screen.getByText("Beefsteak Tomato")).not.toBeNull();
   });
 });

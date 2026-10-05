@@ -1,10 +1,5 @@
-import { RoutePlaceholder } from "@/components/app-shell/RoutePlaceholder";
+import { DashboardWorkspace } from "@/components/dashboard/DashboardWorkspace";
 
 export default function DashboardPage() {
-  return (
-    <RoutePlaceholder
-      title="Dashboard"
-      description="A concise workspace landing area. Analytics remain intentionally deferred."
-    />
-  );
+  return <DashboardWorkspace />;
 }
