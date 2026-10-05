@@ -17,6 +17,7 @@ export type SessionPayload = {
       email: string;
       email_verified: boolean;
       platform_role: "platform_admin" | null;
+      preferred_language: "en" | "es";
     };
     organizations: OrganizationSession[];
   };

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Enums\MembershipStatus;
+use App\Enums\PreferredLanguage;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\OrganizationMembership;
@@ -13,6 +14,7 @@ use App\Support\SafeDestination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 final class SessionController extends Controller
@@ -66,6 +68,22 @@ final class SessionController extends Controller
         return response()->json(['message' => 'Signed out.']);
     }
 
+    public function updatePreferences(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            throw new ApiProblem('unauthorized', 'Authentication is required.', 401);
+        }
+
+        $validated = $request->validate([
+            'preferred_language' => ['required', 'string', Rule::in(array_column(PreferredLanguage::cases(), 'value'))],
+        ]);
+        $user->update(['preferred_language' => $validated['preferred_language']]);
+
+        return response()->json(['session' => $this->sessionPayload($user->refresh())]);
+    }
+
     /** @return array<string, mixed> */
     private function sessionPayload(User $user): array
     {
@@ -81,6 +99,7 @@ final class SessionController extends Controller
                 'email' => $user->email,
                 'email_verified' => $user->hasVerifiedEmail(),
                 'platform_role' => $user->platform_role?->value,
+                'preferred_language' => $user->preferred_language->value,
             ],
             'organizations' => $memberships->map(fn (OrganizationMembership $membership): array => [
                 'id' => $membership->organization->id,

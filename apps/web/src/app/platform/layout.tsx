@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { PlatformShell } from "@/components/platform/PlatformShell";
 import { ShellFailure } from "@/components/app-shell/ShellStates";
+import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { currentSessionResult } from "@/lib/server-session";
 
 export default async function PlatformLayout({
@@ -17,11 +18,13 @@ export default async function PlatformLayout({
     return <ShellFailure kind="forbidden" />;
 
   return (
-    <PlatformShell
-      user={result.data.session.user}
-      organizations={result.data.session.organizations}
-    >
-      {children}
-    </PlatformShell>
+    <I18nProvider initialLocale={result.data.session.user.preferred_language}>
+      <PlatformShell
+        user={result.data.session.user}
+        organizations={result.data.session.organizations}
+      >
+        {children}
+      </PlatformShell>
+    </I18nProvider>
   );
 }

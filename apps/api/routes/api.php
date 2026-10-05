@@ -41,6 +41,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware(['auth:web', 'active.user'])->group(function (): void {
             Route::get('/auth/session', [SessionController::class, 'show']);
+            Route::patch('/auth/preferences', [SessionController::class, 'updatePreferences']);
             Route::delete('/auth/session', [SessionController::class, 'destroy']);
             Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'send'])
                 ->middleware('throttle:verification');

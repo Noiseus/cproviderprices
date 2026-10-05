@@ -1214,6 +1214,12 @@ dd {
   gap: var(--space-5);
 }
 
+.price-history .ui-card,
+.price-history .ui-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .price-history__filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

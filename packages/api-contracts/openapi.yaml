@@ -316,6 +316,27 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /auth/preferences:
+    patch:
+      operationId: updateAuthenticatedPreferences
+      summary: Update the authenticated user's presentation preferences
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePreferencesRequest"
+      responses:
+        "200":
+          description: Preferences updated without changing the authenticated session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /auth/forgot-password:
     post:
       operationId: requestPasswordReset
@@ -2444,7 +2465,7 @@ components:
     SessionUser:
       type: object
       additionalProperties: false
-      required: [id, name, email, email_verified, platform_role]
+      required: [id, name, email, email_verified, platform_role, preferred_language]
       properties:
         id:
           type: string
@@ -2459,6 +2480,17 @@ components:
         platform_role:
           type: [string, "null"]
           enum: [platform_admin, null]
+        preferred_language:
+          type: string
+          enum: [en, es]
+    UpdatePreferencesRequest:
+      type: object
+      additionalProperties: false
+      required: [preferred_language]
+      properties:
+        preferred_language:
+          type: string
+          enum: [en, es]
     SessionOrganization:
       type: object
       additionalProperties: false

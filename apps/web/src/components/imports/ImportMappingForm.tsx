@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Button, Checkbox, Input, Select } from "@/components/ui";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 import {
   mappingErrors,
   mappingFields,
@@ -25,6 +26,7 @@ export function ImportMappingForm({
   onSave: (request: MappingRequest) => Promise<boolean>;
   serverErrors: Record<string, string>;
 }) {
+  const { t } = useTranslation();
   const [mapping, setMapping] = useState<Partial<ImportMapping>>(
     detail.import.mapping_snapshot?.mapping ?? {},
   );
@@ -51,12 +53,9 @@ export function ImportMappingForm({
   }
   return (
     <form onSubmit={(event) => void submit(event)} className="import-form">
-      <p>
-        Choose the source column for each internal field. Values are preserved;
-        no normalization happens in your browser.
-      </p>
+      <p>{t("imports.mappingDescription")}</p>
       <Select
-        label="Reusable mapping template"
+        label={t("imports.mappingTemplate")}
         value={template}
         disabled={pending}
         onChange={(event) => {
@@ -70,7 +69,7 @@ export function ImportMappingForm({
           }
         }}
       >
-        <option value="">Map columns manually</option>
+        <option value="">{t("imports.mapColumnsManually")}</option>
         {compatible.map((item) => (
           <option key={item.id} value={item.id}>
             {item.name}
@@ -81,7 +80,7 @@ export function ImportMappingForm({
         {mappingFields.map(([field, label]) => (
           <Select
             key={field}
-            label={`${label}${field === "supplier_sku" || field === "description" ? " (required)" : ""}`}
+            label={`${label}${field === "supplier_sku" || field === "description" ? ` ${t("imports.requiredField")}` : ""}`}
             value={mapping[field] ?? ""}
             disabled={pending}
             error={errors[field] ?? serverErrors[`mapping.${field}`]}
@@ -97,7 +96,7 @@ export function ImportMappingForm({
               setTemplate("");
             }}
           >
-            <option value="">Not mapped</option>
+            <option value="">{t("imports.notMapped")}</option>
             {detail.file.headers.map((header) => (
               <option
                 key={header}
@@ -113,10 +112,10 @@ export function ImportMappingForm({
         ))}
       </div>
       <fieldset disabled={pending}>
-        <legend>Explicit source conventions</legend>
-        <p>Enable only when confirmed for this supplier file.</p>
+        <legend>{t("imports.sourceConventions")}</legend>
+        <p>{t("imports.conventionsHelp")}</p>
         <Checkbox
-          label="Volumes use US liquid units"
+          label={t("imports.usLiquid")}
           checked={conventions.volume_system === "us_liquid"}
           onChange={(e) =>
             setConventions((old) => {
@@ -128,7 +127,7 @@ export function ImportMappingForm({
           }
         />
         <Checkbox
-          label="Produce size codes (such as 5X6)"
+          label={t("imports.produceSize")}
           checked={conventions.produce_size_code ?? false}
           onChange={(e) =>
             setConventions({
@@ -138,7 +137,7 @@ export function ImportMappingForm({
           }
         />
         <Checkbox
-          label="Pound sign means weight"
+          label={t("imports.poundWeight")}
           checked={conventions.pound_sign_is_weight ?? false}
           onChange={(e) =>
             setConventions({
@@ -149,7 +148,7 @@ export function ImportMappingForm({
         />
       </fieldset>
       <Input
-        label="Save reusable template as (optional)"
+        label={t("imports.saveTemplate")}
         value={name}
         maxLength={100}
         disabled={pending}
@@ -157,7 +156,7 @@ export function ImportMappingForm({
         onChange={(e) => setName(e.target.value)}
       />
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save mapping"}
+        {pending ? t("common.saving") : t("imports.saveMapping")}
       </Button>
     </form>
   );

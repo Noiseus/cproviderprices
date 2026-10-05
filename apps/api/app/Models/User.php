@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PreferredLanguage;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
@@ -14,6 +15,7 @@ use Illuminate\Notifications\Notifiable;
 
 /**
  * @property Role|null $platform_role
+ * @property PreferredLanguage $preferred_language
  * @property UserStatus $status
  * @property int $auth_version
  */
@@ -28,6 +30,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'platform_role',
+        'preferred_language',
         'status',
     ];
 
@@ -46,6 +49,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'immutable_datetime',
             'password' => 'hashed',
             'platform_role' => Role::class,
+            'preferred_language' => PreferredLanguage::class,
             'status' => UserStatus::class,
             'auth_version' => 'integer',
         ];

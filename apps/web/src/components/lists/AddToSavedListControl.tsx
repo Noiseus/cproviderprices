@@ -5,6 +5,7 @@ import type { components } from "@cproviderprices/generated-api-client";
 import { useWorkspace } from "@/components/app-shell/AppShellContext";
 import { Button, Dialog, Input, Select } from "@/components/ui";
 import { ApiClientError, apiRequest } from "@/lib/api";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 type ListIndexResponse = components["schemas"]["SavedListIndexResponse"];
 type ListSummary = ListIndexResponse["saved_lists"][number];
@@ -12,13 +13,14 @@ type ListSummary = ListIndexResponse["saved_lists"][number];
 export function AddToSavedListControl({
   canonicalProductId,
   selectedOfferId,
-  label = "Add to list",
+  label,
 }: {
   canonicalProductId: string;
   selectedOfferId?: string;
   label?: string;
 }) {
   const { organization, locationId } = useWorkspace();
+  const { localizeError, t } = useTranslation();
   const canMutate = organization.role !== "viewer";
   const [open, setOpen] = useState(false);
   const [lists, setLists] = useState<ListSummary[]>([]);
@@ -40,7 +42,7 @@ export function AddToSavedListControl({
       })
       .catch(() => {
         if (!controller.signal.aborted)
-          setMessage("Could not load saved lists. Try again.");
+          setMessage(localizeError("request_failed"));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -86,7 +88,7 @@ export function AddToSavedListControl({
       ) {
         setMessage("This product is already on that list.");
       } else {
-        setMessage("Could not add the product. Try again.");
+        setMessage(localizeError("request_failed"));
       }
     } finally {
       setPending(false);
@@ -107,7 +109,7 @@ export function AddToSavedListControl({
       await addTo(created.saved_list);
       setNewName("");
     } catch {
-      setMessage("Could not create a list. Try again.");
+      setMessage(localizeError("request_failed"));
       setPending(false);
     }
   }
@@ -115,23 +117,23 @@ export function AddToSavedListControl({
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        {label}
+        {label ?? t("lists.addToList")}
       </Button>
       <Dialog
         open={open}
         onClose={() => {
           if (!pending) setOpen(false);
         }}
-        title="Add to saved purchasing list"
+        title={t("lists.addToSavedPurchasingList")}
       >
         <p>
           This saves purchasing intent for the canonical product. Current prices
           remain derived from CProviderPrices data.
         </p>
-        {loading ? <p>Loading lists…</p> : null}
+        {loading ? <p>{t("common.loading")}</p> : null}
         {!loading && lists.length > 0 ? (
           <Select
-            label="Choose an active list"
+            label={t("lists.chooseActiveList")}
             defaultValue=""
             disabled={pending}
             onChange={(event) => {
@@ -141,7 +143,7 @@ export function AddToSavedListControl({
               if (list) void addTo(list);
             }}
           >
-            <option value="">Select a list</option>
+            <option value="">{t("common.select")}</option>
             {lists.map((list) => (
               <option key={list.id} value={list.id}>
                 {list.name} · {list.item_count} items
@@ -151,7 +153,7 @@ export function AddToSavedListControl({
         ) : null}
         <div className="saved-list-add__create">
           <Input
-            label="Or create a new list"
+            label={t("lists.orCreateNewList")}
             value={newName}
             maxLength={120}
             disabled={pending || !locationId}
@@ -162,7 +164,7 @@ export function AddToSavedListControl({
             disabled={pending || !newName.trim() || !locationId}
             onClick={() => void createAndAdd()}
           >
-            {pending ? "Saving…" : "Create and add"}
+            {pending ? t("common.saving") : t("lists.createAndAdd")}
           </Button>
         </div>
         {message ? <p role="status">{message}</p> : null}

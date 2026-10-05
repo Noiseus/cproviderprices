@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\PreferredLanguage;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Models\User;
@@ -23,6 +24,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'platform_role' => null,
+            'preferred_language' => PreferredLanguage::English,
             'status' => UserStatus::Active,
             'auth_version' => 1,
             'remember_token' => Str::random(10),

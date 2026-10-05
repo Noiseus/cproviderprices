@@ -27,6 +27,7 @@ describe("workspace navigation", () => {
       "Team",
       "Locations",
       "Subscription",
+      "Settings",
     ]);
   });
 

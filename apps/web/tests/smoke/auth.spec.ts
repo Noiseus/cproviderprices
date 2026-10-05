@@ -42,7 +42,17 @@ test("invitation acceptance reaches its organization shell", async ({
     .getByLabel("Password", { exact: true })
     .fill(fixture.invitation.password);
   await page.getByLabel("Confirm password").fill(fixture.invitation.password);
+  const acceptance = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/auth/invitations/accept") &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Accept invitation" }).click();
+  const acceptanceResponse = await acceptance;
+  expect(acceptanceResponse.status()).toBe(200);
+  await expect(acceptanceResponse.json()).resolves.toMatchObject({
+    destination: `/o/${fixture.invitation.slug}/dashboard`,
+  });
   await expect(page).toHaveURL(
     `${webUrl}/o/${fixture.invitation.slug}/dashboard`,
   );
@@ -101,7 +111,7 @@ test("viewer gets reduced and entitlement-aware navigation", async ({
   await expect(page.getByRole("link", { name: "Team" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Locations" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Suppliers" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
   await expect(
     page
       .getByRole("navigation", { name: "Workspace" })
@@ -141,7 +151,14 @@ test("owner workspace configuration uses client navigation", async ({
           .__configurationMarker,
     ),
   ).toBe("preserved");
+  const locationsLoaded = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/restaurant-locations") &&
+      response.request().method() === "GET",
+  );
   await page.getByRole("link", { name: "Locations" }).click();
+  expect((await locationsLoaded).status()).toBe(200);
+  await expect(page).toHaveURL(`${webUrl}/o/${fixture.login.slug}/locations`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Locations" }),
   ).toBeVisible();

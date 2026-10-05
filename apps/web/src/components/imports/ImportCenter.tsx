@@ -10,6 +10,7 @@ import {
   type FormEvent,
 } from "react";
 import { useWorkspace } from "@/components/app-shell/AppShellContext";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 import {
   Badge,
   Button,
@@ -27,7 +28,6 @@ import {
 import { apiBaseUrl, apiRequest, ApiClientError } from "@/lib/api";
 import type { SupplierAccount } from "@/lib/customer-api";
 import {
-  importError,
   importFieldErrors,
   shouldPoll,
   terminal,
@@ -58,6 +58,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
     locations,
     locationId: contextLocation,
   } = useWorkspace();
+  const { formatDateTime, localizeError, t } = useTranslation();
   const router = useRouter();
   const root = `/o/${organization.slug}/imports`;
   const tenant = `/api/v1/organizations/${organization.id}`;
@@ -82,6 +83,8 @@ function ImportWorkspace({ importId }: { importId?: string }) {
   const [blocked, setBlocked] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const locationTimeZone =
+    locations.find((location) => location.id === locationId)?.timezone ?? "UTC";
   const busyRef = useRef(false);
   const epoch = useRef(0);
   const mounted = useRef(true);
@@ -121,7 +124,13 @@ function ImportWorkspace({ importId }: { importId?: string }) {
         }
       } catch (e) {
         if (!signal.aborted && current === epoch.current) {
-          setError(importError(e));
+          setError(
+            e instanceof ApiClientError && e.status === 404
+              ? t("imports.importUnavailable")
+              : e instanceof ApiClientError
+                ? localizeError(e.code)
+                : localizeError("network_error"),
+          );
           if (
             e instanceof ApiClientError &&
             [401, 403, 404].includes(e.status)
@@ -133,7 +142,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
         }
       }
     },
-    [base, importId, page],
+    [base, importId, localizeError, page, t],
   );
   useEffect(() => {
     const controller = new AbortController();
@@ -153,7 +162,12 @@ function ImportWorkspace({ importId }: { importId?: string }) {
         }
       })
       .catch((e: unknown) => {
-        if (!controller.signal.aborted) setError(importError(e));
+        if (!controller.signal.aborted)
+          setError(
+            e instanceof ApiClientError
+              ? localizeError(e.code)
+              : localizeError("network_error"),
+          );
       });
     return () => controller.abort();
   }, [tenant]);
@@ -175,7 +189,12 @@ function ImportWorkspace({ importId }: { importId?: string }) {
         }
       })
       .catch((e: unknown) => {
-        if (!controller.signal.aborted) setError(importError(e));
+        if (!controller.signal.aborted)
+          setError(
+            e instanceof ApiClientError
+              ? localizeError(e.code)
+              : localizeError("network_error"),
+          );
       });
     return () => controller.abort();
   }, [tenant, editable, accountId, templatePage, canMutate, enabled]);
@@ -207,7 +226,11 @@ function ImportWorkspace({ importId }: { importId?: string }) {
       return true;
     } catch (e) {
       if (mounted.current) {
-        setError(importError(e));
+        setError(
+          e instanceof ApiClientError
+            ? localizeError(e.code)
+            : localizeError("network_error"),
+        );
         setFields(importFieldErrors(e));
       }
       return false;
@@ -300,17 +323,14 @@ function ImportWorkspace({ importId }: { importId?: string }) {
   return (
     <div className="workspace-page import-center">
       <header>
-        <p className="eyebrow">Purchasing workspace</p>
-        <h1>Import Center</h1>
-        <p>
-          Upload supplier files, confirm their columns, and follow each import
-          through validation and normalization.
-        </p>
+        <p className="eyebrow">{t("nav.workspace")}</p>
+        <h1>{t("imports.importCenter")}</h1>
+        <p>{t("imports.description")}</p>
       </header>
-      {importId && <Link href={root}>Back to import history</Link>}
+      {importId && <Link href={root}>{t("imports.backToHistory")}</Link>}
       {error && (
         <ErrorState
-          title="Import action unavailable"
+          title={t("imports.actionUnavailable")}
           description={error}
           action={
             <Button
@@ -321,7 +341,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                 void refresh(new AbortController().signal);
               }}
             >
-              Retry loading
+              {t("common.retry")}
             </Button>
           }
         />
@@ -329,17 +349,17 @@ function ImportWorkspace({ importId }: { importId?: string }) {
       {notice && <Toast title={notice} />}
       {!canMutate && (
         <PermissionState
-          title="Read-only access"
-          description="You can review import history and download authorized files. An owner or buyer must upload, map, start or cancel imports."
+          title={t("common.readOnlyAccess")}
+          description={t("imports.readOnlyDescription")}
         />
       )}
       {!enabled && (
         <PermissionState
-          title="Manual imports unavailable"
-          description="Your current subscription does not enable manual imports. History and authorized downloads remain available. Contact your administrator."
+          title={t("imports.manualUnavailable")}
+          description={t("imports.manualUnavailableDescription")}
           action={
             <Link href={`/o/${organization.slug}/subscription`}>
-              View subscription
+              {t("subscription.title")}
             </Link>
           }
         />
@@ -348,7 +368,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
         <>
           {canMutate && enabled && (
             <Card>
-              <h2>New import</h2>
+              <h2>{t("imports.newImport")}</h2>
               {activeLocations.length === 0 ? (
                 <p>
                   No active location.{" "}
@@ -360,7 +380,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
               ) : (
                 <form className="import-form" onSubmit={(e) => void upload(e)}>
                   <Select
-                    label="Import location"
+                    label={t("imports.importLocation")}
                     value={locationId}
                     required
                     disabled={busy}
@@ -370,7 +390,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                       setSupplierId("");
                     }}
                   >
-                    <option value="">Choose location</option>
+                    <option value="">{t("imports.chooseLocation")}</option>
                     {activeLocations.map((l) => (
                       <option key={l.id} value={l.id}>
                         {l.name}
@@ -378,14 +398,14 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                     ))}
                   </Select>
                   <Select
-                    label="Supplier account"
+                    label={t("imports.supplierAccount")}
                     value={supplierId}
                     required
                     disabled={busy || !locationId}
                     error={fields.supplier_account_id}
                     onChange={(e) => setSupplierId(e.target.value)}
                   >
-                    <option value="">Choose supplier account</option>
+                    <option value="">{t("imports.chooseSupplier")}</option>
                     {selectableAccounts.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.display_name}
@@ -404,7 +424,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                       </p>
                     )}
                   <Input
-                    label="Supplier file"
+                    label={t("imports.supplierFile")}
                     name="file"
                     type="file"
                     accept=".csv,.xlsx"
@@ -421,35 +441,37 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                       !selectableAccounts.some((a) => a.id === supplierId)
                     }
                   >
-                    {busy ? "Uploading…" : "Upload file"}
+                    {busy ? t("common.saving") : t("imports.upload")}
                   </Button>
                 </form>
               )}
             </Card>
           )}
           <Card>
-            <h2>Import history</h2>
+            <h2>{t("imports.importHistory")}</h2>
             <DataTableShell
-              caption="import history"
+              caption={t("imports.importHistory")}
               loading={!history && !error}
               empty={history?.imports.length === 0}
             >
               <table>
-                <caption>Recent imports, newest first</caption>
+                <caption>{t("imports.importHistory")}</caption>
                 <thead>
                   <tr>
-                    <th>Created</th>
-                    <th>Location</th>
-                    <th>Supplier</th>
-                    <th>Status</th>
-                    <th>Processed</th>
-                    <th>Review</th>
+                    <th>{t("imports.created")}</th>
+                    <th>{t("suppliers.location")}</th>
+                    <th>{t("comparison.supplier")}</th>
+                    <th>{t("common.status")}</th>
+                    <th>{t("imports.processed")}</th>
+                    <th>{t("imports.review")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history?.imports.map((run) => (
                     <tr key={run.id}>
-                      <td>{date(run.created_at)}</td>
+                      <td>
+                        {formatDateTime(run.created_at, locationTimeZone)}
+                      </td>
                       <td>{locationName(run.restaurant_location_id)}</td>
                       <td>{accountName(run.supplier_account_id)}</td>
                       <td>
@@ -459,7 +481,9 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                         {run.processed_count} / {run.valid_rows}
                       </td>
                       <td>
-                        <Link href={`${root}/${run.id}`}>View import</Link>
+                        <Link href={`${root}/${run.id}`}>
+                          {t("imports.view")}
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -472,60 +496,67 @@ function ImportWorkspace({ importId }: { importId?: string }) {
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
               >
-                Previous imports
+                {t("imports.previous")}
               </Button>
               <span>
-                Page {page} of{" "}
-                {Math.max(1, history?.pagination.total_pages ?? 1)}
+                {t("imports.page", {
+                  current: page,
+                  total: Math.max(1, history?.pagination.total_pages ?? 1),
+                })}
               </span>
               <Button
                 variant="secondary"
                 disabled={!history || page >= history.pagination.total_pages}
                 onClick={() => setPage(page + 1)}
               >
-                Next imports
+                {t("imports.next")}
               </Button>
             </div>
           </Card>
         </>
       )}
       {!blocked && importId && !detail && !error && (
-        <Skeleton label="Loading import" />
+        <Skeleton label={t("imports.loading")} />
       )}
       {!blocked && detail && (
         <>
           <Card>
             <h2>
               {terminal(detail.import.status)
-                ? "Import summary"
-                : "Import progress"}
+                ? t("imports.importSummary")
+                : t("imports.importProgress")}
             </h2>
             <div role="status" aria-live="polite" aria-atomic="true">
               <ImportStatusBadge run={detail.import} />
             </div>
             <dl>
               <div>
-                <dt>Source file</dt>
+                <dt>{t("imports.sourceFile")}</dt>
                 <dd>{detail.file.original_filename}</dd>
               </div>
               <div>
-                <dt>Location</dt>
+                <dt>{t("suppliers.location")}</dt>
                 <dd>{locationName(detail.import.restaurant_location_id)}</dd>
               </div>
               <div>
-                <dt>Supplier account</dt>
+                <dt>{t("imports.supplierAccount")}</dt>
                 <dd>{accountName(detail.import.supplier_account_id)}</dd>
               </div>
               <div>
-                <dt>Created</dt>
-                <dd>{date(detail.import.created_at)}</dd>
+                <dt>{t("imports.created")}</dt>
+                <dd>
+                  {formatDateTime(detail.import.created_at, locationTimeZone)}
+                </dd>
               </div>
               <div>
-                <dt>Finished</dt>
+                <dt>{t("imports.finished")}</dt>
                 <dd>
                   {detail.import.finished_at
-                    ? date(detail.import.finished_at)
-                    : "Not finished"}
+                    ? formatDateTime(
+                        detail.import.finished_at,
+                        locationTimeZone,
+                      )
+                    : t("common.notFinished")}
                 </dd>
               </div>
             </dl>
@@ -533,16 +564,16 @@ function ImportWorkspace({ importId }: { importId?: string }) {
               {(
                 [
                   [
-                    "Total rows",
+                    t("imports.totalRows"),
                     detail.import.valid_rows +
                       detail.import.failed_count -
                       detail.import.normalization_failed_count,
                   ],
-                  ["Eligible rows", detail.import.valid_rows],
-                  ["Processed", detail.import.processed_count],
-                  ["Warnings", detail.import.warning_count],
-                  ["Failed rows", detail.import.failed_count],
-                  ["Remaining", detail.import.remaining_count],
+                  [t("imports.eligibleRows"), detail.import.valid_rows],
+                  [t("imports.processed"), detail.import.processed_count],
+                  [t("imports.warnings"), detail.import.warning_count],
+                  [t("imports.failedRows"), detail.import.failed_count],
+                  [t("imports.remaining"), detail.import.remaining_count],
                 ] as const
               ).map(([label, count]) => (
                 <div key={label}>
@@ -557,7 +588,7 @@ function ImportWorkspace({ importId }: { importId?: string }) {
             </dl>
             {detail.import.status === "processing" && (
               <progress
-                aria-label="Normalization progress"
+                aria-label={t("imports.normalizationProgress")}
                 max={Math.max(1, detail.import.valid_rows)}
                 value={
                   detail.import.processed_count +
@@ -818,16 +849,14 @@ function ImportWorkspace({ importId }: { importId?: string }) {
   );
 }
 
-function date(value: string) {
-  return new Date(value).toLocaleString();
-}
 export function ImportStatusBadge({ run }: { run: ImportSummary }) {
+  const { t } = useTranslation();
   const label =
     run.status === "needs_mapping" && run.validation_started_at
       ? run.validation_completed_at
-        ? "Validated"
-        : "Validating"
-      : run.status.replaceAll("_", " ");
+        ? t("imports.status.validated")
+        : t("imports.status.validating")
+      : t(`imports.status.${run.status}`);
   return (
     <Badge
       tone={

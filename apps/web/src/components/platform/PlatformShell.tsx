@@ -7,6 +7,8 @@ import type { SessionPayload } from "@/lib/server-session";
 import { apiRequest } from "@/lib/api";
 import { Button } from "../ui";
 import { ThemeToggle } from "../ThemeToggle";
+import { LanguageSelector } from "../i18n/LanguageSelector";
+import { useTranslation } from "../i18n/I18nProvider";
 
 export function PlatformShell({
   user,
@@ -19,10 +21,15 @@ export function PlatformShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useTranslation();
   const links = [
-    { href: "/platform", label: "Overview", exact: true },
-    { href: "/platform/organizations", label: "Organizations", exact: false },
-    { href: "/platform/matching", label: "Matching review", exact: false },
+    { href: "/platform", label: t("dashboard.overview"), exact: true },
+    {
+      href: "/platform/organizations",
+      label: t("platform.organizations"),
+      exact: false,
+    },
+    { href: "/platform/matching", label: t("platform.matching"), exact: false },
   ];
 
   return (
@@ -33,11 +40,11 @@ export function PlatformShell({
           <span>CProviderPrices</span>
         </Link>
         <div className="app-sidebar__context">
-          <small>Security scope</small>
-          <strong>Platform administration</strong>
-          <small>Not a tenant workspace</small>
+          <small>{t("nav.account")}</small>
+          <strong>{t("platform.title")}</strong>
+          <small>{t("nav.workspace")}</small>
         </div>
-        <nav className="app-nav" aria-label="Platform administration">
+        <nav className="app-nav" aria-label={t("platform.title")}>
           {links.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -59,10 +66,10 @@ export function PlatformShell({
       </aside>
       <div className="app-workspace">
         <header className="app-topbar">
-          <strong>Platform administration</strong>
+          <strong>{t("platform.title")}</strong>
           <nav
             className="platform-mobile-nav"
-            aria-label="Platform mobile navigation"
+            aria-label={t("nav.mobileWorkspace")}
           >
             {links.map((item) => (
               <Link key={item.href} href={item.href}>
@@ -73,10 +80,11 @@ export function PlatformShell({
           <div className="app-topbar__spacer" />
           {organizations[0] && (
             <Link href={`/o/${organizations[0].slug}/dashboard`}>
-              Tenant workspace
+              {t("nav.workspace")}
             </Link>
           )}
           <ThemeToggle compact />
+          <LanguageSelector compact />
           <span>{user.name}</span>
           <Button
             variant="quiet"
@@ -89,7 +97,7 @@ export function PlatformShell({
               }
             }}
           >
-            Sign out
+            {t("auth.signOut")}
           </Button>
         </header>
         <main className="app-content" id="main-content">

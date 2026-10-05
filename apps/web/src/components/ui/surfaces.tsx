@@ -1,4 +1,7 @@
+"use client";
+
 import type { HTMLAttributes, ReactNode } from "react";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 import { cn } from "@/lib/cn";
 import { Tooltip } from "./feedback";
 
@@ -39,10 +42,13 @@ export function Badge({
 export function FreshnessBadge({
   state,
   timestamp,
+  timeZone,
 }: {
   state: "fresh" | "aging" | "stale" | "connection_failed" | "manual_import";
   timestamp?: string | null;
+  timeZone?: string;
 }) {
+  const { formatDateTime, t } = useTranslation();
   const badge = (
     <Badge
       tone={
@@ -53,13 +59,15 @@ export function FreshnessBadge({
             : "danger"
       }
     >
-      {state.replaceAll("_", " ")}
+      {t(`freshness.${state}`)}
     </Badge>
   );
   if (!timestamp) return badge;
   return (
     <Tooltip
-      label={`Source observed ${new Date(timestamp).toLocaleString()}. Freshness is calculated by CProviderPrices; this is not a live quote.`}
+      label={t("freshness.sourceDetail", {
+        value: formatDateTime(timestamp, timeZone),
+      })}
     >
       {badge}
     </Tooltip>

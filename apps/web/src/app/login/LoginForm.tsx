@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ApiClientError, apiRequest } from "@/lib/api";
 import { FormMessage } from "@/components/FormMessage";
+import { useTranslation } from "@/components/i18n/I18nProvider";
 
 export function LoginForm({
   intendedDestination,
@@ -12,6 +13,7 @@ export function LoginForm({
   intendedDestination?: string;
 }) {
   const router = useRouter();
+  const { t, localizeError } = useTranslation();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
 
@@ -38,8 +40,8 @@ export function LoginForm({
     } catch (caught) {
       setError(
         caught instanceof ApiClientError
-          ? caught.message
-          : "Unable to sign in.",
+          ? localizeError(caught.code)
+          : localizeError("network_error"),
       );
       setLoading(false);
     }
@@ -47,7 +49,7 @@ export function LoginForm({
 
   return (
     <form onSubmit={submit}>
-      <label htmlFor="email">Email address</label>
+      <label htmlFor="email">{t("auth.email")}</label>
       <input
         id="email"
         name="email"
@@ -55,7 +57,7 @@ export function LoginForm({
         autoComplete="email"
         required
       />
-      <label htmlFor="password">Password</label>
+      <label htmlFor="password">{t("auth.password")}</label>
       <input
         id="password"
         name="password"
@@ -65,10 +67,10 @@ export function LoginForm({
       />
       <FormMessage message={error} error />
       <button type="submit" disabled={loading}>
-        {loading ? "Signing in…" : "Sign in"}
+        {loading ? t("common.saving") : t("auth.signIn")}
       </button>
       <p>
-        <Link href="/forgot-password">Forgot your password?</Link>
+        <Link href="/forgot-password">{t("auth.forgotPassword")}</Link>
       </p>
     </form>
   );

@@ -226,7 +226,7 @@ describe("saved lists workspace", () => {
         element?.textContent === "Saved note: <script>private note</script>",
     );
     expect(savedNote.querySelector("script")).toBeNull();
-    expect(screen.getAllByText("fresh").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Fresh").length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText("Quantity target"), {
       target: { value: "3" },
     });
@@ -247,7 +247,7 @@ describe("saved lists workspace", () => {
     render(<SavedListDetailWorkspace listId="list" />);
     await screen.findByText("Beefsteak Tomato");
     fireEvent.click(screen.getByRole("button", { name: "Save item" }));
-    await screen.findByText("Changed elsewhere — reload item");
+    await screen.findByText(/list changed elsewhere/i);
   });
 
   it("keeps viewer controls read-only while preserving price evidence", async () => {
