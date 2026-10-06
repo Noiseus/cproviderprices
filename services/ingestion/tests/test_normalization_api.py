@@ -158,12 +158,19 @@ def test_logs_contain_aggregate_counts_not_rows_or_credentials(
     records = data["records"]
     assert isinstance(records, list)
     records[1]["mapped"]["description"] = "PRIVATE_SOURCE 6/1 GAL"
-    with caplog.at_level("INFO", logger="cproviderprices.normalization"):
+    with caplog.at_level("INFO", logger="cproviderprices.observability"):
         response = client.post(PATH, json=data, headers=AUTH)
     assert response.status_code == 200
     assert response.json()["warning"] == 1
     assert response.json()["processed"] == 2
-    assert "processed=2 warning=1 failed=0" in caplog.text
+    events = [json.loads(record.message) for record in caplog.records]
+    assert {
+        "event": "ingestion.normalization.completed",
+        "correlation_id": "batch-1",
+        "processed": 2,
+        "warning": 1,
+        "failed": 0,
+    }.items() <= events[-1].items()
     assert "PRIVATE_SOURCE" not in caplog.text
     assert TOKEN not in caplog.text
 

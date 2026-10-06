@@ -6,6 +6,8 @@ import re
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from cproviderprices_ingestion.observability import log_event
+
 MAX_BODY_BYTES = 1048576
 PATH = "/internal/v1/normalize"
 
@@ -25,6 +27,12 @@ class NormalizationBoundary:
         scope["state"] = {**scope.get("state", {}), "request_id": correlation}
 
         async def reject(status: int, code: str) -> None:
+            log_event(
+                "ingestion.request_rejected",
+                correlation_id=correlation,
+                status=status,
+                code=code,
+            )
             body = json.dumps({"error": {"code": code, "request_id": correlation}}).encode()
             await send(
                 {

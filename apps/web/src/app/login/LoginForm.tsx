@@ -36,7 +36,6 @@ export function LoginForm({
         },
       );
       router.push(response.destination);
-      router.refresh();
     } catch (caught) {
       setError(
         caught instanceof ApiClientError

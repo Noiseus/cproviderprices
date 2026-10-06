@@ -20,7 +20,6 @@ export function LogoutButton() {
           await apiRequest("/api/v1/auth/session", { method: "DELETE" });
         } finally {
           router.push("/login");
-          router.refresh();
         }
       }}
     >

@@ -20,6 +20,7 @@ final class Audit
         if (app()->bound('request') && request()->is('api/*')) {
             $metadata = ['request_id' => AssignRequestId::for(request()), ...$metadata];
         }
+        $metadata = SensitiveData::redact($metadata);
 
         return AuditLog::query()->create([
             'organization_id' => $organizationId,

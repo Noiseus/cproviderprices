@@ -42,8 +42,12 @@ test("bilingual structured search opens a traceable Beefsteak comparison with cl
     (window as Window & { searchMarker?: string }).searchMarker =
       "same-document";
   });
-  await page.getByRole("link", { name: "Search", exact: true }).click();
-  await expect(page).toHaveURL(`${web}/o/${fixture.search_login.slug}/search`);
+  const searchLink = page.getByRole("link", { name: "Search", exact: true });
+  await expect(searchLink).toBeVisible();
+  await Promise.all([
+    page.waitForURL(`${web}/o/${fixture.search_login.slug}/search`),
+    searchLink.click(),
+  ]);
   await search(page, "tomato");
   await expect(
     page.getByRole("heading", { name: "Tomato", exact: true }),

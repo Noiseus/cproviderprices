@@ -503,5 +503,8 @@ export const en = {
     account_suspended: "This account is suspended.",
     network_error: "Unable to connect. Check your connection and try again.",
     internal_error: "An unexpected error occurred.",
+    csrf_token_mismatch:
+      "Your session security token expired. Refresh and try again.",
+    too_many_requests: "Too many requests. Please wait and try again.",
   },
 } as const;

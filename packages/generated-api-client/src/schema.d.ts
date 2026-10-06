@@ -2632,10 +2632,12 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
-        /** @description Request failed using the standard API error envelope. */
+        /** @description Request failed using the standard API error envelope. Rate-limited endpoints use HTTP 429 with code too_many_requests and include Retry-After. */
         ErrorResponse: {
             headers: {
                 "X-Request-ID": components["headers"]["RequestId"];
+                /** @description Present for a throttled request; seconds until another attempt may be made. */
+                "Retry-After"?: number;
                 [name: string]: unknown;
             };
             content: {

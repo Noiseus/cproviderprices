@@ -72,6 +72,7 @@ export function SearchWorkspace() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
   const epoch = useRef(0);
+  const searchParamsRef = useRef(searchParams.toString());
   const resultsRef = useRef<HTMLDivElement>(null);
   const recentKey = `cproviderprices-recent-searches:${organization.id}`;
 
@@ -92,18 +93,23 @@ export function SearchWorkspace() {
 
   const setParams = useCallback(
     (changes: Record<string, string | null>) => {
-      const next = new URLSearchParams(searchParams.toString());
+      const next = new URLSearchParams(searchParamsRef.current);
       for (const [key, value] of Object.entries(changes)) {
         if (value === null || value === "") next.delete(key);
         else next.set(key, value);
       }
       const text = next.toString();
+      searchParamsRef.current = text;
       router.replace(text ? `${pathname}?${text}` : pathname, {
         scroll: false,
       });
     },
-    [pathname, router, searchParams],
+    [pathname, router],
   );
+
+  useEffect(() => {
+    searchParamsRef.current = searchParams.toString();
+  }, [searchParams]);
 
   useEffect(() => setDraftQuery(query), [query]);
 

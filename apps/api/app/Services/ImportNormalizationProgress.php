@@ -35,7 +35,8 @@ final class ImportNormalizationProgress
             $next = $run->processed_count === 0 ? ImportStatus::Failed : ($run->failed_count > 0 ? ImportStatus::PartiallyCompleted : ImportStatus::Completed);
             app(ImportLifecycleService::class)->transition($run->organization, $run->id, $next);
         }
-        Log::info('import.normalization.progress', ['request_id' => $run->request_id, 'import_id' => $run->id,
+        Log::info('import.normalization.progress', ['event' => 'import.normalization.progress', 'correlation_id' => $run->request_id,
+            'organization_id' => $run->organization_id, 'import_id' => $run->id,
             'processed' => $run->processed_count, 'warning' => $run->warning_count, 'failed' => $run->failed_count,
             'remaining' => $remaining, 'retry' => $run->retry_count]);
     }

@@ -14,6 +14,7 @@ use App\Support\ApiProblem;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -49,6 +50,13 @@ final class ValidateImportBatch implements ShouldQueue
                 if ($run->status !== ImportStatus::NeedsMapping || $run->validation_started_at === null || $run->validation_completed_at !== null) {
                     return;
                 }
+                Log::withContext([
+                    'correlation_id' => $run->request_id,
+                    'organization_id' => $run->organization_id,
+                    'import_id' => $run->id,
+                    'job_id' => $this->job?->getJobId(),
+                ]);
+                Log::info('import.validation.started', ['event' => 'import.validation.started', 'cursor' => $run->validation_cursor]);
                 $file = $access->file($run);
                 $snapshot = $run->mapping_snapshot;
                 if ($snapshot === null) {
@@ -118,6 +126,11 @@ final class ValidateImportBatch implements ShouldQueue
                         $run->validation_completed_at = now();
                     }
                     $run->save();
+                    Log::info('import.validation.completed', [
+                        'event' => 'import.validation.completed',
+                        'cursor' => $run->validation_cursor,
+                        'has_more' => $more,
+                    ]);
                     if ($more) {
                         self::dispatch($run->organization_id, $run->id)->onConnection('redis')->afterCommit();
                     }
@@ -141,6 +154,13 @@ final class ValidateImportBatch implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
+        Log::error('import.validation.failed', [
+            'event' => 'import.validation.failed',
+            'organization_id' => $this->organizationId,
+            'import_id' => $this->importId,
+            'job_id' => $this->job?->getJobId(),
+            'failure_code' => 'validation_unavailable',
+        ]);
         DB::transaction(function (): void {
             $run = ImportRun::query()->where('organization_id', $this->organizationId)->whereKey($this->importId)->lockForUpdate()->first();
             if ($run === null || $run->status !== ImportStatus::NeedsMapping || $run->validation_completed_at !== null) {

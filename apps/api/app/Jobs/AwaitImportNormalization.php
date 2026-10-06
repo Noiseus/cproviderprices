@@ -11,6 +11,7 @@ use App\Support\NormalizationFailure;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /** Backward-compatible Phase B pointer: discover one bounded remaining batch. */
 final class AwaitImportNormalization implements ShouldQueue
@@ -45,6 +46,12 @@ final class AwaitImportNormalization implements ShouldQueue
                 if ($run->status === ImportStatus::Queued) {
                     $run = app(ImportLifecycleService::class)->transition($organization, $run->id, ImportStatus::Processing);
                 }
+                Log::withContext([
+                    'correlation_id' => $run->request_id,
+                    'organization_id' => $run->organization_id,
+                    'import_id' => $run->id,
+                    'job_id' => $this->job?->getJobId(),
+                ]);
                 $progress = app(ImportNormalizationProgress::class);
                 $ids = [];
                 $bytes = 1024;
@@ -59,6 +66,7 @@ final class AwaitImportNormalization implements ShouldQueue
                 $progress->update($run);
                 if ($ids !== []) {
                     NormalizeImportBatch::dispatch($run->organization_id, $run->id, $ids)->onConnection('redis')->onQueue('import-normalization')->afterCommit();
+                    Log::info('import.normalization.dispatched', ['event' => 'import.normalization.dispatched', 'record_count' => count($ids)]);
                 }
             });
         } catch (\Throwable) {

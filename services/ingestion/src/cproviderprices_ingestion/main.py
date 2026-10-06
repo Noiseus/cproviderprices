@@ -1,7 +1,7 @@
-import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Request, Response
@@ -14,6 +14,7 @@ from cproviderprices_ingestion.boundary import NormalizationBoundary
 from cproviderprices_ingestion.config import Settings
 from cproviderprices_ingestion.models import BatchRequest, BatchResponse, ErrorEnvelope
 from cproviderprices_ingestion.normalization import normalize
+from cproviderprices_ingestion.observability import log_event
 
 
 class HealthResponse(BaseModel):
@@ -63,12 +64,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         "Warnings count affected records, not warning objects. Retries belong to Laravel.",
     )
     async def normalize_batch(batch: BatchRequest, response: Response) -> BatchResponse:
+        started_at = perf_counter()
         results = [normalize(record) for record in batch.records]
         warning = sum(bool(result.warnings) for result in results)
-        logging.getLogger("cproviderprices.normalization").info(
-            "normalization_batch processed=%d warning=%d failed=0",
-            len(results),
-            warning,
+        log_event(
+            "ingestion.normalization.completed",
+            correlation_id=batch.correlation_id,
+            processed=len(results),
+            warning=warning,
+            failed=0,
+            duration_ms=round((perf_counter() - started_at) * 1000, 3),
         )
         response.headers["X-Request-ID"] = batch.correlation_id
         response.headers["Cache-Control"] = "no-store"

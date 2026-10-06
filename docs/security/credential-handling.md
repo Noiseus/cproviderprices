@@ -12,6 +12,13 @@ Use a dedicated environment-managed service token in `Authorization: Bearer ...`
 
 Reject oversized requests before buffering unbounded bodies. Log safe error codes and aggregate counts; never tokens, authorization headers, full request bodies, samples, or source rows. Error responses must not echo credentials or validation inputs.
 
+Prompt 20 records only aggregate, structured ingestion events: correlation ID,
+safe result/error code, counters, and duration. It never logs authorization
+headers, request bodies, mapped source rows, or the configured token. Laravel
+passes the persisted import request ID as both `X-Request-ID` and the bounded
+batch correlation; Python echoes it only after a valid request. See the
+[threat model](threat-model.md#correlation-logs-metrics-and-health).
+
 Browser acceptance provisions a fresh process-only token through the isolated Compose runner; it never writes the token to committed configuration or frontend variables. E2E identities are synthetic and stored only in ignored private `auth-e2e-isolated.json`, removed at browser teardown. Retained Playwright failure traces may include synthetic authentication cookies; do not publish those artifacts or raw request logs. See the [isolated browser execution contract](../architecture/testing-strategy.md#isolated-browser-acceptance).
 
 ## Source objects and downloads

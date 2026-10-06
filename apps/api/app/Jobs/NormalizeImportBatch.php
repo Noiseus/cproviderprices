@@ -47,6 +47,14 @@ final class NormalizeImportBatch implements ShouldQueue
                 if ($run->status !== ImportStatus::Processing) {
                     return null;
                 }
+                $jobId = $this->job?->getJobId();
+                Log::withContext([
+                    'correlation_id' => $run->request_id,
+                    'organization_id' => $run->organization_id,
+                    'import_id' => $run->id,
+                    'job_id' => $jobId,
+                ]);
+                Log::info('import.normalization.started', ['event' => 'import.normalization.started', 'record_count' => count($this->rawIds)]);
                 $file = $access->file($run);
                 if (count($this->rawIds) > 25 || $this->rawIds === []) {
                     throw new NormalizationFailure('invalid_batch_references');
@@ -63,7 +71,9 @@ final class NormalizeImportBatch implements ShouldQueue
                 } catch (NormalizationFailure $error) {
                     if ($error->transient && $this->attempts() < $this->tries) {
                         $run->increment('retry_count');
-                        Log::warning('import.normalization.retry', ['request_id' => $run->request_id, 'import_id' => $run->id, 'retry' => $run->retry_count, 'attempt' => $this->attempts(), 'code' => $error->reason]);
+                        Log::warning('import.normalization.retry', ['event' => 'import.normalization.retry', 'correlation_id' => $run->request_id,
+                            'organization_id' => $run->organization_id, 'import_id' => $run->id, 'job_id' => $jobId,
+                            'retry' => $run->retry_count, 'attempt' => $this->attempts(), 'code' => $error->reason]);
                     } else {
                         foreach ($rows as $raw) {
                             $progress->failRow($run, $raw, $error->transient ? 'service_retries_exhausted' : $error->reason);
@@ -83,6 +93,7 @@ final class NormalizeImportBatch implements ShouldQueue
                     $raw->update(['status' => 'normalized']);
                 }
                 $this->continue($run, $progress);
+                Log::info('import.normalization.completed', ['event' => 'import.normalization.completed', 'record_count' => count($results)]);
 
                 return null;
             });
@@ -100,6 +111,13 @@ final class NormalizeImportBatch implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
+        Log::error('import.normalization.failed', [
+            'event' => 'import.normalization.failed',
+            'organization_id' => $this->organizationId,
+            'import_id' => $this->importId,
+            'job_id' => $this->job?->getJobId(),
+            'failure_code' => 'processing_retries_exhausted',
+        ]);
         try {
             DB::transaction(function (): void {
                 $run = ImportRun::query()->where('organization_id', $this->organizationId)->whereKey($this->importId)->lockForUpdate()->first();

@@ -42,6 +42,14 @@ CORS_ALLOWED_ORIGINS=https://app.cproviderprices.com
 
 Production and staging must use distinct keys, databases, sessions, origins, and cookies. HTTPS is required. Do not use wildcard credentialed CORS origins. The shared parent-domain cookie configuration is required so Next.js server rendering and browser CSRF handling can receive the API-issued cookies across the intended sibling subdomains.
 
+Prompt 20 keeps CORS methods explicit (`GET`, `POST`, `PUT`, `PATCH`,
+`DELETE`, and `OPTIONS`) and permits only the documented request headers.
+Sensitive authentication routes are rate limited without placing raw email
+addresses or tokens in limiter keys: login/reset use normalized-email hash plus
+IP, and invitation inspection/acceptance uses token hash plus IP. A throttled
+response uses the normal error envelope, `too_many_requests`, and safe retry
+headers. See the [threat model](threat-model.md#rate-limits).
+
 ## Redirects
 
 The API accepts only internal paths and, after authentication, only a destination below an organization slug backed by the user's active membership. Invitation acceptance always returns the invited organization's dashboard. Organization switching accepts only a destination under the selected organization's slug. Absolute URLs, protocol-relative URLs, backslashes, and control characters fall back to a server-selected safe dashboard.

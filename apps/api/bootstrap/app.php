@@ -4,6 +4,7 @@ use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RequirePlatformScope;
 use App\Http\Middleware\ResolveTenantContext;
+use App\Http\Middleware\SecurityHeaders;
 use App\Support\ApiErrorResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,7 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->api(prepend: [AssignRequestId::class]);
+        $middleware->api(prepend: [AssignRequestId::class, SecurityHeaders::class]);
+        $middleware->trustHosts();
         $middleware->alias([
             'active.user' => EnsureActiveUser::class,
             'platform.scope' => RequirePlatformScope::class,

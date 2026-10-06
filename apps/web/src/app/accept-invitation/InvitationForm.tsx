@@ -42,7 +42,6 @@ export function InvitationForm({
         },
       );
       router.push(response.destination);
-      router.refresh();
     } catch (caught) {
       setError(
         caught instanceof ApiClientError

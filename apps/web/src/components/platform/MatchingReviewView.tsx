@@ -71,7 +71,6 @@ export function MatchingReviewView({
       );
       setMessage({ tone: "success", text: "Review action recorded." });
       router.push(returnHref);
-      router.refresh();
     } catch (error) {
       setMessage({
         tone: "danger",

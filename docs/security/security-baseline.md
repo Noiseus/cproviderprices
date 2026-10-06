@@ -24,6 +24,11 @@ These rules are mandatory for all future implementation.
 - Protect sensitive actions against common web threats appropriate to the chosen authentication mechanism.
 - Log sensitive operational actions such as privilege changes, tenant administration, imports, exports, connector changes, and destructive operations.
 - Avoid secrets and unnecessary personal or commercially sensitive data in logs and errors.
+- Use request correlation IDs and selected safe scalar identifiers for
+  operational events. Never log request bodies, authorization/cookie headers,
+  passwords, reset/invitation/service tokens, object-storage credentials, or
+  signed URL signatures. Central redaction is a safeguard, not permission to
+  interpolate sensitive values into messages.
 - Keep dependencies supported and review security impact before introducing them.
 
 ## Supplier ingestion

@@ -20,7 +20,15 @@ test.describe.configure({ mode: "serial" });
 
 test.afterEach(async ({ page }) => {
   const language = page.getByRole("combobox", { name: /^(Language|Idioma)$/ });
-  if (await language.count()) await language.selectOption("en");
+  if (!(await language.count()) || (await language.inputValue()) === "en")
+    return;
+  const preferenceUpdate = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/auth/preferences") &&
+      response.request().method() === "PATCH",
+  );
+  await language.selectOption("en");
+  expect((await preferenceUpdate).status()).toBe(200);
 });
 
 async function login(page: Page) {
@@ -38,10 +46,19 @@ async function login(page: Page) {
 test("an authenticated buyer can use Spanish without losing route, filters, context, or client navigation", async ({
   page,
 }) => {
+  // This intentionally spans every authenticated workspace route while the
+  // fresh E2E web server compiles those routes. A cold CI trace measures 28.4s.
+  test.setTimeout(45_000);
   await login(page);
   await page.getByRole("link", { name: "Search", exact: true }).click();
   const searchInput = page.getByLabel("Search products");
+  const searchUrl = page.waitForURL(
+    (url) =>
+      url.pathname.endsWith("/search") &&
+      url.searchParams.get("q") === "tomate",
+  );
   await searchInput.fill("tomate");
+  await searchUrl;
   await Promise.all([
     page.waitForURL(
       (url) =>
@@ -189,7 +206,13 @@ test("an authenticated buyer can use Spanish without losing route, filters, cont
     ),
   ).toBe(true);
 
+  const englishPreference = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v1/auth/preferences") &&
+      response.request().method() === "PATCH",
+  );
   await page.getByRole("combobox", { name: "Idioma" }).selectOption("en");
+  expect((await englishPreference).status()).toBe(200);
   await expect(page.getByRole("combobox", { name: "Language" })).toHaveValue(
     "en",
   );

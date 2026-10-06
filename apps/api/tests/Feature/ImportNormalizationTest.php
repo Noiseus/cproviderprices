@@ -349,8 +349,10 @@ final class ImportNormalizationTest extends TestCase
         $this->success(true);
         $this->app->call([$job, 'handle']);
         $log->shouldHaveReceived('info')->withArgs(function (string $event, array $context) use ($run): bool {
-            $this->assertSame('import.normalization.progress', $event);
-            $this->assertSame($run->request_id, $context['request_id']);
+            if ($event !== 'import.normalization.progress') {
+                return false;
+            }
+            $this->assertSame($run->request_id, $context['correlation_id']);
             $serialized = json_encode($context);
             $this->assertStringNotContainsString('private-test-token', $serialized);
             $this->assertStringNotContainsString('MOZZ', $serialized);
