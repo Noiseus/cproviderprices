@@ -39,10 +39,19 @@ async function login(page: Page, identity = fixture.owner) {
   await page.goto(`${web}/login`);
   await page.getByLabel("Email address").fill(identity.email);
   await page.getByLabel("Password", { exact: true }).fill(identity.password);
+  const loginResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/auth/login",
+    { timeout: 15_000 },
+  );
+  const dashboardNavigation = page.waitForURL(
+    `${web}/o/${identity.slug}/dashboard`,
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(`${web}/o/${identity.slug}/dashboard`, {
-    timeout: 15_000,
-  });
+  const [login] = await Promise.all([loginResponse, dashboardNavigation]);
+  expect(login.status()).toBe(200);
   await page.getByRole("link", { name: "Imports", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Import Center" }),
@@ -74,21 +83,31 @@ async function upload(
       new URL(response.url()).pathname ===
         `/api/v1/organizations/${fixture.owner.organization_id}/imports`,
   );
-  const detailResponse = page.waitForResponse((response) => {
-    const path = new URL(response.url()).pathname;
-    return (
-      response.request().method() === "GET" &&
-      path.startsWith(
-        `/api/v1/organizations/${fixture.owner.organization_id}/imports/`,
-      ) &&
-      path.split("/").length === 7
-    );
-  });
+  const detailResponse = page.waitForResponse(
+    (response) => {
+      const path = new URL(response.url()).pathname;
+      return (
+        response.request().method() === "GET" &&
+        path.startsWith(
+          `/api/v1/organizations/${fixture.owner.organization_id}/imports/`,
+        ) &&
+        path.split("/").length === 7
+      );
+    },
+    { timeout: 15_000 },
+  );
+  const detailNavigation = page.waitForURL(
+    (url) =>
+      url.origin === web &&
+      new RegExp(`^/o/${fixture.owner.slug}/imports/[^/]+$`).test(url.pathname),
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Upload file", exact: true }).click();
   const uploaded = await uploadResponse;
   expect(uploaded.status()).toBe(201);
   const created = (await uploaded.json()) as { import: { id: string } };
-  await expect(page).toHaveURL(
+  await detailNavigation;
+  expect(page.url()).toBe(
     `${web}/o/${fixture.owner.slug}/imports/${created.import.id}`,
   );
   expect((await detailResponse).status()).toBe(200);

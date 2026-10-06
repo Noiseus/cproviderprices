@@ -191,6 +191,7 @@ jobs:
       - run: docker compose exec api php artisan migrate --force
       - run: docker compose exec api php artisan db:seed --force
       - run: docker compose exec api php artisan app:prepare-auth-e2e
+      - run: docker compose exec api php artisan app:verify-pilot-e2e
       - run: docker compose exec web npm run smoke
       - run: docker compose exec api php artisan app:verify-import-e2e
       - if: failure()

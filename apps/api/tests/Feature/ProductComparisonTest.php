@@ -5,9 +5,12 @@ namespace Tests\Feature;
 use App\Enums\MatchClass;
 use App\Enums\OfferAvailability;
 use App\Models\CanonicalProduct;
+use App\Models\MatchCandidate;
 use App\Models\Organization;
 use App\Models\RestaurantLocation;
 use App\Models\User;
+use App\Models\VendorItemMapping;
+use App\Services\CatalogMatcher;
 use App\Services\OfferComparisonService;
 use Database\Seeders\CatalogTaxonomySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -109,6 +112,38 @@ final class ProductComparisonTest extends TestCase
         $this->getJson("/api/v1/organizations/{$organization->id}/comparisons/{$product->id}?location_id={$otherLocation->id}")
             ->assertNotFound()
             ->assertJsonPath('error.code', 'not_found');
+    }
+
+    public function test_accepting_a_candidate_invalidates_cached_comparison_for_its_tenant_location_and_product(): void
+    {
+        [$organization, $location, $product] = $this->context();
+        $offer = $this->comparisonOffer(
+            $this->comparisonAccount($organization, $location, 'Reviewable supplier'),
+            $product,
+            ['description' => 'TOM BEEFSTEAK 25#'],
+        );
+        $vendor = $offer->vendorItem()->firstOrFail();
+        VendorItemMapping::query()->where('vendor_item_id', $vendor->id)->where('is_current', true)->update(['is_current' => false, 'superseded_at' => now()]);
+        $candidate = app(CatalogMatcher::class)
+            ->generate($vendor)
+            ->firstWhere('canonical_product_id', $product->id);
+        $this->assertInstanceOf(MatchCandidate::class, $candidate);
+        /** @var MatchCandidate $candidate */
+        $customer = User::factory()->create();
+        $this->membership($customer, $organization);
+        $url = "/api/v1/organizations/{$organization->id}/comparisons/{$product->id}?location_id={$location->id}";
+
+        $this->asUser($customer)->getJson($url)->assertOk()->assertJsonPath('offers', []);
+
+        $admin = User::factory()->platformAdmin()->create();
+        $this->asUser($admin)
+            ->postJson("/api/v1/platform/matching/candidates/{$candidate->id}/review", ['action' => 'accept'])
+            ->assertOk();
+
+        $this->asUser($customer)
+            ->getJson($url)
+            ->assertOk()
+            ->assertJsonFragment(['id' => $offer->id]);
     }
 
     /** @return array{Organization, RestaurantLocation, CanonicalProduct} */

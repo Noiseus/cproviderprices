@@ -10,6 +10,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Isolated migration failed.' }
     & docker @compose exec -T api php artisan app:prepare-auth-e2e
     if ($LASTEXITCODE -ne 0) { throw 'Isolated fixture preparation failed.' }
+    & docker @compose exec -T api php artisan app:verify-pilot-e2e
+    if ($LASTEXITCODE -ne 0) { throw 'Pilot fixture verification failed.' }
     $testArgs = @('exec', '-T', 'web', 'npm', 'run', 'smoke', '--')
     if ($Spec) { $testArgs += $Spec }
     & docker @compose @testArgs

@@ -34,6 +34,23 @@ async function search(page: Page, query: string) {
   );
 }
 
+function waitForSearchResponse(
+  page: Page,
+  query: string,
+  availability: string | null,
+) {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === "GET" &&
+      url.pathname.endsWith("/product-search") &&
+      url.searchParams.get("q") === query &&
+      (url.searchParams.get("availability[]") ?? null) === availability
+    );
+  });
+}
+
 test("bilingual structured search opens a traceable Beefsteak comparison with client navigation", async ({
   page,
 }) => {
@@ -68,24 +85,40 @@ test("bilingual structured search opens a traceable Beefsteak comparison with cl
   await expect(
     page.getByRole("link", { name: "Compare offers" }).first(),
   ).toBeFocused();
+  const availableSearch = waitForSearchResponse(
+    page,
+    "beef tomato 5x6 25 lb",
+    "available",
+  );
   await page
     .getByRole("combobox", { name: "Availability" })
     .first()
     .selectOption("available");
   await expect(page).toHaveURL(/availability=available/);
+  expect((await availableSearch).status()).toBe(200);
   await page.reload();
   await expect(page.getByLabel("Search products")).toHaveValue(
     "beef tomato 5x6 25 lb",
+  );
+  const unfilteredSearch = waitForSearchResponse(
+    page,
+    "beef tomato 5x6 25 lb",
+    null,
   );
   await page
     .getByRole("combobox", { name: "Availability" })
     .first()
     .selectOption("");
+  expect((await unfilteredSearch).status()).toBe(200);
   await page.evaluate(() => {
     (window as Window & { searchMarker?: string }).searchMarker =
       "same-document";
   });
-  await page.getByRole("link", { name: "Compare offers" }).first().click();
+  const compareOffers = page
+    .getByRole("link", { name: "Compare offers" })
+    .first();
+  await expect(compareOffers).toBeVisible();
+  await compareOffers.click();
   await expect(page).toHaveURL(
     new RegExp(`/compare/${fixture.search_comparison.canonical_product_id}`),
   );

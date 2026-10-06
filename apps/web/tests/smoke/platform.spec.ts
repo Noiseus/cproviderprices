@@ -114,10 +114,19 @@ test("trial extension, suspension confirmation, invite, and resend wait for the 
   const future = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 16);
+  const organizationApiPath = `/api/v1/platform/organizations/${fixture.platform.organization_id}`;
   await page.locator('select[name="action"]').selectOption("extend_trial");
   await page.getByLabel("Trial end (UTC)").fill(future);
   await page.locator('input[name="reason"]').nth(1).fill("E2E trial extension");
+  const extendTrialResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" &&
+      new URL(response.url()).pathname ===
+        `${organizationApiPath}/subscription`,
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Apply subscription action" }).click();
+  expect((await extendTrialResponse).status()).toBe(200);
   await expect(
     page.getByText(/Subscription extend trial completed/),
   ).toBeVisible();
@@ -130,13 +139,42 @@ test("trial extension, suspension confirmation, invite, and resend wait for the 
   await page.getByRole("button", { name: "Apply subscription action" }).click();
   const dialog = page.getByRole("dialog", { name: "Confirm high-risk action" });
   await expect(dialog).toBeVisible();
+  const suspendResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" &&
+      new URL(response.url()).pathname ===
+        `${organizationApiPath}/subscription`,
+    { timeout: 15_000 },
+  );
   await dialog.getByRole("button", { name: "Confirm action" }).click();
+  expect((await suspendResponse).status()).toBe(200);
   await expect(page.getByText(/Subscription suspend completed/)).toBeVisible();
 
   await page.getByLabel("Owner email").fill("platform-e2e-owner@example.test");
+  const inviteResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        `${organizationApiPath}/initial-owner-invitations`,
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Invite initial owner" }).click();
+  const invitationResponse = await inviteResponse;
+  expect(invitationResponse.status()).toBe(201);
+  const createdInvitation = (await invitationResponse.json()) as {
+    invitation: { id: string };
+  };
+  expect(createdInvitation.invitation.id).toEqual(expect.any(String));
   await expect(page.getByText("Initial-owner invitation sent.")).toBeVisible();
+  const resendResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        `${organizationApiPath}/initial-owner-invitations/${createdInvitation.invitation.id}/resend`,
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Resend" }).first().click();
+  expect((await resendResponse).status()).toBe(200);
   await expect(page.getByText("Invitation replaced and resent.")).toBeVisible({
     timeout: 15_000,
   });

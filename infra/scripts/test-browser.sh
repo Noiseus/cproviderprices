@@ -10,6 +10,7 @@ trap 'compose stop' EXIT
 compose up -d --wait
 compose exec -T api php artisan migrate --force
 compose exec -T api php artisan app:prepare-auth-e2e
+compose exec -T api php artisan app:verify-pilot-e2e
 compose exec -T web npm run smoke -- "$@"
 if [ "$#" -eq 0 ] || [ "$1" = imports.spec.ts ]; then
   compose exec -T api php artisan app:verify-import-e2e

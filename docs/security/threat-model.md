@@ -86,13 +86,17 @@ Laravel defaults to newline-delimited JSON logs (LOG_FORMAT=json) with a process
 ## Dependency and repository review
 
 Prompt 20 validation on 2026-10-05 found and fixed one production npm advisory
-by updating Next.js from 16.3.4 to 16.3.8; production `npm audit --omit=dev`
-then reported zero findings. There are six development-only findings: the
-Next ESLint plugin's `fast-glob`/`micromatch`/`braces` chain (four high records)
-and Vitest/@vitest-mocker (two moderate records). Their proposed remediation is
-a breaking downgrade of the plugin to 14.x or a Vitest 5 migration, so neither
-was applied blindly; they are not bundled into the customer runtime and require
-a compatible toolchain upgrade follow-up.
+by updating Next.js from 16.3.4 to 16.3.8. Prompt 22 then updated
+`source-map-js` to 1.2.2 in the lockfile; production `npm audit --omit=dev`
+reports zero findings. Full npm audit reports seven development-only findings:
+the Next ESLint plugin's `fast-glob`/`micromatch`/`braces` chain (four high
+records), Vitest/Tinypool (two critical records), and Vitest mocker (one
+moderate record). The production image copies the Next standalone runtime, not
+the build `node_modules`, so these tools are absent from customer runtime.
+Their proposed remediation includes an incompatible ESLint-plugin downgrade or
+a Vitest major upgrade; neither was applied blindly. Keep CI pull requests
+read-only/secretless and complete a compatible toolchain upgrade before
+accepting untrusted build or test inputs.
 
 Composer initially reported two `league/commonmark` advisories (medium raw HTML
 bypass and high table-scan DoS). A targeted compatible lock update moved it from
