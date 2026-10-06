@@ -96,6 +96,7 @@ All API timestamps use ISO 8601 and UTC. Example files contain local-only placeh
 - [Security baseline](docs/security/security-baseline.md)
 - [Supplier integration principles](docs/integrations/suppliers.md)
 - [Deployment context](docs/deployment/deployment-context.md)
+- [Deployment runbook](docs/operations/deployment-runbook.md)
 - [Prompt roadmap](docs/roadmap/prompt-sequence.md)
 
 Read `AGENTS.md` and relevant documentation before changing a subsystem. Architectural deviations require an explicit ADR; implementation should not begin later prompts until requested.

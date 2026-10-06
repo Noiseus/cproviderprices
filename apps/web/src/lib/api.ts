@@ -17,8 +17,17 @@ export class ApiClientError extends Error {
   }
 }
 
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(
+  /\/$/,
+  "",
+);
+
+// Production Caddy serves browser API requests through the authenticated app
+// origin. That keeps one immutable Next.js image promotable between staging and
+// production, while API_INTERNAL_URL remains private for server rendering.
 export const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  configuredApiBaseUrl ??
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:8080");
 
 function xsrfToken(): string | undefined {
   const cookie = document.cookie

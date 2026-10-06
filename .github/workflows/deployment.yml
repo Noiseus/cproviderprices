@@ -1,0 +1,88 @@
+name: Deployment preparation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment environment. Production is intentionally manual.
+        required: true
+        type: choice
+        options: [staging, production]
+      image_tag:
+        description: Previously built immutable image tag to deploy.
+        required: true
+        type: string
+
+concurrency:
+  group: deployment-${{ github.workflow }}-${{ github.event.inputs.target || 'staging' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-release-images:
+    name: Build immutable release images
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.release.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: release
+        run: echo "image_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Build production images without publishing
+        run: |
+          docker build --file infra/docker/web.production.Dockerfile --tag cproviderprices/web:${GITHUB_SHA} .
+          docker build --file infra/docker/api.production.Dockerfile --tag cproviderprices/api:${GITHUB_SHA} .
+          docker build --file infra/docker/ingestion.production.Dockerfile --tag cproviderprices/ingestion:${GITHUB_SHA} .
+          docker build --file infra/docker/postgres.production.Dockerfile --tag cproviderprices/postgres:${GITHUB_SHA} .
+      - name: Publish release identity for an external registry step
+        run: |
+          printf '%s\n' "${GITHUB_SHA}" > release-image-tag.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-image-tag
+          path: release-image-tag.txt
+          retention-days: 14
+
+  deploy-staging:
+    name: Staging deployment (disabled until explicitly configured)
+    needs: build-release-images
+    if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
+    environment:
+      name: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard deployment prerequisites
+        env:
+          IMAGE_TAG: ${{ needs.build-release-images.outputs.image_tag }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          test -n "$IMAGE_TAG"
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          echo "Staging deployment is intentionally a guarded skeleton. Configure an immutable registry and deployment credentials before enabling it."
+
+  deploy-production:
+    name: Production deployment (manual approval required)
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'production' && vars.DEPLOY_ENABLED == 'true'
+    environment:
+      name: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard immutable release and protected environment
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          test -n "$IMAGE_TAG"
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          echo "Production is manual-only and must use GitHub Environment protection plus the exact previously validated image tag."
