@@ -357,6 +357,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mobile/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange credentials for a revocable native mobile access token
+         * @description The raw token is returned once and must be stored only in device secure storage. Tokens are hashed at rest, expire, are bound to the user's current auth version, and replacing the same device label revokes its previous token. This endpoint never creates a browser session.
+         */
+        post: operations["createMobileAccessToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/session": {
         parameters: {
             query?: never;
@@ -368,7 +388,7 @@ export interface paths {
         get: operations["getCurrentSession"];
         put?: never;
         post?: never;
-        /** Invalidate the current browser session */
+        /** Invalidate the current browser session or revoke the current mobile token */
         delete: operations["logout"];
         options?: never;
         head?: never;
@@ -2033,6 +2053,22 @@ export interface components {
             session: components["schemas"]["Session"];
             destination: string;
         };
+        MobileLoginRequest: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            password: string;
+            device_name?: string;
+        };
+        MobileLoginResponse: {
+            /** @description Returned once. Do not log, cache in plain storage, or put in a URL. */
+            access_token: string;
+            /** @constant */
+            token_type: "Bearer";
+            /** Format: date-time */
+            expires_at: string;
+            session: components["schemas"]["Session"];
+        };
         SessionResponse: {
             session: components["schemas"]["Session"];
         };
@@ -3153,6 +3189,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createMobileAccessToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobileLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Mobile access token and the same server-authoritative session profile used by browser clients. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileLoginResponse"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

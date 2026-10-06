@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\V1\Auth\InvitationController;
+use App\Http\Controllers\Api\V1\Auth\MobileAccessTokenController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -30,6 +31,7 @@ Route::model('organization', Organization::class);
 Route::prefix('v1')->group(function (): void {
     Route::get('/health', [HealthController::class, 'health']);
     Route::get('/readiness', [HealthController::class, 'readiness']);
+    Route::post('/mobile/auth/login', [MobileAccessTokenController::class, 'store'])->middleware('throttle:login');
 
     Route::middleware('web')->group(function (): void {
         Route::get('/auth/csrf-cookie', [SessionController::class, 'csrf'])->name('auth.csrf');
@@ -39,7 +41,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/auth/invitations/{token}', [InvitationController::class, 'show'])->middleware('throttle:invitations');
         Route::post('/auth/invitations/accept', [InvitationController::class, 'accept'])->middleware('throttle:invitations');
 
-        Route::middleware(['auth:web', 'active.user'])->group(function (): void {
+        Route::middleware(['auth.api', 'active.user'])->group(function (): void {
             Route::get('/auth/session', [SessionController::class, 'show']);
             Route::patch('/auth/preferences', [SessionController::class, 'updatePreferences']);
             Route::delete('/auth/session', [SessionController::class, 'destroy']);

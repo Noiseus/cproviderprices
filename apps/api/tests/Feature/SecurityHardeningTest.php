@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\VerifyApiCsrfToken;
 use App\Models\User;
 use App\Support\ApiErrorResponse;
 use App\Support\Audit;
@@ -49,6 +50,7 @@ final class SecurityHardeningTest extends TestCase
         $this->assertNotContains('*', config('cors.allowed_origins'));
         $this->assertSame(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], config('cors.allowed_methods'));
         $this->assertNotContains('*', config('cors.allowed_methods'));
+        $this->assertContains('Authorization', config('cors.allowed_headers'));
     }
 
     public function test_preflight_allows_only_the_configured_browser_origin_and_methods(): void
@@ -89,6 +91,41 @@ final class SecurityHardeningTest extends TestCase
         $this->assertSame(419, $response->getStatusCode());
         $this->assertSame('csrf_token_mismatch', $response->getData(true)['error']['code']);
         $this->assertStringNotContainsString('should-not-leak', $response->getContent());
+    }
+
+    public function test_mobile_bearer_csrf_bypass_does_not_disable_browser_cookie_csrf(): void
+    {
+        $middleware = new class(app(), app('encrypter')) extends VerifyApiCsrfToken
+        {
+            protected function runningUnitTests(): bool
+            {
+                return false;
+            }
+        };
+        $originalEnvironment = config('app.env');
+        config(['app.env' => 'local']);
+
+        try {
+            $cookieRequest = Request::create('/api/v1/auth/session', 'PATCH');
+            $session = app('session')->driver('array');
+            $session->start();
+            $cookieRequest->setLaravelSession($session);
+
+            try {
+                $middleware->handle($cookieRequest, fn () => response()->noContent());
+                $this->fail('Cookie-authenticated state changes must require a CSRF token.');
+            } catch (TokenMismatchException) {
+                $this->addToAssertionCount(1);
+            }
+
+            $bearerRequest = Request::create('/api/v1/auth/session', 'PATCH', server: [
+                'HTTP_AUTHORIZATION' => 'Bearer cpm1.not-a-real-token',
+            ]);
+            $bearerRequest->setLaravelSession($session);
+            $this->assertSame(204, $middleware->handle($bearerRequest, fn () => response()->noContent())->getStatusCode());
+        } finally {
+            config(['app.env' => $originalEnvironment]);
+        }
     }
 
     public function test_rate_limits_return_a_stable_error_and_retry_header(): void

@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "CProviderPrices",
+    "slug": "cproviderprices",
+    "scheme": "cproviderprices",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.cproviderprices.mobile",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.cproviderprices.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#071018"
+      }
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

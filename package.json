@@ -3,18 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/web",
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
     "check:api-client": "node infra/scripts/check-generated-client.mjs",
     "contract:lint": "redocly lint packages/api-contracts/openapi.yaml --extends=minimal",
-    "format": "prettier --write \"apps/web/**/*.{ts,tsx,mjs}\" \"packages/*/src/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"apps/web/**/*.{ts,tsx,mjs}\" \"packages/*/src/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"apps/web/**/*.{ts,tsx,mjs}\" \"apps/mobile/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"apps/web/**/*.{ts,tsx,mjs}\" \"apps/mobile/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\"",
     "generate:api": "openapi-typescript packages/api-contracts/openapi.yaml -o packages/generated-api-client/src/schema.d.ts",
-    "lint": "eslint apps/web packages/domain-types/src packages/generated-api-client/src && npm run format:check",
+    "lint": "eslint apps/web apps/mobile packages/domain-types/src packages/generated-api-client/src && npm run format:check",
+    "mobile:lint": "npm run lint --workspace @cproviderprices/mobile && npm run format:check --workspace @cproviderprices/mobile",
+    "mobile:typecheck": "npm run typecheck --workspace @cproviderprices/mobile",
+    "mobile:test": "npm run test --workspace @cproviderprices/mobile",
+    "mobile:config": "npm run check:expo-config --workspace @cproviderprices/mobile",
+    "mobile:export": "npm run export:check --workspace @cproviderprices/mobile",
     "smoke": "npm run test:smoke --workspace @cproviderprices/web",
-    "test": "npm run test --workspace @cproviderprices/web",
+    "test": "npm run test --workspace @cproviderprices/web && npm run test --workspace @cproviderprices/mobile",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {

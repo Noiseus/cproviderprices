@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CProviderPrices API
   version: 0.12.0
-  description: Versioned API contract for operational, invite-only authentication, tenant-context, entitlement, and explicit platform-administration endpoints.
+  description: Versioned API contract for operational, invite-only authentication, tenant-context, entitlement, and explicit platform-administration endpoints. Private read APIs used by the native foundation accept either the browser cookie session or a revocable mobile bearer token; authorization remains server-authoritative in both cases.
 security: []
 servers:
   - url: /api/v1
@@ -287,12 +287,33 @@ paths:
                 $ref: "#/components/schemas/LoginResponse"
         default:
           $ref: "#/components/responses/ErrorResponse"
+  /mobile/auth/login:
+    post:
+      operationId: createMobileAccessToken
+      summary: Exchange credentials for a revocable native mobile access token
+      description: The raw token is returned once and must be stored only in device secure storage. Tokens are hashed at rest, expire, are bound to the user's current auth version, and replacing the same device label revokes its previous token. This endpoint never creates a browser session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileLoginRequest"
+      responses:
+        "200":
+          description: Mobile access token and the same server-authoritative session profile used by browser clients.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileLoginResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
   /auth/session:
     get:
       operationId: getCurrentSession
       summary: Get the authenticated user and authorized organizations
       security:
         - cookieSession: []
+        - mobileBearer: []
       responses:
         "200":
           description: Current authenticated session.
@@ -304,9 +325,10 @@ paths:
           $ref: "#/components/responses/ErrorResponse"
     delete:
       operationId: logout
-      summary: Invalidate the current browser session
+      summary: Invalidate the current browser session or revoke the current mobile token
       security:
         - cookieSession: []
+        - mobileBearer: []
       responses:
         "200":
           description: Session invalidated.
@@ -322,6 +344,7 @@ paths:
       summary: Update the authenticated user's presentation preferences
       security:
         - cookieSession: []
+        - mobileBearer: []
       requestBody:
         required: true
         content:
@@ -469,6 +492,7 @@ paths:
       summary: Resolve the active authenticated tenant context
       security:
         - cookieSession: []
+        - mobileBearer: []
       responses:
         "200":
           description: Server-authorized active tenant context.
@@ -547,6 +571,7 @@ paths:
       summary: Get a restaurant location through its authoritative organization
       security:
         - cookieSession: []
+        - mobileBearer: []
       responses:
         "200":
           description: Tenant-scoped restaurant location.
@@ -596,7 +621,7 @@ paths:
     get:
       operationId: listRestaurantLocations
       summary: List retained tenant locations
-      security: [{ cookieSession: [] }]
+      security: [{ cookieSession: [] }, { mobileBearer: [] }]
       responses:
         "200":
           description: Tenant-scoped locations.
@@ -765,7 +790,7 @@ paths:
       summary: Search global canonical catalog with tenant/location-private offer summaries
       description: >-
         Canonical catalog rows may appear with zero offers. Supplier, price, freshness, and match summaries only include eligible tenant/location-private offers. Results are bounded, server-filtered, and use a short scoped private cache.
-      security: [{ cookieSession: [] }]
+      security: [{ cookieSession: [] }, { mobileBearer: [] }]
       responses:
         "200":
           description: Grouped canonical product results with safe private summaries.
@@ -796,7 +821,7 @@ paths:
       summary: Compare eligible tenant/location-private offers for one canonical product
       description: >-
         Case and normalized price winners are calculated server-side using decimal arithmetic. Alternatives and unsafe comparisons remain visible with explicit warnings and cannot receive direct-comparison winner labels.
-      security: [{ cookieSession: [] }]
+      security: [{ cookieSession: [] }, { mobileBearer: [] }]
       responses:
         "200":
           description: First-view offer comparison with calculation traceability; full history is intentionally excluded.
@@ -831,7 +856,7 @@ paths:
       summary: Read tenant/location-authorized immutable price history for one canonical product
       description: >-
         Observations retain source and import timestamps. Daily means are calculated with exact decimal arithmetic only within the same supplier, currency, and compatible unit dimension. Unsafe or incompatible observations remain visible but are not fabricated into a normalized series.
-      security: [{ cookieSession: [] }]
+      security: [{ cookieSession: [] }, { mobileBearer: [] }]
       responses:
         "200":
           description: Bounded price history, safe aggregation, and traceable observation metadata.
@@ -845,7 +870,7 @@ paths:
     get:
       operationId: listSavedLists
       summary: List organization-scoped saved purchasing lists
-      security: [{ cookieSession: [] }]
+      security: [{ cookieSession: [] }, { mobileBearer: [] }]
       parameters:
         - name: location_id
           in: query
@@ -884,7 +909,7 @@ paths:
       summary: Read durable purchasing intent with batched current-offer summaries
       description: >-
         The list item remains canonical-product intent. Current selected, normalized-best, and available-best offers are derived at read time and are never persisted into the item.
-      security: [{ cookieSession: [] }]
+      security: [{ cookieSession: [] }, { mobileBearer: [] }]
       responses:
         "200":
           description: Saved-list detail and server-authoritative versions.
@@ -1406,6 +1431,11 @@ components:
       in: cookie
       name: cproviderprices_session
       description: HttpOnly Laravel browser session. State-changing requests also require the X-XSRF-TOKEN header.
+    mobileBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: CProviderPrices mobile access token
+      description: Revocable, hashed, expiring native-device token. State-changing requests authenticated by this scheme do not use browser CSRF cookies.
   parameters:
     CanonicalProductId:
       name: canonicalProduct
@@ -2447,6 +2477,37 @@ components:
         destination:
           type: string
           pattern: "^/"
+    MobileLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        device_name:
+          type: string
+          maxLength: 80
+    MobileLoginResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, token_type, expires_at, session]
+      properties:
+        access_token:
+          type: string
+          writeOnly: true
+          description: Returned once. Do not log, cache in plain storage, or put in a URL.
+        token_type:
+          type: string
+          const: Bearer
+        expires_at:
+          type: string
+          format: date-time
+        session:
+          $ref: "#/components/schemas/Session"
     SessionResponse:
       type: object
       additionalProperties: false

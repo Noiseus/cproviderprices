@@ -500,6 +500,29 @@ export const es = {
     permissionRequired: "Se requiere permiso",
     evidenceAndDifferences: "Evidencia y diferencias",
   },
+  mobile: {
+    signInHelp:
+      "Inicie sesi\u00f3n con su cuenta de CProviderPrices. La sesi\u00f3n nativa permanece en este dispositivo.",
+    organizationSelector: "Elegir organizaci\u00f3n",
+    locationSelector: "Elegir ubicaci\u00f3n",
+    dashboardReadiness:
+      "El m\u00f3vil est\u00e1 listo para flujos de compra centrados en lectura. Los precios actuales siguen siendo autorizados por el servidor.",
+    suppliers: "proveedores",
+    items: "art\u00edculos",
+    historySummary:
+      "{observations} observaciones en {points} puntos diarios seguros del historial.",
+    sortByNormalized: "Ordenar por el precio normalizado mas bajo",
+    freshOnly: "Mostrar solo ofertas recientes",
+    allFreshness: "Mostrar todos los estados de frescura",
+    freshnessSummary:
+      "Recientes: {fresh}; en envejecimiento: {aging}; obsoletas: {stale}.",
+    listEditingDeferred:
+      "La edici\u00f3n de listas queda para un flujo m\u00f3vil futuro; esta vista nunca modifica la intenci\u00f3n de compra sin conexi\u00f3n.",
+    importsDeferred:
+      "Las importaciones no est\u00e1n disponibles en la base m\u00f3vil.",
+    importsDeferredDetail:
+      "La selecci\u00f3n CSV/XLSX, los l\u00edmites de carga y los reintentos en segundo plano permanecen en la web hasta dise\u00f1ar un flujo nativo seguro.",
+  },
   errors: {
     request_failed: "No se pudo completar la solicitud.",
     validation_failed: "Revise los campos destacados e inténtelo de nuevo.",
@@ -520,5 +543,11 @@ export const es = {
       "El token de seguridad de su sesión expiró. Actualice e inténtelo de nuevo.",
     too_many_requests:
       "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
+    mobile_token_invalid:
+      "La sesi\u00f3n de este dispositivo ya no es v\u00e1lida. Inicie sesi\u00f3n de nuevo.",
+    mobile_token_expired:
+      "La sesi\u00f3n de este dispositivo expir\u00f3. Inicie sesi\u00f3n de nuevo.",
+    mobile_scope_forbidden:
+      "Esta acci\u00f3n no est\u00e1 disponible desde la base m\u00f3vil.",
   },
 } as const;

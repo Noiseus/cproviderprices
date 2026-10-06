@@ -489,6 +489,27 @@ export const en = {
     permissionRequired: "Permission required",
     evidenceAndDifferences: "Evidence and differences",
   },
+  mobile: {
+    signInHelp:
+      "Sign in with your CProviderPrices account. Your native session stays on this device.",
+    organizationSelector: "Choose organization",
+    locationSelector: "Choose location",
+    dashboardReadiness:
+      "Mobile is ready for read-heavy buyer workflows. Current prices remain server-authoritative.",
+    suppliers: "suppliers",
+    items: "items",
+    historySummary:
+      "{observations} observations across {points} safe daily history points.",
+    sortByNormalized: "Sort by lowest normalized price",
+    freshOnly: "Show fresh offers only",
+    allFreshness: "Show all freshness states",
+    freshnessSummary: "Fresh: {fresh}; aging: {aging}; stale: {stale}.",
+    listEditingDeferred:
+      "List editing remains a future mobile workflow; this view never changes purchasing intent offline.",
+    importsDeferred: "Imports are not available in the mobile foundation.",
+    importsDeferredDetail:
+      "CSV/XLSX selection, upload sizing, and background retry stay on web until a safe native import flow is designed.",
+  },
   errors: {
     request_failed: "The request could not be completed.",
     validation_failed: "Check the highlighted fields and try again.",
@@ -506,5 +527,10 @@ export const en = {
     csrf_token_mismatch:
       "Your session security token expired. Refresh and try again.",
     too_many_requests: "Too many requests. Please wait and try again.",
+    mobile_token_invalid:
+      "This device session is no longer valid. Sign in again.",
+    mobile_token_expired: "This device session has expired. Sign in again.",
+    mobile_scope_forbidden:
+      "This action is not available from the mobile foundation.",
   },
 } as const;

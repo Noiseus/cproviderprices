@@ -8,6 +8,8 @@ const webRoot = fileURLToPath(new URL("./apps/web/", import.meta.url));
 export default defineConfig([
   globalIgnores([
     "**/.next/**",
+    "**/.expo/**",
+    "**/.expo-export-check/**",
     "**/node_modules/**",
     "**/next-env.d.ts",
     "packages/generated-api-client/src/schema.d.ts",
