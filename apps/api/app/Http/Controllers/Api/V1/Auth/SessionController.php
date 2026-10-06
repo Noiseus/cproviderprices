@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Enums\MembershipStatus;
 use App\Enums\PreferredLanguage;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
-use App\Models\OrganizationMembership;
+use App\Models\MobileAccessToken;
 use App\Models\User;
 use App\Support\ApiProblem;
+use App\Support\Audit;
 use App\Support\AuthSession;
 use App\Support\SafeDestination;
+use App\Support\SessionPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -45,7 +46,7 @@ final class SessionController extends Controller
         AuthSession::start($request, $user);
 
         return response()->json([
-            'session' => $this->sessionPayload($user),
+            'session' => SessionPayload::forUser($user),
             'destination' => SafeDestination::afterLogin($user, $validated['intended_destination'] ?? null),
         ]);
     }
@@ -58,11 +59,22 @@ final class SessionController extends Controller
             throw new ApiProblem('unauthorized', 'Authentication is required.', 401);
         }
 
-        return response()->json(['session' => $this->sessionPayload($user)]);
+        return response()->json(['session' => SessionPayload::forUser($user)]);
     }
 
     public function destroy(Request $request): JsonResponse
     {
+        $mobileAccessToken = $request->attributes->get(MobileAccessToken::class);
+
+        if ($mobileAccessToken instanceof MobileAccessToken) {
+            $mobileAccessToken->revoke();
+            Audit::record('mobile_access_token.revoked', $request->user(), metadata: [
+                'mobile_access_token_id' => $mobileAccessToken->id,
+            ]);
+
+            return response()->json(['message' => 'Signed out.']);
+        }
+
         AuthSession::end($request);
 
         return response()->json(['message' => 'Signed out.']);
@@ -81,33 +93,6 @@ final class SessionController extends Controller
         ]);
         $user->update(['preferred_language' => $validated['preferred_language']]);
 
-        return response()->json(['session' => $this->sessionPayload($user->refresh())]);
-    }
-
-    /** @return array<string, mixed> */
-    private function sessionPayload(User $user): array
-    {
-        $memberships = $user->memberships()
-            ->where('status', MembershipStatus::Active)
-            ->with('organization')
-            ->get();
-
-        return [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'email_verified' => $user->hasVerifiedEmail(),
-                'platform_role' => $user->platform_role?->value,
-                'preferred_language' => $user->preferred_language->value,
-            ],
-            'organizations' => $memberships->map(fn (OrganizationMembership $membership): array => [
-                'id' => $membership->organization->id,
-                'name' => $membership->organization->name,
-                'slug' => $membership->organization->slug,
-                'status' => $membership->organization->status->value,
-                'role' => $membership->role->value,
-            ])->values()->all(),
-        ];
+        return response()->json(['session' => SessionPayload::forUser($user->refresh())]);
     }
 }

@@ -77,4 +77,10 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(Invitation::class, 'invited_by');
     }
+
+    /** @return HasMany<MobileAccessToken, $this> */
+    public function mobileAccessTokens(): HasMany
+    {
+        return $this->hasMany(MobileAccessToken::class);
+    }
 }

@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       web: ${{ steps.filter.outputs.web }}
+      mobile: ${{ steps.filter.outputs.mobile }}
       api: ${{ steps.filter.outputs.api }}
       ingestion: ${{ steps.filter.outputs.ingestion }}
       contract: ${{ steps.filter.outputs.contract }}
@@ -33,6 +34,21 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'Makefile'
               - 'apps/web/**'
+              - 'packages/domain-types/**'
+              - 'packages/design-tokens/**'
+              - 'packages/generated-api-client/**'
+              - 'packages/i18n/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'eslint.config.mjs'
+              - '.prettierignore'
+            mobile:
+              - '.github/workflows/ci.yml'
+              - 'apps/mobile/**'
+              - 'packages/api-contracts/**'
+              - 'packages/generated-api-client/**'
+              - 'packages/i18n/**'
+              - 'packages/design-tokens/**'
               - 'packages/domain-types/**'
               - 'package.json'
               - 'package-lock.json'
@@ -81,6 +97,24 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
+
+  mobile:
+    name: Mobile Expo lint, typecheck, tests, and export
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run mobile:lint
+      - run: npm run mobile:typecheck
+      - run: npm run mobile:test
+      - run: npm run mobile:config
+      - run: npm run mobile:export
 
   api:
     name: API format, static analysis, and unit tests
