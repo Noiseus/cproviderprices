@@ -13,6 +13,7 @@ use App\Enums\SupplierAccountStatus;
 use App\Enums\SupplierRefreshCadence;
 use App\Enums\SupplierSourceMethod;
 use App\Jobs\RecalculatePriceFreshness;
+use App\Jobs\VerifyQueueProcessing;
 use App\Models\CanonicalProduct;
 use App\Models\ImportFile;
 use App\Models\ImportRun;
@@ -40,6 +41,7 @@ use Database\Seeders\CatalogTaxonomySeeder;
 use Database\Seeders\SupplierDefinitionSeeder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
@@ -418,6 +420,7 @@ Artisan::command('inspire', function () {
 
 Artisan::command('app:validate-environment', function (): int {
     $required = [
+        'APP_ENV' => config('app.env'),
         'APP_KEY' => config('app.key'),
         'DB_CONNECTION' => config('database.default'),
         'DB_HOST' => config('database.connections.pgsql.host'),
@@ -429,6 +432,7 @@ Artisan::command('app:validate-environment', function (): int {
         'AWS_BUCKET' => config('filesystems.disks.s3.bucket'),
         'AWS_ENDPOINT' => config('filesystems.disks.s3.endpoint'),
         'MAIL_HOST' => config('mail.mailers.smtp.host'),
+        'MAIL_FROM_ADDRESS' => config('mail.from.address'),
     ];
     $expected = [
         'DB_CONNECTION' => [config('database.default'), 'pgsql'],
@@ -460,10 +464,104 @@ Artisan::command('app:validate-environment', function (): int {
         return Command::FAILURE;
     }
 
+    $environment = (string) config('app.env');
+    if (in_array($environment, ['staging', 'production'], true)) {
+        $productionRequired = [
+            'APP_URL' => config('app.url'),
+            'FRONTEND_URL' => config('app.frontend_url'),
+            'SESSION_DOMAIN' => config('session.domain'),
+            'TRUSTED_PROXIES' => config('security.trusted_proxies'),
+            'REDIS_PASSWORD' => config('database.redis.default.password'),
+            'MAIL_USERNAME' => config('mail.mailers.smtp.username'),
+            'MAIL_PASSWORD' => config('mail.mailers.smtp.password'),
+            'INGESTION_SERVICE_URL' => config('services.ingestion.url'),
+            'INGESTION_SERVICE_TOKEN' => config('services.ingestion.token'),
+        ];
+        $productionMissing = array_keys(array_filter(
+            $productionRequired,
+            static fn (mixed $value): bool => (is_array($value) && $value === [])
+                || ! is_array($value) && (! is_string($value) || trim($value) === ''),
+        ));
+        if ($productionMissing !== []) {
+            $this->error('Missing required production environment values: '.implode(', ', $productionMissing));
+
+            return Command::FAILURE;
+        }
+
+        $origins = config('cors.allowed_origins');
+        $productionInvalid = [];
+        if (config('app.debug') !== false) {
+            $productionInvalid[] = 'APP_DEBUG';
+        }
+        if (config('session.secure') !== true) {
+            $productionInvalid[] = 'SESSION_SECURE_COOKIE';
+        }
+        if (config('security.hsts_enabled') !== true) {
+            $productionInvalid[] = 'SECURITY_HSTS_ENABLED';
+        }
+        if (config('logging.default') !== 'stderr') {
+            $productionInvalid[] = 'LOG_CHANNEL';
+        }
+        if (config('app.maintenance.driver') !== 'cache') {
+            $productionInvalid[] = 'APP_MAINTENANCE_DRIVER';
+        }
+        if (! str_starts_with((string) config('app.url'), 'https://')) {
+            $productionInvalid[] = 'APP_URL';
+        }
+        if (! str_starts_with((string) config('app.frontend_url'), 'https://')) {
+            $productionInvalid[] = 'FRONTEND_URL';
+        }
+        if (! is_array($origins) || $origins === [] || array_filter(
+            $origins,
+            static fn (mixed $origin): bool => ! is_string($origin)
+                || ! str_starts_with($origin, 'https://')
+                || $origin === '*',
+        ) !== []) {
+            $productionInvalid[] = 'CORS_ALLOWED_ORIGINS';
+        }
+        if ($productionInvalid !== []) {
+            $this->error('Invalid production environment values: '.implode(', ', $productionInvalid));
+
+            return Command::FAILURE;
+        }
+    }
+
     $this->info('Environment configuration is valid.');
 
     return Command::SUCCESS;
 })->purpose('Validate required API runtime configuration');
+
+Artisan::command('app:verify-queue {--timeout=15 : Maximum seconds to await the worker acknowledgement}', function (): int {
+    if (config('queue.default') !== 'redis') {
+        $this->error('Queue smoke verification requires QUEUE_CONNECTION=redis.');
+
+        return Command::FAILURE;
+    }
+
+    $timeout = min(30, max(1, (int) $this->option('timeout')));
+    $acknowledgementKey = 'deployment-smoke:queue:'.Str::uuid()->toString();
+    $cache = Cache::store('redis');
+    $cache->forget($acknowledgementKey);
+    VerifyQueueProcessing::dispatch($acknowledgementKey)->onQueue('default');
+
+    $deadline = microtime(true) + $timeout;
+    try {
+        do {
+            if ($cache->pull($acknowledgementKey) === true) {
+                $this->info('Queue worker processed the non-destructive smoke job.');
+
+                return Command::SUCCESS;
+            }
+            usleep(100_000);
+        } while (microtime(true) < $deadline);
+    } finally {
+        $cache->forget($acknowledgementKey);
+    }
+
+    $this->error('Queue worker did not acknowledge the smoke job before the deadline.');
+
+    return Command::FAILURE;
+})->purpose('Verify that a Redis queue worker processes a non-destructive job');
 
 Schedule::job(new RecalculatePriceFreshness, 'freshness')
     ->everyFiveMinutes()

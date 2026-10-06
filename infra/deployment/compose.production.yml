@@ -1,0 +1,425 @@
+x-api-environment: &api-environment
+  APP_NAME: ${APP_NAME:?APP_NAME is required}
+  APP_ENV: ${APP_ENV:?APP_ENV is required}
+  APP_KEY: ${APP_KEY:?APP_KEY is required}
+  APP_DEBUG: ${APP_DEBUG:?APP_DEBUG is required}
+  APP_URL: ${APP_URL:?APP_URL is required}
+  FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+  APP_TIMEZONE: UTC
+  APP_LOCALE: en
+  APP_FALLBACK_LOCALE: en
+  APP_FAKER_LOCALE: en_US
+  APP_MAINTENANCE_DRIVER: ${APP_MAINTENANCE_DRIVER:?APP_MAINTENANCE_DRIVER is required}
+  APP_MAINTENANCE_STORE: redis
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  LOG_FORMAT: json
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_DATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
+  DB_USERNAME: ${APP_DB_USERNAME:?APP_DB_USERNAME is required}
+  DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}
+  DB_SSLMODE: ${DB_SSLMODE:-prefer}
+  CACHE_STORE: redis
+  CACHE_PREFIX: ${CACHE_PREFIX:?CACHE_PREFIX is required}
+  QUEUE_CONNECTION: redis
+  QUEUE_FAILED_DRIVER: database-uuids
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+  REDIS_DB: "0"
+  REDIS_CACHE_DB: "1"
+  REDIS_PREFIX: ${REDIS_PREFIX:?REDIS_PREFIX is required}
+  SESSION_DRIVER: database
+  SESSION_LIFETIME: "120"
+  SESSION_COOKIE: ${SESSION_COOKIE:?SESSION_COOKIE is required}
+  SESSION_DOMAIN: ${SESSION_DOMAIN:?SESSION_DOMAIN is required}
+  SESSION_SECURE_COOKIE: "true"
+  SESSION_HTTP_ONLY: "true"
+  SESSION_SAME_SITE: lax
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+  TRUSTED_PROXIES: ${CADDY_APPLICATION_IP:?CADDY_APPLICATION_IP is required}
+  TRUSTED_HOSTS: ${TRUSTED_HOSTS:?TRUSTED_HOSTS is required}
+  SECURITY_HSTS_ENABLED: "true"
+  SECURITY_HSTS_MAX_AGE: "31536000"
+  FILESYSTEM_DISK: s3
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+  AWS_ENDPOINT: http://minio:9000
+  AWS_USE_PATH_STYLE_ENDPOINT: "true"
+  MAIL_MAILER: smtp
+  MAIL_SCHEME: ${MAIL_SCHEME:?MAIL_SCHEME is required}
+  MAIL_HOST: ${MAIL_HOST:?MAIL_HOST is required}
+  MAIL_PORT: ${MAIL_PORT:?MAIL_PORT is required}
+  MAIL_USERNAME: ${MAIL_USERNAME:?MAIL_USERNAME is required}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD is required}
+  MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:?MAIL_FROM_ADDRESS is required}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME:?MAIL_FROM_NAME is required}
+  INGESTION_SERVICE_URL: http://ingestion:8001
+  INGESTION_SERVICE_TIMEOUT: "20"
+  INGESTION_SERVICE_TOKEN: ${INGESTION_SERVICE_TOKEN:?INGESTION_SERVICE_TOKEN is required}
+  IMPORT_MAX_KIB: "10240"
+  IMPORT_NORMALIZATION_BATCH_ROWS: "25"
+  API_HEALTH_HOST: ${API_HOST:?API_HOST is required}
+  TZ: UTC
+
+x-service-logging: &service-logging
+  driver: local
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  caddy:
+    image: ${CADDY_IMAGE:?CADDY_IMAGE is required}
+    restart: unless-stopped
+    logging: *service-logging
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+      APP_HOST: ${APP_HOST:?APP_HOST is required}
+      API_HOST: ${API_HOST:?API_HOST is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+        mode: 0444
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge:
+      application:
+        ipv4_address: ${CADDY_APPLICATION_IP:?CADDY_APPLICATION_IP is required}
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+  web:
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    logging: *service-logging
+    environment:
+      WEB_ENV: ${APP_ENV:?APP_ENV is required}
+      WEB_URL: ${WEB_URL:?WEB_URL is required}
+      API_INTERNAL_URL: http://api:8080
+      TZ: UTC
+    networks:
+      - application
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+
+  api:
+    image: ${API_IMAGE:?API_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    logging: *service-logging
+    environment: *api-environment
+    networks:
+      - application
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      ingestion:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'curl --fail --silent --show-error --header "Host: $$API_HEALTH_HOST" http://localhost:8080/api/v1/health',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+
+  worker:
+    image: ${API_IMAGE:?API_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    logging: *service-logging
+    command: >-
+      sh -c "php artisan app:validate-environment && exec php artisan queue:work redis
+      --queue=default,import-normalization,catalog-matching,freshness --sleep=1 --tries=3 --timeout=60"
+    environment: *api-environment
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      ingestion:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'queue:work' /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 512M
+
+  scheduler:
+    image: ${API_IMAGE:?API_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    logging: *service-logging
+    command: sh -c "php artisan app:validate-environment && exec php artisan schedule:work"
+    environment: *api-environment
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'schedule:work' /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+  ingestion:
+    image: ${INGESTION_IMAGE:?INGESTION_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    logging: *service-logging
+    environment:
+      INGESTION_ENV: ${APP_ENV:?APP_ENV is required}
+      INGESTION_SERVICE_NAME: ingestion
+      INGESTION_SERVICE_TOKEN: ${INGESTION_SERVICE_TOKEN:?INGESTION_SERVICE_TOKEN is required}
+      TZ: UTC
+    networks:
+      - data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  postgres:
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    logging: *service-logging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?POSTGRES_ADMIN_PASSWORD is required}
+      APP_DB_USERNAME: ${APP_DB_USERNAME:?APP_DB_USERNAME is required}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}
+      TZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1G
+
+  redis:
+    image: redis:8.2.1-alpine
+    restart: unless-stopped
+    logging: *service-logging
+    command: >-
+      sh -c 'exec redis-server --appendonly yes --save 60 1 --requirepass "$$REDIS_PASSWORD"'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      TZ: UTC
+    volumes:
+      - redis-data:/data
+    networks:
+      - data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'redis-cli --no-auth-warning -a "$$REDIS_PASSWORD" ping | grep -q PONG',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+  minio:
+    image: ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z@sha256:69b55a1c1c5dc285ce04db96689f5b2102317fc77a50680a1874ca6efd1c87f9
+    restart: unless-stopped
+    logging: *service-logging
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      TZ: UTC
+    volumes:
+      - minio-data:/data
+    networks:
+      - data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'MC_CONFIG_DIR=/tmp/minio-health mc alias set local http://localhost:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1 && MC_CONFIG_DIR=/tmp/minio-health mc ready --quiet local >/dev/null 2>&1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  minio-init:
+    image: ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z@sha256:69b55a1c1c5dc285ce04db96689f5b2102317fc77a50680a1874ca6efd1c87f9
+    restart: "no"
+    logging: *service-logging
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}
+    networks:
+      - data
+    entrypoint: >-
+      /bin/sh -c '
+      set -eu;
+      mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}";
+      mc mb --ignore-existing "local/$${MINIO_BUCKET}";
+      mc anonymous set none "local/$${MINIO_BUCKET}";
+      printf "%s" "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:GetBucketLocation\",\"s3:ListBucket\"],\"Resource\":[\"arn:aws:s3:::$${MINIO_BUCKET}\"]},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\",\"s3:DeleteObject\"],\"Resource\":[\"arn:aws:s3:::$${MINIO_BUCKET}/*\"]}]}" > /tmp/cproviderprices-app-policy.json;
+      mc admin user add local "$${AWS_ACCESS_KEY_ID}" "$${AWS_SECRET_ACCESS_KEY}" || true;
+      mc admin policy create local cproviderprices-app /tmp/cproviderprices-app-policy.json || true;
+      mc admin policy attach local cproviderprices-app --user "$${AWS_ACCESS_KEY_ID}";
+      '
+
+  migrate:
+    image: ${API_IMAGE:?API_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    profiles: ["release"]
+    restart: "no"
+    logging: *service-logging
+    command: sh -c "php artisan app:validate-environment && exec php artisan migrate --force --isolated"
+    environment: *api-environment
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      ingestion:
+        condition: service_healthy
+
+configs:
+  caddyfile:
+    file: ./Caddyfile
+
+volumes:
+  caddy-config:
+  caddy-data:
+  minio-data:
+  postgres-data:
+  redis-data:
+
+networks:
+  edge:
+  application:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${APPLICATION_NETWORK_SUBNET:?APPLICATION_NETWORK_SUBNET is required}
+  data:
+    internal: true

@@ -5,7 +5,11 @@
 - Repository: private GitHub repository `Noiseus/cproviderprices`.
 - Primary domain: `cproviderprices.com`.
 - Current hosting provider and plan: Hostinger Business Web Hosting.
-- Hostinger supports Web Apps and GitHub deployment, but deployment for this project is **not configured yet**.
+- Hostinger supports Web Apps and GitHub deployment, but its existing Business
+  Web Hosting plan is not sufficient for this repository's Node.js,
+  PostgreSQL, Redis and Python runtime requirements. Prompt 21 provides a
+  provider-neutral Docker deployment path; no external runtime is configured
+  or deployed yet.
 
 ## Intended domain direction
 
@@ -19,4 +23,11 @@ This is a direction, not a claim that DNS, certificates, applications, or deploy
 
 ## Decision boundary
 
-Deployment architecture, CI/CD, environment topology, runtime availability, and Hostinger compatibility will be verified and finalized in a later deployment prompt. Do not introduce temporary application implementations, collapse approved service boundaries, or add architectural hacks solely to satisfy a Hostinger onboarding wizard. If verified hosting constraints require a durable architectural change, evaluate alternatives and record the decision in an ADR.
+Prompt 21 records the approved pilot direction in
+[operations documentation](../operations/deployment-runbook.md): keep the
+domain at Hostinger if desired, but run staging and production on isolated
+Docker-capable runtimes. Do not introduce temporary application
+implementations, collapse approved service boundaries, or add architectural
+hacks solely to satisfy a hosting onboarding wizard. If a later verified
+constraint requires a durable architectural change, evaluate alternatives and
+record the decision in an ADR.

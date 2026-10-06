@@ -22,8 +22,14 @@ class Settings:
         if not service_name:
             raise RuntimeError("INGESTION_SERVICE_NAME is required.")
 
+        service_token = environ.get("INGESTION_SERVICE_TOKEN", "").strip()
+        if environment in {"staging", "production"} and not service_token:
+            raise RuntimeError(
+                "INGESTION_SERVICE_TOKEN is required outside local/test environments."
+            )
+
         return cls(
             environment=cast(EnvironmentName, environment),
             service_name=service_name,
-            service_token=environ.get("INGESTION_SERVICE_TOKEN", ""),
+            service_token=service_token,
         )

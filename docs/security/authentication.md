@@ -12,7 +12,15 @@ Forgot-password acknowledgements are identical for known and unknown accounts. I
 
 The API uses Laravel's `web` session guard. The session cookie is HttpOnly. Before a state-changing request, the web client requests `GET /api/v1/auth/csrf-cookie`, reads Laravel's separate `XSRF-TOKEN` cookie, and returns it in `X-XSRF-TOKEN`. Laravel's CSRF middleware remains enabled on all stateful API routes. CORS allows credentials only from explicitly configured web origins.
 
-The web application keeps browser and server-side routing explicit: `NEXT_PUBLIC_API_URL` is the browser-reachable API origin, while `API_INTERNAL_URL` may point server-rendered requests at a private service address. Docker Compose uses `http://api:8080` internally without exposing that hostname to browser code.
+The web application keeps browser and server-side routing explicit:
+`API_INTERNAL_URL` points server-rendered requests at a private service address.
+Local development uses `NEXT_PUBLIC_API_URL` as the browser-reachable API
+origin. The production Caddy edge instead proxies browser `/api/v1` calls from
+the authenticated app host to Laravel, so the same immutable Next image can be
+promoted between environments without baking an environment-specific public
+origin into JavaScript. The public API hostname remains protected by the same
+cookie/CSRF/CORS controls for future clients. Docker Compose uses
+`http://api:8080` internally without exposing that hostname to browser code.
 
 Safe local settings are:
 
@@ -40,7 +48,12 @@ SESSION_SAME_SITE=lax
 CORS_ALLOWED_ORIGINS=https://app.cproviderprices.com
 ```
 
-Production and staging must use distinct keys, databases, sessions, origins, and cookies. HTTPS is required. Do not use wildcard credentialed CORS origins. The shared parent-domain cookie configuration is required so Next.js server rendering and browser CSRF handling can receive the API-issued cookies across the intended sibling subdomains.
+Production and staging must use distinct keys, databases, sessions, origins,
+cookie names, and cookies. HTTPS is required. Do not use wildcard credentialed
+CORS origins. The shared parent-domain cookie configuration is required so
+Next.js server rendering and browser CSRF handling can receive the API-issued
+cookies across intended sibling subdomains. Staging's distinct cookie name and
+Laravel key prevent its parent-scoped cookie from becoming a production session.
 
 Prompt 20 keeps CORS methods explicit (`GET`, `POST`, `PUT`, `PATCH`,
 `DELETE`, and `OPTIONS`) and permits only the documented request headers.
