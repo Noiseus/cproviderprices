@@ -205,6 +205,30 @@ describe("search workspace", () => {
     });
   });
 
+  it("preserves a newly selected sort while a query URL update is pending", () => {
+    vi.useFakeTimers();
+    render(<SearchWorkspace />);
+    fireEvent.change(screen.getByLabelText("Search products"), {
+      target: { value: "tomato" },
+    });
+    fireEvent.change(screen.getAllByLabelText("Sort")[0], {
+      target: { value: "lowest_case_price" },
+    });
+
+    act(() => vi.advanceTimersByTime(250));
+
+    expect(navigation.replace).toHaveBeenNthCalledWith(
+      1,
+      "/o/acme/search?sort=lowest_case_price",
+      { scroll: false },
+    );
+    expect(navigation.replace).toHaveBeenNthCalledWith(
+      2,
+      "/o/acme/search?sort=lowest_case_price&q=tomato",
+      { scroll: false },
+    );
+  });
+
   it("cancels stale search rendering and keeps only safe recent query text", async () => {
     let resolveFirst!: (value: SearchResponse) => void;
     let resolveSecond!: (value: SearchResponse) => void;

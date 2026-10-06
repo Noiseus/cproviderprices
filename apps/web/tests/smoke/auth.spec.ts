@@ -121,7 +121,15 @@ test("viewer gets reduced and entitlement-aware navigation", async ({
     0,
   );
 
-  await page.getByRole("link", { name: "Team" }).click();
+  const teamResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/team") && response.request().method() === "GET",
+  );
+  await Promise.all([
+    page.waitForURL(`${webUrl}/o/${fixture.viewer.slug}/team`),
+    page.getByRole("link", { name: "Team" }).click(),
+  ]);
+  expect((await teamResponse).status()).toBe(200);
   await expect(page.getByText("Read-only access")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Send invitation" }),
