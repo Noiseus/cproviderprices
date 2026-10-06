@@ -37,7 +37,6 @@ export function OrganizationSwitcher({
               { method: "POST", body: JSON.stringify({}) },
             );
             router.push(response.destination);
-            router.refresh();
           } finally {
             setLoading(false);
           }

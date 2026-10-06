@@ -266,7 +266,6 @@ function AppShellContent(props: Props) {
                     });
                   } finally {
                     router.push("/login");
-                    router.refresh();
                   }
                 }}
               >

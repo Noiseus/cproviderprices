@@ -68,7 +68,30 @@ async function upload(
   await page.keyboard.press("Tab");
   await expect(page.getByLabel(/^Supplier file/)).toBeFocused();
   await page.getByLabel(/^Supplier file/).setInputFiles(file);
+  const uploadResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        `/api/v1/organizations/${fixture.owner.organization_id}/imports`,
+  );
+  const detailResponse = page.waitForResponse((response) => {
+    const path = new URL(response.url()).pathname;
+    return (
+      response.request().method() === "GET" &&
+      path.startsWith(
+        `/api/v1/organizations/${fixture.owner.organization_id}/imports/`,
+      ) &&
+      path.split("/").length === 7
+    );
+  });
   await page.getByRole("button", { name: "Upload file", exact: true }).click();
+  const uploaded = await uploadResponse;
+  expect(uploaded.status()).toBe(201);
+  const created = (await uploaded.json()) as { import: { id: string } };
+  await expect(page).toHaveURL(
+    `${web}/o/${fixture.owner.slug}/imports/${created.import.id}`,
+  );
+  expect((await detailResponse).status()).toBe(200);
   await expect(
     page.getByRole("heading", { name: "Source preview" }),
   ).toBeVisible();
