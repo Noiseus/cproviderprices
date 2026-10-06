@@ -85,8 +85,11 @@ Search and comparison responses use a 30-second Laravel cache; price-history
 responses use a five-minute cache. Every key includes the server-authorized
 organization and location plus a scoped version (and the canonical product for
 comparison/history), so cache hits cannot cross a tenant/location boundary.
-Offer projection and accepted import completion invalidate only affected scopes
-after transaction commit.
+Offer projection, accepted import completion, and a reviewed mapping
+acceptance/replacement/reversal invalidate only the affected authorized
+location and canonical-product scopes after transaction commit. This ensures a
+human-reviewed mapping appears in current search, comparison and history
+without waiting for the short response-cache TTL.
 
 The browser keeps, per organization, at most eight recent query strings as a
 local convenience. It never persists results, offers, supplier identities or

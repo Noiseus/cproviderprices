@@ -13,6 +13,7 @@ use App\Models\MatchReview;
 use App\Models\ProductAlias;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\VendorItem;
 use App\Models\VendorItemMapping;
 use App\Support\ApiProblem;
 use App\Support\Audit;
@@ -21,10 +22,16 @@ use Illuminate\Support\Facades\DB;
 
 final class CatalogReviewService
 {
+    public function __construct(private readonly SearchComparisonCache $cache) {}
+
     /** @param array<string, mixed> $input */
     public function review(MatchCandidate $candidate, User $actor, ReviewAction $action, array $input): MatchCandidate
     {
-        return DB::transaction(function () use ($candidate, $actor, $action, $input): MatchCandidate {
+        $previousMapping = VendorItemMapping::query()
+            ->where('vendor_item_id', $candidate->vendor_item_id)
+            ->where('is_current', true)
+            ->first();
+        $reviewed = DB::transaction(function () use ($candidate, $actor, $action, $input): MatchCandidate {
             $locked = MatchCandidate::query()->whereKey($candidate->id)->lockForUpdate()->firstOrFail();
             $vendor = $locked->vendorItem()->lockForUpdate()->firstOrFail();
             if ($locked->status !== MatchCandidateStatus::Pending) {
@@ -50,11 +57,26 @@ final class CatalogReviewService
 
             return $locked->refresh();
         });
+        if ($reviewed->status === MatchCandidateStatus::Accepted) {
+            $mapping = VendorItemMapping::query()
+                ->where('match_candidate_id', $reviewed->id)
+                ->where('is_current', true)
+                ->first();
+            if ($mapping instanceof VendorItemMapping) {
+                $this->invalidateVendor(
+                    $mapping->vendorItem()->firstOrFail(),
+                    array_values(array_filter([$previousMapping?->canonical_product_id, $mapping->canonical_product_id])),
+                );
+            }
+        }
+
+        return $reviewed;
     }
 
     public function reverse(VendorItemMapping $mapping, User $actor, string $reason): VendorItemMapping
     {
-        return DB::transaction(function () use ($mapping, $actor, $reason): VendorItemMapping {
+        $wasCurrent = $mapping->is_current;
+        $reversed = DB::transaction(function () use ($mapping, $actor, $reason): VendorItemMapping {
             $locked = VendorItemMapping::query()->whereKey($mapping->id)->lockForUpdate()->firstOrFail();
             $vendor = $locked->vendorItem()->lockForUpdate()->firstOrFail();
             if (! $locked->is_current) {
@@ -67,6 +89,14 @@ final class CatalogReviewService
 
             return $locked->refresh();
         });
+        if ($wasCurrent) {
+            $this->invalidateVendor(
+                $reversed->vendorItem()->firstOrFail(),
+                [$reversed->canonical_product_id],
+            );
+        }
+
+        return $reversed;
     }
 
     /** @param array<string, mixed> $input
@@ -169,5 +199,16 @@ final class CatalogReviewService
         }
 
         return ['mapping_id' => $mapping->id, 'canonical_product_id' => $mapping->canonical_product_id, 'product_variant_id' => $mapping->product_variant_id, 'match_class' => $mapping->match_class->value, 'confidence' => $mapping->confidence->value, 'origin' => $mapping->origin->value, 'is_current' => $mapping->is_current];
+    }
+
+    /** @param list<string> $canonicalProductIds */
+    private function invalidateVendor(VendorItem $vendor, array $canonicalProductIds): void
+    {
+        $account = $vendor->supplierAccount()->firstOrFail();
+        $this->cache->invalidate(
+            $vendor->organization_id,
+            $account->restaurant_location_id,
+            $canonicalProductIds,
+        );
     }
 }
