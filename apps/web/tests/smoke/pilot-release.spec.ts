@@ -45,6 +45,13 @@ type ComparisonPayload = {
   }>;
 };
 
+type SavedListDetailPayload = {
+  saved_list: {
+    id: string;
+    items: Array<{ selected_offer_id: string | null }>;
+  };
+};
+
 const fixture = JSON.parse(
   readFileSync(
     resolve(process.cwd(), "../api/storage/app/private/auth-e2e-isolated.json"),
@@ -63,8 +70,19 @@ async function login(
   await page.goto(`${web}/login`);
   await page.getByLabel("Email address").fill(identity.email);
   await page.getByLabel("Password", { exact: true }).fill(identity.password);
+  const loginResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/auth/login",
+    { timeout: 15_000 },
+  );
+  const dashboardNavigation = page.waitForURL(
+    `${web}/o/${identity.slug}/dashboard`,
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(`${web}/o/${identity.slug}/dashboard`);
+  const [login] = await Promise.all([loginResponse, dashboardNavigation]);
+  expect(login.status()).toBe(200);
 }
 
 async function selectPilotMainLocation(page: Page) {
@@ -173,9 +191,40 @@ test("pilot buyer sees traceable, safe Beefsteak outcomes and cannot read the is
       () => (window as Window & { pilotMarker?: string }).pilotMarker,
     ),
   ).toBe("same-document");
-  await page
-    .getByRole("link", { name: "Pilot weekly produce", exact: true })
-    .click();
+  const pilotListLink = page.getByRole("link", {
+    name: "Pilot weekly produce",
+    exact: true,
+  });
+  await expect(pilotListLink).toHaveAttribute(
+    "href",
+    `/o/${fixture.pilot.buyer.slug}/lists/${fixture.pilot.saved_list_id}`,
+  );
+  const pilotListResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname ===
+        `/api/v1/organizations/${fixture.pilot.buyer.organization_id}/saved-lists/${fixture.pilot.saved_list_id}`,
+    { timeout: 15_000 },
+  );
+  const pilotListNavigation = page.waitForURL(
+    `${web}/o/${fixture.pilot.buyer.slug}/lists/${fixture.pilot.saved_list_id}`,
+    { timeout: 15_000 },
+  );
+  await pilotListLink.click();
+  const [pilotListDetail] = await Promise.all([
+    pilotListResponse,
+    pilotListNavigation,
+  ]);
+  expect(pilotListDetail.status()).toBe(200);
+  const pilotListPayload =
+    (await pilotListDetail.json()) as SavedListDetailPayload;
+  expect(pilotListPayload.saved_list.id).toBe(fixture.pilot.saved_list_id);
+  expect(pilotListPayload.saved_list.items).toContainEqual(
+    expect.objectContaining({
+      selected_offer_id:
+        fixture.pilot.comparison.offers.same_case_different_normalized,
+    }),
+  );
   await expect(page.getByText("Selected option")).toBeVisible();
   await expect(page.getByText("Best normalized option")).toBeVisible();
   await expect(page.getByText("Best available option")).toBeVisible();

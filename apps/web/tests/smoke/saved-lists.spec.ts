@@ -44,8 +44,19 @@ async function login(page: Page, identity = fixture.search_login) {
   await page.goto(`${web}/login`);
   await page.getByLabel("Email address").fill(identity.email);
   await page.getByLabel("Password", { exact: true }).fill(identity.password);
+  const loginResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/auth/login",
+    { timeout: 15_000 },
+  );
+  const dashboardNavigation = page.waitForURL(
+    `${web}/o/${identity.slug}/dashboard`,
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(`${web}/o/${identity.slug}/dashboard`);
+  const [login] = await Promise.all([loginResponse, dashboardNavigation]);
+  expect(login.status()).toBe(200);
 }
 
 test("buyer saves Beefsteak intent, chooses an offer, updates it, and preserves client navigation", async ({
@@ -113,6 +124,7 @@ test("buyer saves Beefsteak intent, chooses an offer, updates it, and preserves 
   await savedListLink.click();
   const detail = await detailResponse;
   expect(detail.status()).toBe(200);
+  const savedListsPath = new URL(detail.url()).pathname.replace(/\/[^/]+$/, "");
   const detailPayload = (await detail.json()) as SavedListDetailPayload;
   const [item] = detailPayload.saved_list.items;
   expect(item).toBeDefined();
@@ -146,7 +158,39 @@ test("buyer saves Beefsteak intent, chooses an offer, updates it, and preserves 
     fixture.search_comparison.offers.best_available,
   );
 
+  const returnToListsResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === savedListsPath,
+    { timeout: 15_000 },
+  );
+  const returnToListsRoute = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      response.request().resourceType() === "fetch" &&
+      new URL(response.url()).pathname ===
+        `/o/${fixture.search_login.slug}/lists` &&
+      new URL(response.url()).searchParams.has("_rsc"),
+    { timeout: 15_000 },
+  );
+  const returnToListsNavigation = page.waitForURL(listsUrl, {
+    timeout: 15_000,
+  });
   await page.getByRole("link", { name: "Lists", exact: true }).click();
+  const [returnToLists, returnRoute] = await Promise.all([
+    returnToListsResponse,
+    returnToListsRoute,
+    returnToListsNavigation,
+  ]);
+  expect(returnToLists.status()).toBe(200);
+  expect(returnRoute.status()).toBe(200);
+  const duplicateResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        `${savedListsPath}/${savedListId}/duplicate`,
+    { timeout: 15_000 },
+  );
   await page
     .getByRole("region", { name: "Beefsteak buyer list" })
     .getByRole("button", { name: "Duplicate" })
@@ -155,12 +199,29 @@ test("buyer saves Beefsteak intent, chooses an offer, updates it, and preserves 
     .getByRole("dialog", { name: "Duplicate list" })
     .getByRole("button", { name: "Duplicate", exact: true })
     .click();
+  expect((await duplicateResponse).status()).toBe(201);
   await expect(page.getByText(/Beefsteak buyer list copy/i)).toBeVisible();
+  const archiveResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        `${savedListsPath}/${savedListId}/archive`,
+    { timeout: 15_000 },
+  );
   await page
     .getByRole("region", { name: "Beefsteak buyer list", exact: true })
     .getByRole("button", { name: "Archive" })
     .click();
+  expect((await archiveResponse).status()).toBe(200);
+  const archivedListsResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === savedListsPath &&
+      new URL(response.url()).searchParams.get("status") === "archived",
+    { timeout: 15_000 },
+  );
   await page.getByRole("button", { name: "Archived" }).click();
+  expect((await archivedListsResponse).status()).toBe(200);
   await expect(
     page
       .getByRole("region", { name: "Beefsteak buyer list", exact: true })
@@ -185,8 +246,30 @@ test("retains a selected offer after it becomes unavailable and shows alternativ
   page,
 }) => {
   await login(page);
-  await page.goto(
-    `${web}/o/${fixture.search_login.slug}/lists/${fixture.saved_lists.unavailable_selection_id}`,
+  const unavailableListUrl = `${web}/o/${fixture.search_login.slug}/lists/${fixture.saved_lists.unavailable_selection_id}`;
+  const unavailableListResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname.endsWith(
+        `/saved-lists/${fixture.saved_lists.unavailable_selection_id}`,
+      ),
+    { timeout: 15_000 },
+  );
+  const unavailableListNavigation = page.waitForURL(unavailableListUrl, {
+    timeout: 15_000,
+  });
+  await page.goto(unavailableListUrl);
+  const [unavailableList] = await Promise.all([
+    unavailableListResponse,
+    unavailableListNavigation,
+  ]);
+  expect(unavailableList.status()).toBe(200);
+  const unavailableListPayload =
+    (await unavailableList.json()) as SavedListDetailPayload;
+  expect(unavailableListPayload.saved_list.items).toContainEqual(
+    expect.objectContaining({
+      selected_offer_id: expect.any(String),
+    }),
   );
   await expect(page.getByText("Selected offer is unavailable.")).toBeVisible();
   await expect(page.getByText("Best available option")).toBeVisible();

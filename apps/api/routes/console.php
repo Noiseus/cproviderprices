@@ -856,6 +856,14 @@ Artisan::command('app:verify-pilot-e2e', function (): void {
     if (PriceObservation::query()->where('supplier_offer_id', $historyOffer->id)->count() < 13) {
         throw new RuntimeException('Pilot price history is too short for chart and compatible-unit coverage.');
     }
+    $pilotList = SavedList::query()->where('organization_id', $organization->id)->where('name', 'Pilot weekly produce')->sole();
+    $pilotListItem = SavedListItem::query()->where('saved_list_id', $pilotList->id)->sole();
+    $expectedSelectedOffer = SupplierOffer::query()->where('organization_id', $organization->id)
+        ->whereHas('vendorItem', static fn ($query) => $query->where('supplier_item_identifier', 'PILOT-BEEF-SAME-CASE'))
+        ->sole();
+    if ($pilotListItem->selected_offer_id !== $expectedSelectedOffer->id) {
+        throw new RuntimeException('Pilot saved-list selection does not preserve its required distinct offer.');
+    }
     $ambiguous = VendorItem::query()->where('organization_id', $organization->id)->where('supplier_item_identifier', 'PILOT-BEEF-REVIEW')->sole();
     if ($ambiguous->currentMapping()->exists() || ! $ambiguous->matchCandidates()->where('status', 'pending')->exists()) {
         throw new RuntimeException('Pilot review item is not safely pending human review.');
