@@ -75,8 +75,23 @@ test("buyer saves Beefsteak intent, chooses an offer, updates it, and preserves 
     .getByRole("button", { name: /Close Add to saved purchasing list/i })
     .click();
 
+  const listsUrl = `${web}/o/${fixture.search_login.slug}/lists`;
+  const listsRouteResponse = page.waitForResponse(
+    (response) => {
+      const responseUrl = new URL(response.url());
+      return (
+        response.request().method() === "GET" &&
+        response.request().resourceType() === "fetch" &&
+        responseUrl.pathname === `/o/${fixture.search_login.slug}/lists` &&
+        responseUrl.searchParams.has("_rsc")
+      );
+    },
+    { timeout: 15_000 },
+  );
+  const listsNavigation = page.waitForURL(listsUrl, { timeout: 15_000 });
   await page.getByRole("link", { name: "Lists", exact: true }).click();
-  await expect(page).toHaveURL(`${web}/o/${fixture.search_login.slug}/lists`);
+  const [listsRoute] = await Promise.all([listsRouteResponse, listsNavigation]);
+  expect(listsRoute.status()).toBe(200);
   expect(
     await page.evaluate(
       () => (window as Window & { savedListMarker?: string }).savedListMarker,
