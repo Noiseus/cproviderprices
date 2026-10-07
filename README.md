@@ -64,6 +64,42 @@ PostgreSQL listens on `localhost:5432`, Redis on `localhost:6379`, Mailpit SMTP 
 
 The ingestion port is published only for local smoke testing. The intended production topology keeps the Python service internal.
 
+## Persistent local demo access
+
+Local development has an opt-in, persistent set of five accounts for manual testing. Put unique private values for the following variables in the ignored `apps/api/.env` file; never commit real passwords:
+
+- `LOCAL_PLATFORM_ADMIN_PASSWORD`
+- `LOCAL_OWNER_ONE_PASSWORD`
+- `LOCAL_OWNER_TWO_PASSWORD`
+- `LOCAL_BUYER_PASSWORD`
+- `LOCAL_VIEWER_PASSWORD`
+
+With the local stack running, create or reconcile the accounts without resetting the database:
+
+```powershell
+docker compose exec api php artisan app:bootstrap-local-demo
+```
+
+Log in at [http://localhost:3000/login](http://localhost:3000/login):
+
+| Email | Role / scope |
+| --- | --- |
+| `platform.admin@local.test` | `platform_admin` only; use `/platform` through the normal platform authorization path. |
+| `owner.one@local.test` | `organization_owner` in CProviderPrices Local Demo. |
+| `owner.two@local.test` | `organization_owner` in CProviderPrices Local Demo. |
+| `buyer@local.test` | `buyer` in CProviderPrices Local Demo. |
+| `viewer@local.test` | `viewer` in CProviderPrices Local Demo. |
+
+The command reconciles only these local identities, **CProviderPrices Local Demo**, its active **Charlotte Test Location**, and the existing `growth` plan/subscription needed for the normal entitlement checks. It is idempotent, preserves unrelated local data, creates no catalog/import fixture data, and never prints or stores plaintext passwords. Re-running it updates a demo password only when its private environment value changes.
+
+Staging and production never receive local users, password hashes, sessions, mobile/API tokens, invitation tokens, or database rows. Bootstrap only the first real platform administrator separately, with an operator-provided email and either a hidden prompt or runtime secret:
+
+```shell
+php artisan app:bootstrap-platform-admin admin@example.com --confirm
+```
+
+For non-interactive operation, supply `PLATFORM_ADMIN_BOOTSTRAP_PASSWORD` through the environment or secret manager and use `--confirm` outside local development. This command is idempotent only for that same first platform identity, writes an audit entry, and creates no organization membership. Afterward, follow the normal platform workflow: create an organization, invite its owner, then have that owner invite buyers and viewers. Equivalent human emails may be used in separate environments, but each environment must create credentials independently.
+
 ## Root commands
 
 - `make setup`: create local environment files, validate Compose, and build images.

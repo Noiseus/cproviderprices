@@ -173,7 +173,20 @@ test("owner workspace configuration uses client navigation", async ({
   await expect(
     page.getByRole("button", { name: "Create location" }),
   ).toBeVisible();
+  const suppliersPath = `/o/${fixture.login.slug}/suppliers`;
+  const suppliersNavigation = page.waitForURL(`${webUrl}${suppliersPath}`);
+  const suppliersRsc = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === "GET" &&
+      url.pathname === suppliersPath &&
+      url.searchParams.has("_rsc")
+    );
+  });
   await page.getByRole("link", { name: "Suppliers" }).click();
+  await suppliersNavigation;
+  expect((await suppliersRsc).status()).toBe(200);
   await expect(
     page.getByRole("heading", { level: 1, name: "Suppliers" }),
   ).toBeVisible();
