@@ -19,6 +19,13 @@ Runtime environment files and deployment keys are not copied into database
 backups. Keep their recovery material in a restricted password manager or
 secret manager, with access separate from the backup location.
 
+For first real staging, "off-host" means a separately authenticated storage
+location outside the staging runtime and its attached volumes. It must receive
+the encrypted PostgreSQL archive and checksum plus the private-object mirror,
+retain at least the 14 daily points stated above, and let the operator retrieve
+one chosen point for an isolated restore. A same-host directory, Docker volume,
+or an untested provider snapshot alone is not a completed backup target.
+
 ## Backup procedure
 
 On the runtime host, after the Compose stack is healthy, run:

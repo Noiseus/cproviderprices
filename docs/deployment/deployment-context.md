@@ -16,7 +16,7 @@
 - `www.cproviderprices.com`: public/marketing website.
 - `app.cproviderprices.com`: authenticated customer web application.
 - `api.cproviderprices.com`: production API.
-- `staging.cproviderprices.com`: staging web application.
+- `app-staging.cproviderprices.com`: staging web application.
 - `api-staging.cproviderprices.com`: staging API.
 
 This is a direction, not a claim that DNS, certificates, applications, or deployments already exist. Production and staging configuration, credentials, data, and access must remain separated.

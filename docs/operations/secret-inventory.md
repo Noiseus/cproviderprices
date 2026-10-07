@@ -20,8 +20,10 @@ image layers, browser variables, or `NEXT_PUBLIC_*` variables.
 
 `SESSION_COOKIE`, `CACHE_PREFIX`, `REDIS_PREFIX`, bucket names, and image tags
 are not secret, but must be distinct by environment. `SESSION_DOMAIN`, trusted
-hosts, origins, and proxy addresses are security-sensitive configuration, not
-credentials; review them with the same release change control.
+hosts, origins, proxy addresses, and `MOBILE_ACCESS_TOKEN_TTL_DAYS` are
+security-sensitive configuration, not credentials; review them with the same
+release change control. `EXPO_PUBLIC_API_URL` is public build configuration
+only and may contain only the HTTPS API origin.
 
 Rotation sequence for the ingestion token is coordinated: deploy API/worker
 with support for the new value only once the Python service receives the same
