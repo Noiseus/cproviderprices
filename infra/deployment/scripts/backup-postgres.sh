@@ -24,6 +24,15 @@ if [ ! -f "$environment_file" ]; then
   exit 66
 fi
 
+# Docker Compose reads --env-file itself, but pg_dump below also needs the
+# database name in this shell. Compose environment files are not shell scripts:
+# values such as MAIL_FROM_NAME may contain spaces, so extract only this value.
+POSTGRES_DB=$(sed -n 's/\r$//; /^POSTGRES_DB=/ { s/^POSTGRES_DB=//; p; q; }' "$environment_file")
+if [ -z "$POSTGRES_DB" ]; then
+  echo "POSTGRES_DB must be supplied by the runtime environment file." >&2
+  exit 78
+fi
+
 umask 077
 mkdir -p "$backup_directory"
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)

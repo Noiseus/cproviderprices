@@ -4,6 +4,12 @@ This is a provider-neutral, Docker Compose pilot runbook. It prepares a clean
 runtime but does not authorize a real deployment, DNS change, infrastructure
 purchase, or secret creation in this repository.
 
+Before an operator starts the first real staging release, complete the
+[Launch 01 staging-readiness record](staging-readiness.md). It is the single
+preflight checklist for external provisioning, environment separation, mobile
+API configuration, backup target, DNS and SMTP. This runbook remains the
+canonical execution sequence once those prerequisites are marked ready.
+
 ## Runtime inventory
 
 | Component | Stateful | Exposure / port | Dependency and restart behavior | Health / readiness |
@@ -127,6 +133,13 @@ the other's session. CORS never uses `*` with credentials. Caddy terminates
 TLS, redirects HTTP, forwards standard client/protocol headers, and only the
 known private Caddy address is trusted by Laravel. `NEXT_PUBLIC_*` never holds
 a server secret; the production web image uses the same-origin Caddy API path.
+
+Native Expo builds use the separately public, non-secret
+`EXPO_PUBLIC_API_URL=https://api-staging.cproviderprices.com/api/v1`; it is not
+a server runtime variable and Expo is not part of the Compose topology. Set
+`MOBILE_ACCESS_TOKEN_TTL_DAYS` explicitly for each runtime (30 is the current
+default). Mobile bearer login remains rate limited, revocable, and scoped;
+only the public API hostname is reachable from a device.
 
 ## Storage choices
 
