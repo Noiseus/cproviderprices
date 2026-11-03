@@ -23,17 +23,26 @@ if [ ! -f "$environment_file" ]; then
   exit 66
 fi
 
-set -a
-. "$environment_file"
-set +a
+# A Compose environment file is not a POSIX shell script: unquoted values may
+# legitimately contain spaces (for example, MAIL_FROM_NAME). Read only the
+# smoke values needed here instead of sourcing the whole protected file.
+read_required() {
+  key=$1
+  value=$(sed -n "s/\r$//; /^${key}=/ { s/^${key}=//; p; q; }" "$environment_file")
 
-for required in SMOKE_EMAIL SMOKE_PASSWORD SMOKE_READONLY_URL; do
-  eval "value=\${$required:-}"
   if [ -z "$value" ]; then
-    echo "$required must be supplied from the secure deployment environment." >&2
+    echo "$key must be supplied from the secure deployment environment." >&2
     exit 78
   fi
-done
+
+  printf '%s\n' "$value"
+}
+
+WEB_URL=$(read_required WEB_URL)
+APP_URL=$(read_required APP_URL)
+SMOKE_EMAIL=$(read_required SMOKE_EMAIL)
+SMOKE_PASSWORD=$(read_required SMOKE_PASSWORD)
+SMOKE_READONLY_URL=$(read_required SMOKE_READONLY_URL)
 
 cookie_jar=$(mktemp)
 trap 'rm -f "$cookie_jar"' EXIT HUP INT TERM

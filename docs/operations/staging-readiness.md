@@ -10,6 +10,10 @@ This is the preflight companion to the canonical
 architecture. Once every external prerequisite below is supplied, follow that
 runbook's commands in order.
 
+Launch 02A records the provider-neutral selection and fresh-host plan in
+[staging runtime selection](staging-runtime-selection.md). It does not
+authorize the external actions listed in this readiness record.
+
 ## Repository readiness inventory
 
 | Area | Status | Evidence / disposition |
